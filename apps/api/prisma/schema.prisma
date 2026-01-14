@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USERS ====================
+
+enum UserType {
+  customer
+  provider
+  admin
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  phone        String?
+  firstName    String
+  lastName     String
+  userType     UserType @default(customer)
+  profileImage String?
+  isVerified   Boolean  @default(false)
+  gdprConsent  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  provider          Provider?
+  serviceRequests   ServiceRequest[]
+  quotesAsCustomer  Quote[]          @relation("CustomerQuotes")
+  bookingsAsCustomer Booking[]       @relation("CustomerBookings")
+  reviewsGiven      Review[]         @relation("ReviewsGiven")
+  reviewsReceived   Review[]         @relation("ReviewsReceived")
+  messagesSent      Message[]
+  conversations     ConversationParticipant[]
+
+  @@index([email])
+  @@index([userType])
+}
+
+// ==================== PROVIDERS ====================
+
+model Provider {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  companyName       String?
+  taxId             String?
+  description       String
+  experienceYears   Int      @default(0)
+  serviceAreaRadius Float    @default(25) // km
+  serviceAreaLat    Float
+  serviceAreaLng    Float
+  ratingAvg         Float    @default(0)
+  totalReviews      Int      @default(0)
+  isApproved        Boolean  @default(false)
+  documents         String[] // URLs
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services Service[]
+  quotes   Quote[]
+  bookings Booking[]
+
+  @@index([userId])
+  @@index([isApproved])
+}
+
+// ==================== CATEGORIES ====================
+
+model Category {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  nameDe    String
+  nameEn    String
+  icon      String
+  parentId  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  parent          Category?        @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children        Category[]       @relation("CategoryHierarchy")
+  services        Service[]
+  serviceRequests ServiceRequest[]
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+// ==================== SERVICES ====================
+
+enum PriceType {
+  fixed
+  hourly
+  quote
+}
+
+model Service {
+  id          String    @id @default(uuid())
+  providerId  String
+  categoryId  String
+  title       String
+  description String
+  priceType   PriceType @default(quote)
+  priceMin    Float?
+  priceMax    Float?
+  images      String[]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@index([providerId])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+// ==================== SERVICE REQUESTS ====================
+
+enum RequestStatus {
+  open
+  in_progress
+  completed
+  cancelled
+}
+
+model ServiceRequest {
+  id            String        @id @default(uuid())
+  customerId    String
+  categoryId    String
+  title         String
+  description   String
+  address       String
+  city          String
+  postalCode    String
+  lat           Float
+  lng           Float
+  preferredDate DateTime?
+  budgetMin     Float?
+  budgetMax     Float?
+  images        String[]
+  status        RequestStatus @default(open)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  customer      User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id])
+  quotes        Quote[]
+  conversations Conversation[]
+
+  @@index([customerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([postalCode])
+}
+
+// ==================== QUOTES ====================
+
+enum QuoteStatus {
+  pending
+  accepted
+  rejected
+  expired
+}
+
+model Quote {
+  id         String      @id @default(uuid())
+  requestId  String
+  providerId String
+  customerId String
+  price      Float
+  message    String
+  validUntil DateTime
+  status     QuoteStatus @default(pending)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relations
+  request  ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  customer User           @relation("CustomerQuotes", fields: [customerId], references: [id], onDelete: Cascade)
+  booking  Booking?
+
+  @@index([requestId])
+  @@index([providerId])
+  @@index([customerId])
+  @@index([status])
+}
+
+// ==================== BOOKINGS ====================
+
+enum BookingStatus {
+  pending
+  confirmed
+  in_progress
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  refunded
+  failed
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  quoteId       String        @unique
+  customerId    String
+  providerId    String
+  scheduledDate DateTime
+  status        BookingStatus @default(pending)
+  totalPrice    Float
+  paymentStatus PaymentStatus @default(pending)
+  completedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  quote    Quote    @relation(fields: [quoteId], references: [id])
+  customer User     @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  review   Review?
+  payment  Payment?
+
+  @@index([customerId])
+  @@index([providerId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+// ==================== PAYMENTS ====================
+
+model Payment {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  stripePaymentId String?
+  amount          Float
+  currency        String   @default("EUR")
+  status          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([stripePaymentId])
+}
+
+// ==================== REVIEWS ====================
+
+model Review {
+  id            String   @id @default(uuid())
+  bookingId     String   @unique
+  reviewerId    String
+  revieweeId    String
+  rating        Int      // 1-5
+  comment       String?
+  providerReply String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reviewer User    @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User    @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@index([rating])
+}
+
+// ==================== MESSAGES ====================
+
+model Conversation {
+  id            String   @id @default(uuid())
+  requestId     String?
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  request      ServiceRequest?           @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([requestId])
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime @default(now())
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  attachments    String[]
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
