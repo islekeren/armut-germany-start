@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "title": "Armut Germany - Finden Sie die besten Dienstleister",
+    "description": "Armut Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr."
+  },
+  "common": {
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden",
+    "search": "Suchen",
+    "allRightsReserved": "Alle Rechte vorbehalten."
+  },
+  "hero": {
+    "title": "Finden Sie den perfekten Dienstleister",
+    "subtitle": "Verbinden Sie sich mit verifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr. Kostenlose Angebote in wenigen Minuten.",
+    "searchPlaceholder": "Welchen Service suchen Sie?",
+    "postalCode": "Postleitzahl"
+  },
+  "howItWorks": {
+    "title": "So funktioniert es",
+    "step1": {
+      "title": "Anfrage stellen",
+      "description": "Beschreiben Sie Ihren Bedarf und erhalten Sie kostenlose Angebote."
+    },
+    "step2": {
+      "title": "Angebote vergleichen",
+      "description": "Vergleichen Sie Preise und Bewertungen von verifizierten Anbietern."
+    },
+    "step3": {
+      "title": "Buchen & bewerten",
+      "description": "Wählen Sie den besten Anbieter und teilen Sie Ihre Erfahrung."
+    }
+  },
+  "footer": {
+    "description": "Die führende Plattform für Dienstleistungen in Deutschland."
+  },
+  "auth": {
+    "login": {
+      "title": "Willkommen zurück",
+      "subtitle": "Melden Sie sich an, um fortzufahren",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "rememberMe": "Angemeldet bleiben",
+      "forgotPassword": "Passwort vergessen?",
+      "submit": "Anmelden",
+      "loading": "Anmelden...",
+      "noAccount": "Noch kein Konto?",
+      "registerNow": "Jetzt registrieren",
+      "errorDefault": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "subtitle": "Registrieren Sie sich, um loszulegen",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "passwordPlaceholder": "Mindestens 8 Zeichen",
+      "confirmPassword": "Passwort bestätigen",
+      "registerAs": "Registrieren als",
+      "customer": "Kunde",
+      "customerDesc": "Services finden",
+      "provider": "Anbieter",
+      "providerDesc": "Services anbieten",
+      "acceptTerms": "Ich akzeptiere die",
+      "privacyPolicy": "Datenschutzerklärung",
+      "and": "und",
+      "terms": "AGB",
+      "submit": "Registrieren",
+      "loading": "Registrieren...",
+      "hasAccount": "Bereits ein Konto?",
+      "loginNow": "Jetzt anmelden",
+      "errorPasswordMismatch": "Passwörter stimmen nicht überein.",
+      "errorGdpr": "Bitte akzeptieren Sie die Datenschutzerklärung und AGB.",
+      "errorDefault": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    }
+  }
+}

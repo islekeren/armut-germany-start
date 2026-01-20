@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "title": "Armut Germany - Find the Best Service Providers",
+    "description": "Armut Germany connects you with qualified professionals for cleaning, moving, renovation and more."
+  },
+  "common": {
+    "login": "Log in",
+    "register": "Register",
+    "logout": "Log out",
+    "search": "Search",
+    "allRightsReserved": "All rights reserved."
+  },
+  "hero": {
+    "title": "Find the Perfect Service Provider",
+    "subtitle": "Connect with verified professionals for cleaning, moving, renovation and more. Free quotes in minutes.",
+    "searchPlaceholder": "What service are you looking for?",
+    "postalCode": "Postal code"
+  },
+  "howItWorks": {
+    "title": "How It Works",
+    "step1": {
+      "title": "Submit Request",
+      "description": "Describe your needs and receive free quotes."
+    },
+    "step2": {
+      "title": "Compare Offers",
+      "description": "Compare prices and reviews from verified providers."
+    },
+    "step3": {
+      "title": "Book & Review",
+      "description": "Choose the best provider and share your experience."
+    }
+  },
+  "footer": {
+    "description": "The leading platform for services in Germany."
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to continue",
+      "email": "Email",
+      "password": "Password",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "submit": "Log in",
+      "loading": "Logging in...",
+      "noAccount": "Don't have an account?",
+      "registerNow": "Register now",
+      "errorDefault": "Login failed. Please try again."
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Sign up to get started",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "password": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmPassword": "Confirm Password",
+      "registerAs": "Register as",
+      "customer": "Customer",
+      "customerDesc": "Find services",
+      "provider": "Provider",
+      "providerDesc": "Offer services",
+      "acceptTerms": "I accept the",
+      "privacyPolicy": "Privacy Policy",
+      "and": "and",
+      "terms": "Terms & Conditions",
+      "submit": "Register",
+      "loading": "Registering...",
+      "hasAccount": "Already have an account?",
+      "loginNow": "Log in now",
+      "errorPasswordMismatch": "Passwords do not match.",
+      "errorGdpr": "Please accept the Privacy Policy and Terms & Conditions.",
+      "errorDefault": "Registration failed. Please try again."
+    }
+  }
+}
