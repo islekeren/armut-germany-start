@@ -47,7 +47,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const { confirmPassword, gdprConsent, ...registerData } = formData;
+      const { confirmPassword, ...registerData } = formData;
       await register(registerData);
       router.push("/");
     } catch (err: any) {

@@ -64,6 +64,7 @@ export interface RegisterData {
   email: string;
   password: string;
   userType: "customer" | "provider";
+  gdprConsent: boolean;
 }
 
 export const authApi = {
