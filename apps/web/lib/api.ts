@@ -98,3 +98,115 @@ export const authApi = {
       token,
     }),
 };
+
+// Request types
+export interface ServiceRequest {
+  id: string;
+  customerId: string;
+  categoryId: string;
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  lat: number;
+  lng: number;
+  preferredDate?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  images?: string[];
+  status: "open" | "in_progress" | "completed" | "cancelled";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRequestData {
+  categoryId: string;
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  lat: number;
+  lng: number;
+  preferredDate?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  images?: string[];
+}
+
+export interface UpdateRequestData {
+  title?: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  lat?: number;
+  lng?: number;
+  preferredDate?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  images?: string[];
+}
+
+export interface RequestsQuery {
+  category?: string;
+  city?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// Requests API calls
+export const requestsApi = {
+  create: (data: CreateRequestData, token: string) =>
+    apiRequest<ServiceRequest>("/requests", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  getAll: (query?: RequestsQuery) => {
+    const params = new URLSearchParams();
+    if (query?.category) params.append("category", query.category);
+    if (query?.city) params.append("city", query.city);
+    if (query?.status) params.append("status", query.status);
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    const queryString = params.toString();
+    return apiRequest<PaginatedResponse<ServiceRequest>>(
+      `/requests${queryString ? `?${queryString}` : ""}`
+    );
+  },
+
+  getMyRequests: (token: string, status?: string) => {
+    const params = status ? `?status=${status}` : "";
+    return apiRequest<ServiceRequest[]>(`/requests/my${params}`, {
+      method: "GET",
+      token,
+    });
+  },
+
+  getById: (id: string) =>
+    apiRequest<ServiceRequest>(`/requests/${id}`),
+
+  update: (id: string, data: UpdateRequestData, token: string) =>
+    apiRequest<ServiceRequest>(`/requests/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  cancel: (id: string, token: string) =>
+    apiRequest<ServiceRequest>(`/requests/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+};

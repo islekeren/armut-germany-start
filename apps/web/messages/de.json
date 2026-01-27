@@ -10,6 +10,72 @@
     "search": "Suchen",
     "allRightsReserved": "Alle Rechte vorbehalten."
   },
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profil",
+    "myRequests": "Meine Anfragen",
+    "messages": "Nachrichten"
+  },
+  "categories": {
+    "cleaning": { "name": "Reinigung" },
+    "moving": { "name": "Umzug" },
+    "renovation": { "name": "Renovierung" },
+    "garden": { "name": "Garten" },
+    "electrician": { "name": "Elektriker" },
+    "plumber": { "name": "Klempner" },
+    "painter": { "name": "Maler" },
+    "locksmith": { "name": "Schlosser" },
+    "tutoring": { "name": "Nachhilfe" },
+    "photography": { "name": "Fotografie" },
+    "computerHelp": { "name": "Computerhilfe" },
+    "petCare": { "name": "Tierpflege" }
+  },
+  "createRequest": {
+    "step1": "Kategorie",
+    "step2": "Details",
+    "step3": "Überprüfen",
+    "whatDoYouNeed": "Was brauchen Sie?",
+    "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",
+    "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
+    "moreDetailsBetterOffers": "Je mehr Details Sie angeben, desto bessere Angebote erhalten Sie.",
+    "requestTitle": "Titel",
+    "requestTitlePlaceholder": "z.B. Grundreinigung für 3-Zimmer-Wohnung",
+    "description": "Beschreibung",
+    "descriptionPlaceholder": "Beschreiben Sie Ihre Anfrage im Detail. Was genau brauchen Sie? Gibt es besondere Anforderungen?",
+    "postalCode": "Postleitzahl",
+    "postalCodePlaceholder": "z.B. 10115",
+    "city": "Stadt",
+    "cityPlaceholder": "z.B. Berlin",
+    "preferredDate": "Wunschtermin",
+    "preferredTime": "Bevorzugte Uhrzeit",
+    "flexible": "Flexibel",
+    "morning": "Morgens (8-12)",
+    "afternoon": "Nachmittags (12-17)",
+    "evening": "Abends (17-21)",
+    "budget": "Budget (optional)",
+    "budgetMin": "Min",
+    "budgetMax": "Max",
+    "addPhotos": "Fotos hinzufügen (optional)",
+    "uploadPhotos": "Klicken Sie, um Fotos hochzuladen",
+    "dragPhotos": "oder per Drag & Drop",
+    "filesSelected": "Dateien ausgewählt",
+    "back": "Zurück",
+    "next": "Weiter",
+    "reviewTitle": "Überprüfen Sie Ihre Anfrage",
+    "reviewSubtitle": "Bitte überprüfen Sie Ihre Angaben vor dem Absenden.",
+    "categoryLabel": "Kategorie",
+    "titleLabel": "Titel",
+    "descriptionLabel": "Beschreibung",
+    "locationLabel": "Standort",
+    "appointmentLabel": "Termin",
+    "budgetLabel": "Budget",
+    "nextStepsTitle": "Was passiert als Nächstes?",
+    "nextStepsText": "Nach dem Absenden wird Ihre Anfrage an qualifizierte Anbieter in Ihrer Nähe gesendet. Sie erhalten innerhalb von 24 Stunden Angebote.",
+    "submitting": "Wird gesendet...",
+    "submitRequest": "Anfrage absenden",
+    "loginRequired": "Sie müssen angemeldet sein, um eine Anfrage zu senden. Sie werden zur Anmeldung weitergeleitet.",
+    "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
+  },
   "hero": {
     "title": "Finden Sie den perfekten Dienstleister",
     "subtitle": "Verbinden Sie sich mit verifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr. Kostenlose Angebote in wenigen Minuten.",
@@ -73,6 +139,80 @@
       "errorPasswordMismatch": "Passwörter stimmen nicht überein.",
       "errorGdpr": "Bitte akzeptieren Sie die Datenschutzerklärung und AGB.",
       "errorDefault": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "customer": {
+    "requests": {
+      "title": "Meine Anfragen",
+      "subtitle": "Verwalten Sie Ihre Serviceanfragen und Angebote",
+      "newRequest": "+ Neue Anfrage",
+      "messages": "Nachrichten",
+      "myRequests": "Meine Anfragen",
+      "requestDetails": "Anfragedetails",
+      "filters": {
+        "all": "Alle",
+        "active": "Aktiv",
+        "booked": "Gebucht",
+        "completed": "Abgeschlossen"
+      },
+      "status": {
+        "active": "Aktiv",
+        "booked": "Gebucht",
+        "completed": "Abgeschlossen",
+        "cancelled": "Abgebrochen"
+      },
+      "createdOn": "Erstellt am",
+      "quotes": "Angebote",
+      "viewQuotes": "Angebote ansehen",
+      "bookedWith": "Gebucht bei",
+      "viewDetails": "Details ansehen",
+      "completedOn": "Abgeschlossen am",
+      "rate": "Bewerten",
+      "noRequests": "Keine Anfragen gefunden",
+      "noRequestsHint": "Erstellen Sie eine neue Anfrage, um Angebote zu erhalten",
+      "createRequest": "Anfrage erstellen",
+      "loading": "Ihre Anfragen werden geladen..."
+    },
+    "requestDetail": {
+      "location": "Standort",
+      "preferredDate": "Wunschtermin",
+      "budget": "Budget",
+      "createdOn": "Erstellt am",
+      "edit": "Bearbeiten",
+      "close": "Schließen",
+      "quotesReceived": "{count} Angebote erhalten",
+      "sortOptions": {
+        "priceAsc": "Preis aufsteigend",
+        "priceDesc": "Preis absteigend",
+        "bestRating": "Beste Bewertung",
+        "newest": "Neueste zuerst"
+      },
+      "reviews": "Bewertungen",
+      "memberSince": "Mitglied seit",
+      "fixedPrice": "Festpreis",
+      "validUntil": "Gültig bis",
+      "sendMessage": "Nachricht senden",
+      "acceptQuote": "Angebot annehmen",
+      "acceptingQuote": "Angebot wird angenommen...",
+      "closeConfirmTitle": "Anfrage schließen",
+      "closeConfirmMessage": "Sind Sie sicher, dass Sie diese Anfrage schließen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "confirm": "Ja, schließen",
+      "cancel": "Abbrechen",
+      "closing": "Anfrage wird geschlossen...",
+      "closeSuccess": "Anfrage erfolgreich geschlossen",
+      "closeError": "Anfrage konnte nicht geschlossen werden",
+      "tips": {
+        "title": "Tipps zur Auswahl",
+        "tip1": "Vergleichen Sie nicht nur den Preis, sondern auch Bewertungen",
+        "tip2": "Stellen Sie Rückfragen, wenn etwas unklar ist",
+        "tip3": "Achten Sie auf die Erfahrung des Dienstleisters"
+      }
+    },
+    "messages": {
+      "title": "Nachrichten",
+      "placeholder": "Nachricht schreiben...",
+      "send": "Senden",
+      "selectConversation": "Wählen Sie eine Konversation aus der Liste"
     }
   }
 }

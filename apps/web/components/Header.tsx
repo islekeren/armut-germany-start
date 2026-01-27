@@ -68,6 +68,41 @@ export function Header() {
                       <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
                       <p className="text-xs text-muted">{user.email}</p>
                     </div>
+                    {user.userType === "provider" ? (
+                      <>
+                        <Link
+                          href="/dashboard"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          {t("nav.dashboard")}
+                        </Link>
+                        <Link
+                          href="/dashboard/profil"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          {t("nav.profile")}
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/my-requests"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          {t("nav.myRequests")}
+                        </Link>
+                        <Link
+                          href="/messages"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          {t("nav.messages")}
+                        </Link>
+                      </>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="block w-full px-4 py-2 text-left text-sm text-error hover:bg-gray-100"
@@ -79,11 +114,11 @@ export function Header() {
               </div>
             ) : (
               <>
-                <Link href="/anmelden" className="text-muted hover:text-foreground">
+                <Link href="/login" className="text-muted hover:text-foreground">
                   {t("common.login")}
                 </Link>
                 <Link
-                  href="/registrieren"
+                  href="/register"
                   className="rounded-lg bg-primary px-4 py-2 text-white hover:bg-primary-dark"
                 >
                   {t("common.register")}

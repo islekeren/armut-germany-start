@@ -44,13 +44,13 @@ export default function Home() {
           {/* CTA Buttons */}
           <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/registrieren"
+              href="/register"
               className="rounded-lg bg-white px-8 py-3 font-semibold text-primary hover:bg-white/90"
             >
               {t("common.register")}
             </Link>
             <Link
-              href="/anmelden"
+              href="/login"
               className="rounded-lg border-2 border-white px-8 py-3 font-semibold text-white hover:bg-white/10"
             >
               {t("common.login")}

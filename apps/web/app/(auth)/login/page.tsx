@@ -114,7 +114,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center text-sm text-muted">
             {t("auth.login.noAccount")}{" "}
-            <Link href="/registrieren" className="text-primary hover:underline">
+            <Link href="/register" className="text-primary hover:underline">
               {t("auth.login.registerNow")}
             </Link>
           </div>

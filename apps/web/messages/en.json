@@ -10,6 +10,72 @@
     "search": "Search",
     "allRightsReserved": "All rights reserved."
   },
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "myRequests": "My Requests",
+    "messages": "Messages"
+  },
+  "categories": {
+    "cleaning": { "name": "Cleaning" },
+    "moving": { "name": "Moving" },
+    "renovation": { "name": "Renovation" },
+    "garden": { "name": "Garden" },
+    "electrician": { "name": "Electrician" },
+    "plumber": { "name": "Plumber" },
+    "painter": { "name": "Painter" },
+    "locksmith": { "name": "Locksmith" },
+    "tutoring": { "name": "Tutoring" },
+    "photography": { "name": "Photography" },
+    "computerHelp": { "name": "Computer Help" },
+    "petCare": { "name": "Pet Care" }
+  },
+  "createRequest": {
+    "step1": "Category",
+    "step2": "Details",
+    "step3": "Review",
+    "whatDoYouNeed": "What do you need?",
+    "selectCategory": "Select a category for your service request.",
+    "describeYourNeed": "Describe your need",
+    "moreDetailsBetterOffers": "The more details you provide, the better offers you'll receive.",
+    "requestTitle": "Title",
+    "requestTitlePlaceholder": "e.g., Deep cleaning for 3-room apartment",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe your request in detail. What exactly do you need? Are there any special requirements?",
+    "postalCode": "Postal Code",
+    "postalCodePlaceholder": "e.g., 10115",
+    "city": "City",
+    "cityPlaceholder": "e.g., Berlin",
+    "preferredDate": "Preferred Date",
+    "preferredTime": "Preferred Time",
+    "flexible": "Flexible",
+    "morning": "Morning (8-12)",
+    "afternoon": "Afternoon (12-17)",
+    "evening": "Evening (17-21)",
+    "budget": "Budget (optional)",
+    "budgetMin": "Min",
+    "budgetMax": "Max",
+    "addPhotos": "Add Photos (optional)",
+    "uploadPhotos": "Click to upload photos",
+    "dragPhotos": "or drag and drop",
+    "filesSelected": "files selected",
+    "back": "Back",
+    "next": "Next",
+    "reviewTitle": "Review your request",
+    "reviewSubtitle": "Please check your details before submitting.",
+    "categoryLabel": "Category",
+    "titleLabel": "Title",
+    "descriptionLabel": "Description",
+    "locationLabel": "Location",
+    "appointmentLabel": "Appointment",
+    "budgetLabel": "Budget",
+    "nextStepsTitle": "What happens next?",
+    "nextStepsText": "After submitting, your request will be sent to qualified providers in your area. You'll receive quotes within 24 hours.",
+    "submitting": "Submitting...",
+    "submitRequest": "Submit Request",
+    "loginRequired": "You need to be logged in to submit a request. You will be redirected to login.",
+    "errorCreating": "Failed to create request. Please try again."
+  },
   "hero": {
     "title": "Find the Perfect Service Provider",
     "subtitle": "Connect with verified professionals for cleaning, moving, renovation and more. Free quotes in minutes.",
@@ -73,6 +139,80 @@
       "errorPasswordMismatch": "Passwords do not match.",
       "errorGdpr": "Please accept the Privacy Policy and Terms & Conditions.",
       "errorDefault": "Registration failed. Please try again."
+    }
+  },
+  "customer": {
+    "requests": {
+      "title": "My Requests",
+      "subtitle": "Manage your service requests and quotes",
+      "newRequest": "+ New Request",
+      "messages": "Messages",
+      "myRequests": "My Requests",
+      "requestDetails": "Request Details",
+      "filters": {
+        "all": "All",
+        "active": "Active",
+        "booked": "Booked",
+        "completed": "Completed"
+      },
+      "status": {
+        "active": "Active",
+        "booked": "Booked",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "createdOn": "Created on",
+      "quotes": "Quotes",
+      "viewQuotes": "View Quotes",
+      "bookedWith": "Booked with",
+      "viewDetails": "View Details",
+      "completedOn": "Completed on",
+      "rate": "Rate",
+      "noRequests": "No requests found",
+      "noRequestsHint": "Create a new request to receive quotes",
+      "createRequest": "Create Request",
+      "loading": "Loading your requests..."
+    },
+    "requestDetail": {
+      "location": "Location",
+      "preferredDate": "Preferred Date",
+      "budget": "Budget",
+      "createdOn": "Created on",
+      "edit": "Edit",
+      "close": "Close",
+      "quotesReceived": "{count} quotes received",
+      "sortOptions": {
+        "priceAsc": "Price ascending",
+        "priceDesc": "Price descending",
+        "bestRating": "Best rating",
+        "newest": "Newest first"
+      },
+      "reviews": "Reviews",
+      "memberSince": "Member since",
+      "fixedPrice": "Fixed price",
+      "validUntil": "Valid until",
+      "sendMessage": "Send Message",
+      "acceptQuote": "Accept Quote",
+      "acceptingQuote": "Accepting quote...",
+      "closeConfirmTitle": "Close Request",
+      "closeConfirmMessage": "Are you sure you want to close this request? This action cannot be undone.",
+      "confirm": "Yes, Close",
+      "cancel": "Cancel",
+      "closing": "Closing request...",
+      "closeSuccess": "Request closed successfully",
+      "closeError": "Failed to close request",
+      "tips": {
+        "title": "Tips for Selection",
+        "tip1": "Compare not only prices but also reviews",
+        "tip2": "Ask follow-up questions if something is unclear",
+        "tip3": "Pay attention to the provider's experience"
+      }
+    },
+    "messages": {
+      "title": "Messages",
+      "placeholder": "Write a message...",
+      "send": "Send",
+      "selectConversation": "Select a conversation from the list"
     }
   }
 }
