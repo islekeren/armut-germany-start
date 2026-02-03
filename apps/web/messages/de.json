@@ -8,7 +8,8 @@
     "register": "Registrieren",
     "logout": "Abmelden",
     "search": "Suchen",
-    "allRightsReserved": "Alle Rechte vorbehalten."
+    "allRightsReserved": "Alle Rechte vorbehalten.",
+    "learnMore": "Mehr erfahren"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -98,7 +99,78 @@
     }
   },
   "footer": {
-    "description": "Die führende Plattform für Dienstleistungen in Deutschland."
+    "description": "Die führende Plattform für Dienstleistungen in Deutschland.",
+    "terms": "AGB",
+    "privacy": "Datenschutz"
+  },
+  "becomeProvider": {
+    "title": "Werden Sie Dienstleister auf Armut",
+    "subtitle": "Erreichen Sie tausende potenzielle Kunden in Ihrer Nähe und erweitern Sie Ihr Geschäft.",
+    "registerNow": "Jetzt registrieren",
+    "howItWorks": "So funktioniert es",
+    "stats": {
+      "providers": "10.000+ Aktive Anbieter",
+      "customers": "500.000+ Kunden",
+      "rating": "4,8 Durchschnittliche Bewertung"
+    },
+    "steps": {
+      "step1": {
+        "title": "Profil erstellen",
+        "description": "Registrieren Sie sich kostenlos und erstellen Sie Ihr professionelles Profil."
+      },
+      "step2": {
+        "title": "Anfragen erhalten",
+        "description": "Werden Sie über relevante Kundenanfragen in Ihrer Nähe benachrichtigt."
+      },
+      "step3": {
+        "title": "Angebote senden",
+        "description": "Senden Sie personalisierte Angebote an potenzielle Kunden."
+      },
+      "step4": {
+        "title": "Geschäft ausbauen",
+        "description": "Erledigen Sie Aufträge und bauen Sie Ihren Ruf mit tollen Bewertungen auf."
+      }
+    },
+    "benefits": {
+      "title": "Ihre Vorteile",
+      "newCustomers": {
+        "title": "Neue Kunden",
+        "description": "Zugang zu tausenden potenziellen Kunden, die aktiv nach Dienstleistungen suchen."
+      },
+      "flexible": {
+        "title": "Flexibles Arbeiten",
+        "description": "Wählen Sie Ihre eigenen Arbeitszeiten und nehmen Sie nur Aufträge an, die in Ihren Zeitplan passen."
+      },
+      "freeRegistration": {
+        "title": "Kostenlose Registrierung",
+        "description": "Melden Sie sich kostenlos an - Sie zahlen erst, wenn Sie einen Auftrag gewinnen."
+      },
+      "easyManagement": {
+        "title": "Einfache Verwaltung",
+        "description": "Verwalten Sie alle Ihre Anfragen, Buchungen und Kunden an einem Ort."
+      },
+      "buildReputation": {
+        "title": "Reputation aufbauen",
+        "description": "Sammeln Sie Bewertungen und Rezensionen, um sich von der Konkurrenz abzuheben."
+      },
+      "support": {
+        "title": "Persönlicher Support",
+        "description": "Unser Team ist da, um Ihnen beim Erfolg und Wachstum Ihres Geschäfts zu helfen."
+      }
+    },
+    "form": {
+      "title": "Starten Sie Ihre Registrierung",
+      "subtitle": "Füllen Sie das Formular aus und wir bringen Sie auf den Weg.",
+      "companyName": "Firmenname",
+      "contactPerson": "Ansprechpartner",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "mainCategory": "Hauptkategorie",
+      "pleaseSelect": "Bitte wählen...",
+      "postalCode": "Postleitzahl",
+      "submit": "Kostenlose Registrierung starten",
+      "termsNote": "Mit der Registrierung stimmen Sie unseren AGB und Datenschutzbestimmungen zu."
+    }
   },
   "auth": {
     "login": {
@@ -213,6 +285,190 @@
       "placeholder": "Nachricht schreiben...",
       "send": "Senden",
       "selectConversation": "Wählen Sie eine Konversation aus der Liste"
+    }
+  },
+  "provider": {
+    "dashboard": {
+      "title": "Übersicht",
+      "welcomeBack": "Willkommen zurück, {name}! 👋",
+      "activityOverview": "Hier ist eine Übersicht Ihrer aktuellen Aktivitäten.",
+      "stats": {
+        "newRequests": "Neue Anfragen",
+        "activeOrders": "Aktive Aufträge",
+        "completed": "Abgeschlossen",
+        "rating": "Bewertung"
+      },
+      "sections": {
+        "newRequests": "Neue Anfragen",
+        "upcomingAppointments": "Anstehende Termine",
+        "quickActions": "Schnellaktionen"
+      },
+      "viewAll": "Alle ansehen",
+      "calendar": "Kalender",
+      "allOrders": "Alle Aufträge ansehen",
+      "sendOffer": "Angebot senden",
+      "status": {
+        "confirmed": "Bestätigt",
+        "pending": "Ausstehend"
+      },
+      "quickActionButtons": {
+        "editProfile": "Profil bearbeiten",
+        "manageServices": "Services verwalten",
+        "setAvailability": "Verfügbarkeit einstellen",
+        "requestPayout": "Auszahlung anfordern"
+      },
+      "navigation": {
+        "overview": "Übersicht",
+        "requests": "Anfragen",
+        "orders": "Aufträge",
+        "calendar": "Kalender",
+        "messages": "Nachrichten",
+        "reviews": "Bewertungen",
+        "finances": "Finanzen",
+        "profile": "Profil",
+        "settings": "Einstellungen"
+      },
+      "mockData": {
+        "cleanApartment": "Wohnung reinigen lassen (80qm)",
+        "renovateBathroom": "Badezimmer renovieren",
+        "maintainGarden": "Garten pflegen",
+        "windowCleaning": "Fensterreinigung",
+        "officeCleaning": "Büroreinigung",
+        "today": "Heute",
+        "yesterday": "Gestern",
+        "twoDaysAgo": "Vor 2 Tagen"
+      }
+    },
+    "requests": {
+      "title": "Offene Anfragen",
+      "subtitle": "{count} Anfragen in Ihrem Servicegebiet",
+      "filters": {
+        "all": "Alle",
+        "cleaning": "Reinigung",
+        "renovation": "Renovierung",
+        "garden": "Garten"
+      },
+      "postedAt": "Vor {time}",
+      "memberSince": "Mitglied seit {year}",
+      "sendOffer": "Angebot senden",
+      "tips": {
+        "title": "Tipps für bessere Angebote",
+        "tip1": "Antworten Sie schnell - frühe Angebote werden eher angenommen",
+        "tip2": "Seien Sie spezifisch bei der Preisgestaltung",
+        "tip3": "Erwähnen Sie Ihre relevante Erfahrung",
+        "tip4": "Stellen Sie Rückfragen wenn nötig"
+      },
+      "acceptanceRate": "Ihrer Angebote wurden bisher angenommen"
+    },
+    "profile": {
+      "title": "Profil bearbeiten",
+      "companyInfo": "Firmeninformationen",
+      "companyName": "Firmenname",
+      "contactName": "Ansprechpartner",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "description": "Beschreibung",
+      "descriptionHint": "Beschreiben Sie Ihre Dienstleistungen und Erfahrung",
+      "services": "Services",
+      "categories": "Kategorien",
+      "experienceYears": "Erfahrung (Jahre)",
+      "priceFrom": "Preis ab (€/Std)",
+      "priceTo": "Preis bis (€/Std)",
+      "serviceArea": "Servicegebiet",
+      "postalCode": "Postleitzahl",
+      "city": "Stadt",
+      "serviceRadius": "Service-Radius (km)",
+      "images": "Bilder",
+      "profilePicture": "Profilbild",
+      "gallery": "Galerie / Portfolio",
+      "changeImage": "Bild ändern",
+      "dragImages": "Bilder hierher ziehen oder klicken",
+      "cancel": "Abbrechen",
+      "saveChanges": "Änderungen speichern",
+      "saving": "Wird gespeichert...",
+      "required": "*"
+    },
+    "calendar": {
+      "title": "Kalender",
+      "today": "Heute",
+      "setAvailability": "Verfügbarkeit einstellen",
+      "days": {
+        "monday": "Mo",
+        "tuesday": "Di",
+        "wednesday": "Mi",
+        "thursday": "Do",
+        "friday": "Fr",
+        "saturday": "Sa",
+        "sunday": "So"
+      },
+      "selectDate": "Datum auswählen",
+      "noAppointments": "Keine Termine an diesem Tag",
+      "addAppointment": "+ Termin hinzufügen",
+      "details": "Details",
+      "message": "Nachricht",
+      "hours": "h",
+      "oclock": "Uhr",
+      "status": {
+        "confirmed": "Bestätigt",
+        "pending": "Ausstehend"
+      }
+    },
+    "reviews": {
+      "title": "Meine Bewertungen",
+      "totalReviews": "{count} Bewertungen",
+      "topProvider": "Top Dienstleister",
+      "topProviderDesc": "Sie gehören zu den besten 10% in Ihrer Kategorie!",
+      "yourReply": "Ihre Antwort",
+      "reply": "Antworten",
+      "ratingBreakdown": "Bewertungsübersicht"
+    }
+  },
+  "providerOnboarding": {
+    "title": "Anbieter-Onboarding",
+    "subtitle": "Schließen Sie wenige Schritte ab, um Ihr Anbieterprofil einzurichten.",
+    "steps": {
+      "category": "Service-Kategorie",
+      "name": "Name",
+      "address": "Adresse",
+      "contact": "Telefon & E-Mail",
+      "profile": "Anbieterprofil"
+    },
+    "labels": {
+      "serviceCategories": "Service-Kategorien",
+      "experience": "Erfahrung (Jahre)",
+      "priceMin": "Preis ab (€/Stunde)",
+      "priceMax": "Preis bis (€/Stunde)",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "streetAddress": "Straße und Hausnummer",
+      "postalCode": "Postleitzahl",
+      "city": "Stadt",
+      "serviceRadius": "Service-Radius (km)",
+      "phone": "Telefonnummer",
+      "email": "E-Mail",
+      "companyName": "Firmenname",
+      "website": "Webseite (optional)",
+      "description": "Kurzbeschreibung",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "agreeToTerms": "Ich stimme den <privacy>Datenschutzbestimmungen</privacy> und <terms>AGB</terms> zu."
+    },
+    "errors": {
+      "selectCategory": "Bitte wählen Sie mindestens eine Service-Kategorie.",
+      "enterName": "Bitte geben Sie Ihren Vor- und Nachnamen ein.",
+      "enterAddress": "Bitte geben Sie Ihre vollständige Adresse ein.",
+      "enterContact": "Bitte geben Sie Ihre Telefonnummer und E-Mail-Adresse ein.",
+      "enterProfile": "Bitte geben Sie Ihren Firmennamen und eine kurze Beschreibung ein.",
+      "passwordLength": "Das Passwort muss mindestens 8 Zeichen lang sein.",
+      "passwordMatch": "Passwörter stimmen nicht überein.",
+      "acceptTerms": "Bitte akzeptieren Sie die Datenschutzbestimmungen und AGB.",
+      "generic": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut."
+    },
+    "buttons": {
+      "back": "Zurück",
+      "continue": "Weiter",
+      "finish": "Onboarding abschließen",
+      "submitting": "Konto wird erstellt..."
     }
   }
 }

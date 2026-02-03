@@ -53,6 +53,19 @@ export interface User {
   createdAt: string;
 }
 
+// Category API calls
+export interface Category {
+  id: string;
+  slug: string;
+  nameDe: string;
+  nameEn: string;
+  icon: string;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  return apiRequest<Category[]>("/categories");
+}
+
 export interface LoginData {
   email: string;
   password: string;
@@ -210,3 +223,40 @@ export const requestsApi = {
       token,
     }),
 };
+
+export interface DashboardStats {
+  newRequests: number;
+  activeOrders: number;
+  completed: number;
+  rating: number;
+}
+
+export interface RequestItem {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  date: string;
+  budget: string;
+}
+
+export interface BookingItem {
+  id: string;
+  customer: string;
+  service: string;
+  date: string;
+  time: string;
+  status: string;
+}
+
+export interface DashboardData {
+  stats: DashboardStats;
+  recentRequests: RequestItem[];
+  activeBookings: BookingItem[];
+}
+
+export const providerApi = {
+  getDashboard: (token: string) =>
+    apiRequest<DashboardData>("/providers/me/dashboard", { token }),
+};
+

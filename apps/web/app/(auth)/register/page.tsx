@@ -34,6 +34,15 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
+    if (formData.userType === "provider") {
+      const params = new URLSearchParams();
+      if (formData.firstName) params.set("firstName", formData.firstName);
+      if (formData.lastName) params.set("lastName", formData.lastName);
+      if (formData.email) params.set("email", formData.email);
+      router.push(`/provider-onboarding?${params.toString()}`);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError(t("auth.register.errorPasswordMismatch"));
       return;
