@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useEffect, useState } from "react";
 import { providerApi, DashboardData } from "@/lib/api";
@@ -21,6 +21,7 @@ const initialData: DashboardData = {
 
 export default function ProviderDashboard() {
   const t = useTranslations("provider.dashboard");
+  const locale = useLocale();
   const { user } = useAuth(); // Assuming useAuth exists and provides user context
   const [data, setData] = useState<DashboardData>(initialData);
   const [loading, setLoading] = useState(true);
@@ -36,12 +37,12 @@ export default function ProviderDashboard() {
             ...dashboardData,
             recentRequests: dashboardData.recentRequests.map(r => ({
               ...r,
-              date: new Date(r.date).toLocaleDateString(),
+              date: new Date(r.date).toLocaleDateString(locale),
             })),
             activeBookings: dashboardData.activeBookings.map(b => ({
               ...b,
-              date: new Date(b.date).toLocaleDateString(),
-              time: new Date(b.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              date: new Date(b.date).toLocaleDateString(locale),
+              time: new Date(b.date).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
             }))
           };
           setData(formattedData);
@@ -64,7 +65,7 @@ export default function ProviderDashboard() {
   ];
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return <div className="flex h-screen items-center justify-center">{t("loading")}</div>;
   }
 
   return (
@@ -234,7 +235,7 @@ export default function ProviderDashboard() {
                 </div>
                 <div className="space-y-4">
                   {data.recentRequests.length === 0 ? (
-                      <p className="text-muted text-sm">No new requests.</p>
+                      <p className="text-muted text-sm">{t("noRequests")}</p>
                   ) : (
                     data.recentRequests.map((request) => (
                     <div
@@ -277,7 +278,7 @@ export default function ProviderDashboard() {
                 </div>
                 <div className="space-y-4">
                   {data.activeBookings.length === 0 ? (
-                    <p className="text-muted text-sm">No upcoming appointments.</p>
+                    <p className="text-muted text-sm">{t("noAppointments")}</p>
                   ) : (
                     data.activeBookings.map((booking) => (
                     <div

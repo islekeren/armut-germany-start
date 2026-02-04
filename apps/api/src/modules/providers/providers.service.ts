@@ -421,4 +421,268 @@ export class ProvidersService {
   private toRad(deg: number): number {
     return deg * (Math.PI / 180);
   }
+
+  async getRequests(userId: string, query: { category?: string; page?: number; limit?: number }) {
+    const { category, page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: { categoryId: true },
+        },
+      },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    let categoryIds = provider.services.map((s) => s.categoryId);
+    
+    // Filter by specific category if provided
+    if (category) {
+      const cat = await this.prisma.category.findUnique({ where: { slug: category } });
+      if (cat && categoryIds.includes(cat.id)) {
+        categoryIds = [cat.id];
+      }
+    }
+
+    const where: any = {
+      status: "open",
+      categoryId: { in: categoryIds },
+      quotes: {
+        none: { providerId: provider.id },
+      },
+    };
+
+    const [requests, total] = await Promise.all([
+      this.prisma.serviceRequest.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          category: true,
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+      this.prisma.serviceRequest.count({ where }),
+    ]);
+
+    return {
+      data: requests.map((req) => ({
+        id: req.id,
+        title: req.title,
+        category: req.category.slug,
+        categoryName: req.category.nameEn,
+        description: req.description,
+        location: `${req.postalCode} ${req.city}`,
+        address: req.address,
+        preferredDate: req.preferredDate,
+        budget: req.budgetMin && req.budgetMax ? `${req.budgetMin}-${req.budgetMax}€` : null,
+        budgetMin: req.budgetMin,
+        budgetMax: req.budgetMax,
+        createdAt: req.createdAt,
+        customer: {
+          name: `${req.customer.firstName} ${req.customer.lastName.charAt(0)}.`,
+          memberSince: new Date(req.customer.createdAt).getFullYear().toString(),
+        },
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getBookings(userId: string, query: { month?: number; year?: number; status?: string }) {
+    const { month, year, status } = query;
+
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const where: any = {
+      providerId: provider.id,
+    };
+
+    // Filter by month/year if provided
+    if (month && year) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+      where.scheduledDate = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
+    if (status) {
+      where.status = status;
+    } else {
+      // Default: exclude cancelled
+      where.status = { not: "cancelled" };
+    }
+
+    const bookings = await this.prisma.booking.findMany({
+      where,
+      orderBy: { scheduledDate: "asc" },
+      include: {
+        customer: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+        quote: {
+          include: {
+            request: {
+              select: {
+                title: true,
+                address: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return bookings.map((booking) => ({
+      id: booking.id,
+      title: booking.quote.request.title,
+      customer: `${booking.customer.firstName} ${booking.customer.lastName}`,
+      date: booking.scheduledDate.toISOString().split("T")[0],
+      time: booking.scheduledDate.toTimeString().slice(0, 5),
+      scheduledDate: booking.scheduledDate,
+      status: booking.status,
+      address: booking.quote.request.address,
+      totalPrice: booking.totalPrice,
+      paymentStatus: booking.paymentStatus,
+    }));
+  }
+
+  async getReviews(userId: string, query: { page?: number; limit?: number }) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const where = {
+      revieweeId: provider.userId,
+    };
+
+    const [reviews, total, ratingBreakdown] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          reviewer: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
+          booking: {
+            include: {
+              quote: {
+                include: {
+                  request: {
+                    select: { title: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.review.count({ where }),
+      this.prisma.review.groupBy({
+        by: ["rating"],
+        where,
+        _count: { rating: true },
+      }),
+    ]);
+
+    // Build rating breakdown
+    const breakdown: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    ratingBreakdown.forEach((r) => {
+      breakdown[r.rating] = r._count.rating;
+    });
+
+    return {
+      data: reviews.map((review) => ({
+        id: review.id,
+        customer: `${review.reviewer.firstName} ${review.reviewer.lastName}`,
+        rating: review.rating,
+        date: review.createdAt,
+        service: review.booking.quote.request.title,
+        comment: review.comment,
+        reply: review.providerReply,
+      })),
+      stats: {
+        average: provider.ratingAvg,
+        total,
+        breakdown,
+      },
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async replyToReview(userId: string, reviewId: string, reply: string) {
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new NotFoundException("Review not found");
+    }
+
+    if (review.revieweeId !== provider.userId) {
+      throw new ForbiddenException("Not authorized to reply to this review");
+    }
+
+    return this.prisma.review.update({
+      where: { id: reviewId },
+      data: { providerReply: reply },
+    });
+  }
 }

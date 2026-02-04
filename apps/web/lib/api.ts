@@ -255,8 +255,161 @@ export interface DashboardData {
   activeBookings: BookingItem[];
 }
 
+// Provider Requests types
+export interface ProviderRequest {
+  id: string;
+  title: string;
+  category: string;
+  categoryName: string;
+  description: string;
+  location: string;
+  address: string;
+  preferredDate?: string;
+  budget: string | null;
+  budgetMin?: number;
+  budgetMax?: number;
+  createdAt: string;
+  customer: {
+    name: string;
+    memberSince: string;
+  };
+}
+
+export interface ProviderRequestsResponse {
+  data: ProviderRequest[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Provider Bookings types (for calendar)
+export interface ProviderBooking {
+  id: string;
+  title: string;
+  customer: string;
+  date: string;
+  time: string;
+  scheduledDate: string;
+  status: string;
+  address: string;
+  totalPrice: number;
+  paymentStatus: string;
+}
+
+// Provider Reviews types
+export interface ProviderReview {
+  id: string;
+  customer: string;
+  rating: number;
+  date: string;
+  service: string;
+  comment: string | null;
+  reply: string | null;
+}
+
+export interface ProviderReviewsResponse {
+  data: ProviderReview[];
+  stats: {
+    average: number;
+    total: number;
+    breakdown: Record<number, number>;
+  };
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Provider Profile types
+export interface ProviderProfile {
+  id: string;
+  userId: string;
+  companyName: string | null;
+  description: string;
+  experienceYears: number;
+  serviceAreaRadius: number;
+  serviceAreaLat: number;
+  serviceAreaLng: number;
+  ratingAvg: number;
+  totalReviews: number;
+  isApproved: boolean;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    profileImage: string | null;
+  };
+  services: {
+    id: string;
+    categoryId: string;
+    title: string;
+    description: string;
+    priceType: string;
+    priceMin: number | null;
+    priceMax: number | null;
+    category: {
+      id: string;
+      slug: string;
+      nameDe: string;
+      nameEn: string;
+    };
+  }[];
+}
+
 export const providerApi = {
   getDashboard: (token: string) =>
     apiRequest<DashboardData>("/providers/me/dashboard", { token }),
+
+  getProfile: (token: string) =>
+    apiRequest<ProviderProfile>("/providers/me", { token }),
+
+  getRequests: (token: string, query?: { category?: string; page?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (query?.category) params.append("category", query.category);
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    const queryString = params.toString();
+    return apiRequest<ProviderRequestsResponse>(
+      `/providers/me/requests${queryString ? `?${queryString}` : ""}`,
+      { token }
+    );
+  },
+
+  getBookings: (token: string, query?: { month?: number; year?: number; status?: string }) => {
+    const params = new URLSearchParams();
+    if (query?.month) params.append("month", query.month.toString());
+    if (query?.year) params.append("year", query.year.toString());
+    if (query?.status) params.append("status", query.status);
+    const queryString = params.toString();
+    return apiRequest<ProviderBooking[]>(
+      `/providers/me/bookings${queryString ? `?${queryString}` : ""}`,
+      { token }
+    );
+  },
+
+  getReviews: (token: string, query?: { page?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    const queryString = params.toString();
+    return apiRequest<ProviderReviewsResponse>(
+      `/providers/me/reviews${queryString ? `?${queryString}` : ""}`,
+      { token }
+    );
+  },
+
+  replyToReview: (token: string, reviewId: string, reply: string) =>
+    apiRequest(`/providers/me/reviews/${reviewId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ reply }),
+      token,
+    }),
 };
 

@@ -116,3 +116,46 @@ export class ProviderQueryDto {
   @IsNumber()
   limit?: number;
 }
+
+export class ProviderRequestsQueryDto {
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsNumber()
+  page?: number;
+
+  @IsOptional()
+  @IsNumber()
+  limit?: number;
+}
+
+export class ProviderBookingsQueryDto {
+  @IsOptional()
+  @IsNumber()
+  month?: number;
+
+  @IsOptional()
+  @IsNumber()
+  year?: number;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+}
+
+export class ProviderReviewsQueryDto {
+  @IsOptional()
+  @IsNumber()
+  page?: number;
+
+  @IsOptional()
+  @IsNumber()
+  limit?: number;
+}
+
+export class ReplyToReviewDto {
+  @IsString()
+  reply: string;
+}

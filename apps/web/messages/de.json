@@ -292,6 +292,9 @@
       "title": "Übersicht",
       "welcomeBack": "Willkommen zurück, {name}! 👋",
       "activityOverview": "Hier ist eine Übersicht Ihrer aktuellen Aktivitäten.",
+      "noRequests": "Keine neuen Anfragen.",
+      "noAppointments": "Keine anstehenden Termine.",
+      "loading": "Lädt...",
       "stats": {
         "newRequests": "Neue Anfragen",
         "activeOrders": "Aktive Aufträge",
@@ -342,6 +345,8 @@
     "requests": {
       "title": "Offene Anfragen",
       "subtitle": "{count} Anfragen in Ihrem Servicegebiet",
+      "loading": "Wird geladen...",
+      "noRequests": "Keine Anfragen gefunden",
       "filters": {
         "all": "Alle",
         "cleaning": "Reinigung",
@@ -362,6 +367,7 @@
     },
     "profile": {
       "title": "Profil bearbeiten",
+      "loading": "Wird geladen...",
       "companyInfo": "Firmeninformationen",
       "companyName": "Firmenname",
       "contactName": "Ansprechpartner",
@@ -390,6 +396,7 @@
     },
     "calendar": {
       "title": "Kalender",
+      "loading": "Wird geladen...",
       "today": "Heute",
       "setAvailability": "Verfügbarkeit einstellen",
       "days": {
@@ -415,11 +422,16 @@
     },
     "reviews": {
       "title": "Meine Bewertungen",
+      "loading": "Wird geladen...",
+      "noReviews": "Noch keine Bewertungen",
       "totalReviews": "{count} Bewertungen",
       "topProvider": "Top Dienstleister",
       "topProviderDesc": "Sie gehören zu den besten 10% in Ihrer Kategorie!",
       "yourReply": "Ihre Antwort",
       "reply": "Antworten",
+      "replyPlaceholder": "Schreiben Sie Ihre Antwort...",
+      "send": "Senden",
+      "cancel": "Abbrechen",
       "ratingBreakdown": "Bewertungsübersicht"
     }
   },

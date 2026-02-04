@@ -1,46 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-
-const daysOfWeek = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-
-const mockEvents = [
-  {
-    id: "1",
-    title: "Fensterreinigung",
-    customer: "Anna Müller",
-    date: "2026-01-15",
-    time: "10:00",
-    duration: 2,
-    status: "confirmed",
-    address: "Hauptstraße 12, 10115 Berlin",
-  },
-  {
-    id: "2",
-    title: "Büroreinigung",
-    customer: "Thomas Weber",
-    date: "2026-01-17",
-    time: "09:00",
-    duration: 4,
-    status: "pending",
-    address: "Friedrichstraße 45, 10117 Berlin",
-  },
-  {
-    id: "3",
-    title: "Grundreinigung",
-    customer: "Sarah Klein",
-    date: "2026-01-20",
-    time: "14:00",
-    duration: 3,
-    status: "confirmed",
-    address: "Schönhauser Allee 78, 10439 Berlin",
-  },
-];
+import { useTranslations, useLocale } from "next-intl";
+import { providerApi, ProviderBooking } from "@/lib/api";
 
 export default function CalendarPage() {
-  const [currentDate] = useState(new Date(2026, 0, 1));
-  const [selectedDate, setSelectedDate] = useState<string | null>("2026-01-15");
+  const t = useTranslations("provider.calendar");
+  const tNav = useTranslations("provider.dashboard.navigation");
+  const locale = useLocale();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [bookings, setBookings] = useState<ProviderBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const daysOfWeek = [
+    t("days.monday"),
+    t("days.tuesday"),
+    t("days.wednesday"),
+    t("days.thursday"),
+    t("days.friday"),
+    t("days.saturday"),
+    t("days.sunday"),
+  ];
+
+  const [selectedDate, setSelectedDate] = useState<string | null>(
+    new Date().toISOString().split("T")[0] || null
+  );
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const token = localStorage.getItem("armut_access_token");
+        if (token) {
+          const month = currentDate.getMonth() + 1;
+          const year = currentDate.getFullYear();
+          const data = await providerApi.getBookings(token, { month, year });
+          setBookings(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch bookings", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, [currentDate]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -61,17 +66,44 @@ export default function CalendarPage() {
   };
 
   const days = getDaysInMonth(currentDate);
-  const monthName = currentDate.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  const monthName = currentDate.toLocaleDateString(locale === "de" ? "de-DE" : "en-US", { month: "long", year: "numeric" });
 
   const getEventsForDate = (day: number | null) => {
     if (!day) return [];
-    const dateStr = `2026-01-${day.toString().padStart(2, "0")}`;
-    return mockEvents.filter((e) => e.date === dateStr);
+    const dateStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+    return bookings.filter((e) => e.date === dateStr);
   };
 
   const selectedEvents = selectedDate
-    ? mockEvents.filter((e) => e.date === selectedDate)
+    ? bookings.filter((e) => e.date === selectedDate)
     : [];
+
+  const goToPreviousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedDate(today.toISOString().split("T")[0] || null);
+  };
+
+  const todayDay = new Date().getDate();
+  const isCurrentMonth = 
+    currentDate.getMonth() === new Date().getMonth() && 
+    currentDate.getFullYear() === new Date().getFullYear();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        {t("loading") || "Loading..."}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,7 +116,7 @@ export default function CalendarPage() {
               <span className="text-sm text-muted">Pro</span>
             </Link>
             <Link href="/dashboard" className="text-muted hover:text-foreground">
-              Dashboard
+              {tNav("overview")}
             </Link>
           </div>
         </div>
@@ -93,20 +125,23 @@ export default function CalendarPage() {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <nav className="mb-6 text-sm text-muted">
           <Link href="/dashboard" className="hover:text-primary">
-            Dashboard
+            {tNav("overview")}
           </Link>
           {" / "}
-          <span>Calendar</span>
+          <span>{t("title")}</span>
         </nav>
 
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Kalender</h1>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
           <div className="flex gap-2">
-            <button className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background">
-              Heute
+            <button 
+              onClick={goToToday}
+              className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background"
+            >
+              {t("today")}
             </button>
             <button className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-dark">
-              Verfügbarkeit einstellen
+              {t("setAvailability")}
             </button>
           </div>
         </div>
@@ -116,11 +151,17 @@ export default function CalendarPage() {
           <div className="lg:col-span-2">
             <div className="rounded-xl bg-white p-6 shadow-sm">
               <div className="mb-6 flex items-center justify-between">
-                <button className="rounded-lg p-2 hover:bg-background">
+                <button 
+                  onClick={goToPreviousMonth}
+                  className="rounded-lg p-2 hover:bg-background"
+                >
                   ←
                 </button>
                 <h2 className="text-xl font-semibold capitalize">{monthName}</h2>
-                <button className="rounded-lg p-2 hover:bg-background">
+                <button 
+                  onClick={goToNextMonth}
+                  className="rounded-lg p-2 hover:bg-background"
+                >
                   →
                 </button>
               </div>
@@ -137,10 +178,10 @@ export default function CalendarPage() {
                 {days.map((day, index) => {
                   const events = getEventsForDate(day);
                   const dateStr = day
-                    ? `2026-01-${day.toString().padStart(2, "0")}`
+                    ? `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
                     : null;
                   const isSelected = dateStr === selectedDate;
-                  const isToday = day === 2; // Mock: today is Jan 2
+                  const isToday = isCurrentMonth && day === todayDay;
 
                   return (
                     <div
@@ -191,12 +232,12 @@ export default function CalendarPage() {
             <div className="sticky top-8 rounded-xl bg-white p-6 shadow-sm">
               <h3 className="mb-4 font-semibold">
                 {selectedDate
-                  ? new Date(selectedDate).toLocaleDateString("de-DE", {
+                  ? new Date(selectedDate).toLocaleDateString(locale, {
                       weekday: "long",
                       day: "numeric",
                       month: "long",
                     })
-                  : "Datum auswählen"}
+                  : t("selectDate")}
               </h3>
 
               {selectedEvents.length > 0 ? (
@@ -218,19 +259,20 @@ export default function CalendarPage() {
                               : "bg-yellow-100 text-yellow-700"
                           }`}
                         >
-                          {event.status === "confirmed" ? "Bestätigt" : "Ausstehend"}
+                          {t(`status.${event.status}`)}
                         </span>
                       </div>
                       <div className="mt-3 space-y-1 text-sm text-muted">
-                        <div>🕐 {event.time} Uhr ({event.duration}h)</div>
+                        <div>🕐 {event.time} {t("oclock")}</div>
                         <div>📍 {event.address}</div>
+                        <div>💰 {event.totalPrice}€</div>
                       </div>
                       <div className="mt-3 flex gap-2">
                         <button className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-background">
-                          Details
+                          {t("details")}
                         </button>
                         <button className="flex-1 rounded-lg bg-primary py-2 text-sm text-white hover:bg-primary-dark">
-                          Nachricht
+                          {t("message")}
                         </button>
                       </div>
                     </div>
@@ -239,12 +281,12 @@ export default function CalendarPage() {
               ) : (
                 <div className="py-8 text-center text-muted">
                   <div className="mb-2 text-4xl">📅</div>
-                  <p>Keine Termine an diesem Tag</p>
+                  <p>{t("noAppointments")}</p>
                 </div>
               )}
 
               <button className="mt-4 w-full rounded-lg border border-border py-2 text-sm hover:bg-background">
-                + Termin hinzufügen
+                {t("addAppointment")}
               </button>
             </div>
           </aside>

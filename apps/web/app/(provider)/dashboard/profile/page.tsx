@@ -1,42 +1,110 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { providerApi, ProviderProfile } from "@/lib/api";
 
-const categories = [
-  "Reinigung",
-  "Umzug",
-  "Renovierung",
-  "Garten",
-  "Elektriker",
-  "Klempner",
+const categoryKeys = [
+  "cleaning",
+  "moving",
+  "renovation",
+  "garden",
+  "electrician",
+  "plumber",
 ];
 
+// Map category slugs from API to frontend keys
+const categorySlugMap: Record<string, string> = {
+  "reinigung": "cleaning",
+  "umzug": "moving",
+  "renovierung": "renovation",
+  "garten": "garden",
+  "elektriker": "electrician",
+  "klempner": "plumber",
+};
+
 export default function ProviderProfilePage() {
+  const t = useTranslations("provider.profile");
+  const tNav = useTranslations("provider.dashboard.navigation");
+  const tCat = useTranslations("categories");
+
   const [formData, setFormData] = useState({
-    companyName: "Mustermann Services",
-    contactName: "Max Mustermann",
-    email: "max@mustermann-services.de",
-    phone: "+49 30 12345678",
-    description:
-      "Professionelle Reinigungsdienste seit über 10 Jahren. Wir bieten höchste Qualität und Zuverlässigkeit für Privat- und Geschäftskunden.",
-    categories: ["Reinigung"],
-    postalCode: "10115",
-    city: "Berlin",
+    companyName: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    description: "",
+    categories: [] as string[],
+    postalCode: "",
+    city: "",
     serviceRadius: "25",
-    priceMin: "25",
-    priceMax: "50",
-    experienceYears: "10",
-    website: "www.mustermann-services.de",
+    priceMin: "",
+    priceMax: "",
+    experienceYears: "",
+    website: "",
   });
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("armut_access_token");
+        if (token) {
+          const profile = await providerApi.getProfile(token);
+          
+          // Map services to category keys
+          const categoryList = profile.services.map(s => 
+            categorySlugMap[s.category.slug] || s.category.slug
+          );
+          
+          // Get price range from first service
+          const firstService = profile.services[0];
+          
+          setFormData({
+            companyName: profile.companyName || "",
+            contactName: `${profile.user.firstName} ${profile.user.lastName}`,
+            email: profile.user.email,
+            phone: profile.user.phone || "",
+            description: profile.description,
+            categories: categoryList,
+            postalCode: "", // Would need to reverse geocode
+            city: "Berlin", // Would need to reverse geocode
+            serviceRadius: profile.serviceAreaRadius.toString(),
+            priceMin: firstService?.priceMin?.toString() || "",
+            priceMax: firstService?.priceMax?.toString() || "",
+            experienceYears: profile.experienceYears.toString(),
+            website: "",
+          });
+          setProfileImage(profile.user.profileImage);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    // TODO: Implement profile update API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setIsSaving(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        {t("loading") || "Loading..."}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,11 +113,7 @@ export default function ProviderProfilePage() {
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Pro</span>
-            </Link>
-            <Link href="/dashboard" className="text-muted hover:text-foreground">
-              Dashboard
+              {tNav("overview")}
             </Link>
           </div>
         </div>
@@ -58,22 +122,22 @@ export default function ProviderProfilePage() {
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <nav className="mb-6 text-sm text-muted">
           <Link href="/dashboard" className="hover:text-primary">
-            Dashboard
+            {tNav("overview")}
           </Link>
           {" / "}
-          <span>Edit Profile</span>
+          <span>{t("title")}</span>
         </nav>
 
-        <h1 className="mb-8 text-2xl font-bold">Edit Profile</h1>
+        <h1 className="mb-8 text-2xl font-bold">{t("title")}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Company Info */}
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold">Firmeninformationen</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t("companyInfo")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Firmenname *
+                  {t("companyName")} {t("required")}
                 </label>
                 <input
                   type="text"
@@ -87,7 +151,7 @@ export default function ProviderProfilePage() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Ansprechpartner *
+                  {t("contactName")} {t("required")}
                 </label>
                 <input
                   type="text"
@@ -101,7 +165,7 @@ export default function ProviderProfilePage() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  E-Mail *
+                  {t("email")} {t("required")}
                 </label>
                 <input
                   type="email"
@@ -115,7 +179,7 @@ export default function ProviderProfilePage() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Telefon *
+                  {t("phone")} {t("required")}
                 </label>
                 <input
                   type="tel"
@@ -131,7 +195,7 @@ export default function ProviderProfilePage() {
 
             <div className="mt-4">
               <label className="mb-2 block text-sm font-medium">
-                Beschreibung *
+                {t("description")} {t("required")}
               </label>
               <textarea
                 value={formData.description}
@@ -143,45 +207,45 @@ export default function ProviderProfilePage() {
                 required
               />
               <p className="mt-1 text-sm text-muted">
-                Beschreiben Sie Ihre Dienstleistungen und Erfahrung
+                {t("descriptionHint")}
               </p>
             </div>
           </div>
 
           {/* Services */}
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold">Services</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t("services")}</h2>
             <div>
               <label className="mb-2 block text-sm font-medium">
-                Kategorien *
+                {t("categories")} {t("required")}
               </label>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {categories.map((cat) => (
+                {categoryKeys.map((key) => (
                   <label
-                    key={cat}
+                    key={key}
                     className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 hover:border-primary"
                   >
                     <input
                       type="checkbox"
-                      checked={formData.categories.includes(cat)}
+                      checked={formData.categories.includes(key)}
                       onChange={(e) => {
                         if (e.target.checked) {
                           setFormData({
                             ...formData,
-                            categories: [...formData.categories, cat],
+                            categories: [...formData.categories, key],
                           });
                         } else {
                           setFormData({
                             ...formData,
                             categories: formData.categories.filter(
-                              (c) => c !== cat
+                              (c) => c !== key
                             ),
                           });
                         }
                       }}
                       className="rounded border-border"
                     />
-                    <span>{cat}</span>
+                    <span>{tCat(`${key}.name`)}</span>
                   </label>
                 ))}
               </div>
@@ -190,7 +254,7 @@ export default function ProviderProfilePage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Erfahrung (Jahre)
+                  {t("experienceYears")}
                 </label>
                 <input
                   type="number"
@@ -203,7 +267,7 @@ export default function ProviderProfilePage() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Preis ab (€/Std)
+                  {t("priceFrom")}
                 </label>
                 <input
                   type="number"
@@ -216,7 +280,7 @@ export default function ProviderProfilePage() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Preis bis (€/Std)
+                  {t("priceTo")}
                 </label>
                 <input
                   type="number"
@@ -232,11 +296,11 @@ export default function ProviderProfilePage() {
 
           {/* Location */}
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold">Servicegebiet</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t("serviceArea")}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Postleitzahl *
+                  {t("postalCode")} {t("required")}
                 </label>
                 <input
                   type="text"
@@ -249,7 +313,7 @@ export default function ProviderProfilePage() {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">Stadt *</label>
+                <label className="mb-2 block text-sm font-medium">{t("city")} {t("required")}</label>
                 <input
                   type="text"
                   value={formData.city}
@@ -262,7 +326,7 @@ export default function ProviderProfilePage() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Service-Radius (km)
+                  {t("serviceRadius")}
                 </label>
                 <select
                   value={formData.serviceRadius}
@@ -282,31 +346,39 @@ export default function ProviderProfilePage() {
 
           {/* Profile Photo & Gallery */}
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold">Bilder</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t("images")}</h2>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Profilbild
+                  {t("profilePicture")}
                 </label>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-white">
-                    M
-                  </div>
+                  {profileImage ? (
+                    <img 
+                      src={profileImage} 
+                      alt="Profile" 
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-white">
+                      {formData.contactName.charAt(0) || "P"}
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background"
                   >
-                    Bild ändern
+                    {t("changeImage")}
                   </button>
                 </div>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium">
-                  Galerie / Portfolio
+                  {t("gallery")}
                 </label>
                 <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
                   <p className="text-sm text-muted">
-                    Bilder hierher ziehen oder klicken
+                    {t("dragImages")}
                   </p>
                 </div>
               </div>
@@ -319,14 +391,14 @@ export default function ProviderProfilePage() {
               href="/dashboard"
               className="rounded-lg border border-border px-6 py-3 font-medium hover:bg-background"
             >
-              Abbrechen
+              {t("cancel")}
             </Link>
             <button
               type="submit"
               disabled={isSaving}
               className="rounded-lg bg-primary px-6 py-3 font-medium text-white hover:bg-primary-dark disabled:opacity-50"
             >
-              {isSaving ? "Wird gespeichert..." : "Änderungen speichern"}
+              {isSaving ? t("saving") : t("saveChanges")}
             </button>
           </div>
         </form>
