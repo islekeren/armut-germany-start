@@ -5,15 +5,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { providerApi, ProviderProfile } from "@/lib/api";
 
-const categoryKeys = [
-  "cleaning",
-  "moving",
-  "renovation",
-  "garden",
-  "electrician",
-  "plumber",
-];
-
 // Map category slugs from API to frontend keys
 const categorySlugMap: Record<string, string> = {
   "reinigung": "cleaning",
@@ -56,8 +47,12 @@ export default function ProviderProfilePage() {
           const profile = await providerApi.getProfile(token);
           
           // Map services to category keys
-          const categoryList = profile.services.map(s => 
-            categorySlugMap[s.category.slug] || s.category.slug
+          const categoryList = Array.from(
+            new Set(
+              profile.services.map(
+                (s) => categorySlugMap[s.category.slug] || s.category.slug
+              )
+            )
           );
           
           // Get price range from first service
@@ -217,36 +212,20 @@ export default function ProviderProfilePage() {
             <h2 className="mb-4 text-lg font-semibold">{t("services")}</h2>
             <div>
               <label className="mb-2 block text-sm font-medium">
-                {t("categories")} {t("required")}
+                Your selected category {t("required")}
               </label>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {categoryKeys.map((key) => (
-                  <label
+              <p className="mb-2 text-sm text-muted">
+                You can't change your selected category. For more info, go to
+                Help.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {formData.categories.map((key) => (
+                  <span
                     key={key}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 hover:border-primary"
+                    className="rounded-full border border-border px-3 py-1 text-sm"
                   >
-                    <input
-                      type="checkbox"
-                      checked={formData.categories.includes(key)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setFormData({
-                            ...formData,
-                            categories: [...formData.categories, key],
-                          });
-                        } else {
-                          setFormData({
-                            ...formData,
-                            categories: formData.categories.filter(
-                              (c) => c !== key
-                            ),
-                          });
-                        }
-                      }}
-                      className="rounded border-border"
-                    />
-                    <span>{tCat(`${key}.name`)}</span>
-                  </label>
+                    {tCat(`${key}.name`)}
+                  </span>
                 ))}
               </div>
             </div>

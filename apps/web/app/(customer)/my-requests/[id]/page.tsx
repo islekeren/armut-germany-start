@@ -8,18 +8,54 @@ import { Header } from "@/components";
 import { useAuth } from "@/contexts";
 import { requestsApi, type ServiceRequest } from "@/lib/api";
 
-const mockRequest = {
-  id: "1",
-  title: "Apartment cleaning needed (80sqm)",
-  category: "Cleaning",
-  status: "active",
-  createdAt: "January 10, 2026",
-  location: "10115 Berlin",
-  description:
-    "I need a thorough cleaning of my 3-room apartment (approx. 80sqm). Kitchen and bathroom should be cleaned especially thoroughly. Windows do not need to be cleaned.",
-  preferredDate: "Flexible",
-  budget: "€100-150",
-};
+const mockRequests = [
+  {
+    id: "1",
+    title: "Apartment cleaning needed (80sqm)",
+    category: "Cleaning",
+    status: "active",
+    createdAt: "January 10, 2026",
+    location: "10115 Berlin",
+    description:
+      "I need a thorough cleaning of my 3-room apartment (approx. 80sqm). Kitchen and bathroom should be cleaned especially thoroughly. Windows do not need to be cleaned.",
+    preferredDate: "Flexible",
+    budget: "€100-150",
+  },
+  {
+    id: "2",
+    title: "Moving helpers needed",
+    category: "Moving",
+    status: "active",
+    createdAt: "January 8, 2026",
+    location: "10117 Berlin",
+    description:
+      "Moving from a 2-room apartment to a new apartment. Need help carrying boxes and furniture.",
+    preferredDate: "January 20, 2026",
+    budget: "€180-250",
+  },
+  {
+    id: "3",
+    title: "Paint bathroom",
+    category: "Painter",
+    status: "booked",
+    createdAt: "January 5, 2026",
+    location: "10119 Berlin",
+    description: "Repaint bathroom, approx. 8sqm. White walls and ceiling.",
+    preferredDate: "January 25, 2026",
+    budget: "€120-180",
+  },
+  {
+    id: "4",
+    title: "Winterize garden",
+    category: "Garden",
+    status: "completed",
+    createdAt: "December 1, 2025",
+    location: "10115 Berlin",
+    description: "Trim hedges, remove leaves, and winterize plants.",
+    preferredDate: "December 10, 2025",
+    budget: "€90-140",
+  },
+];
 
 const mockQuotes = [
   {
@@ -125,7 +161,7 @@ export default function RequestDetailPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
-  const [request, setRequest] = useState(mockRequest);
+  const [request, setRequest] = useState(mockRequests[0]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
@@ -145,6 +181,13 @@ export default function RequestDetailPage() {
         return;
       }
 
+      const mockMatch = mockRequests.find((item) => item.id === requestId);
+      if (mockMatch) {
+        setRequest(mockMatch);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const apiRequest = await requestsApi.getById(requestId);
         if (apiRequest) {
@@ -152,12 +195,7 @@ export default function RequestDetailPage() {
         }
       } catch (err) {
         console.error("Failed to fetch request:", err);
-        // If it's a mock ID (like "1", "2", etc.), use mock data
-        if (requestId === mockRequest.id) {
-          // Keep using mock data
-        } else {
-          setError(err instanceof Error ? err.message : "Failed to load request");
-        }
+        setError(err instanceof Error ? err.message : "Failed to load request");
       } finally {
         setIsLoading(false);
       }

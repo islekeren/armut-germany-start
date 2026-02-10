@@ -363,7 +363,26 @@ export interface ProviderProfile {
   }[];
 }
 
+export interface CreateProviderProfileData {
+  companyName?: string;
+  description: string;
+  experienceYears?: number;
+  serviceAreaRadius: number;
+  serviceAreaLat: number;
+  serviceAreaLng: number;
+  categories?: string[];
+  priceMin?: number;
+  priceMax?: number;
+}
+
 export const providerApi = {
+  createProfile: (token: string, data: CreateProviderProfileData) =>
+    apiRequest<ProviderProfile>("/providers", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
   getDashboard: (token: string) =>
     apiRequest<DashboardData>("/providers/me/dashboard", { token }),
 
@@ -412,4 +431,3 @@ export const providerApi = {
       token,
     }),
 };
-

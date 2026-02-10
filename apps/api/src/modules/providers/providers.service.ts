@@ -30,10 +30,40 @@ export class ProvidersService {
       throw new ForbiddenException("User must be registered as a provider");
     }
 
+    const { categories, priceMin, priceMax, ...providerData } = createProviderDto;
+
+    const hasPriceRange = priceMin !== undefined || priceMax !== undefined;
+    let servicesData: Array<{
+      categoryId: string;
+      title: string;
+      description: string;
+      priceType: "fixed" | "hourly" | "quote";
+      priceMin: number | null;
+      priceMax: number | null;
+      images: string[];
+    }> = [];
+
+    if (categories?.length) {
+      const categoryRecords = await this.prisma.category.findMany({
+        where: { slug: { in: categories } },
+      });
+
+      servicesData = categoryRecords.map((category) => ({
+        categoryId: category.id,
+        title: category.nameEn,
+        description: providerData.description,
+        priceType: hasPriceRange ? "hourly" : "quote",
+        priceMin: priceMin ?? null,
+        priceMax: priceMax ?? null,
+        images: [],
+      }));
+    }
+
     return this.prisma.provider.create({
       data: {
         userId,
-        ...createProviderDto,
+        ...providerData,
+        services: servicesData.length ? { create: servicesData } : undefined,
       },
       include: {
         user: {

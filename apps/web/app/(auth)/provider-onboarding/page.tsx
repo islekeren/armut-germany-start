@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
 import { useTranslations, useLocale } from "next-intl";
-import { getCategories, type Category } from "@/lib/api";
+import { getCategories, providerApi, type Category } from "@/lib/api";
 
 type ProviderOnboardingData = {
   categories: string[];
@@ -85,10 +85,10 @@ export default function ProviderOnboardingPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && !isSubmitting) {
       router.push("/dashboard");
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, isSubmitting, router]);
 
   useEffect(() => {
     const firstName = searchParams.get("firstName");
@@ -178,6 +178,28 @@ export default function ProviderOnboardingPage() {
         userType: "provider",
         gdprConsent: formData.gdprConsent,
       });
+
+      const token = localStorage.getItem("armut_access_token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      await providerApi.createProfile(token, {
+        companyName: formData.companyName || undefined,
+        description: formData.description,
+        experienceYears: formData.experienceYears
+          ? parseInt(formData.experienceYears, 10)
+          : 0,
+        serviceAreaRadius: formData.serviceRadius
+          ? parseFloat(formData.serviceRadius)
+          : 25,
+        serviceAreaLat: 0, // Would normally come from geocoding
+        serviceAreaLng: 0, // Would normally come from geocoding
+        categories: formData.categories,
+        priceMin: formData.priceMin ? parseFloat(formData.priceMin) : undefined,
+        priceMax: formData.priceMax ? parseFloat(formData.priceMax) : undefined,
+      });
+
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || t("errors.generic"));

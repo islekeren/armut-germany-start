@@ -39,6 +39,21 @@ export class CreateProviderDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  categories?: string[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  priceMin?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  priceMax?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   documents?: string[];
 }
 

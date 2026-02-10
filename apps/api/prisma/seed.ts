@@ -162,7 +162,7 @@ async function main() {
       isVerified: true,
       gdprConsent: true,
       profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Anna",
-    },
+    }, 
   });
   
   console.log(`✅ Upserted customer: ${customerEmail}`);
