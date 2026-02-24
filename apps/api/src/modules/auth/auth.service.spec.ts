@@ -1,11 +1,15 @@
-import { Test, TestingModule } from "@nestjs/testing";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { UnauthorizedException, ConflictException } from "@nestjs/common";
+import {
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
 import { UserType } from "./dto/auth.dto";
 import * as bcrypt from "bcrypt";
+import { PrismaService } from "../../common/prisma/prisma.service";
 
 jest.mock("bcrypt");
 
@@ -13,6 +17,8 @@ describe("AuthService", () => {
   let service: AuthService;
   let usersService: jest.Mocked<UsersService>;
   let jwtService: jest.Mocked<JwtService>;
+  let configService: jest.Mocked<ConfigService>;
+  let prisma: { user: { update: jest.Mock } };
 
   const mockUser = {
     id: "user-1",
@@ -30,19 +36,19 @@ describe("AuthService", () => {
   };
 
   beforeEach(async () => {
-    const mockUsersService = {
+    usersService = {
       findByEmail: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
-    };
+    } as unknown as jest.Mocked<UsersService>;
 
-    const mockJwtService = {
+    jwtService = {
       signAsync: jest.fn(),
       verify: jest.fn(),
-    };
+    } as unknown as jest.Mocked<JwtService>;
 
-    const mockConfigService = {
+    configService = {
       get: jest.fn().mockImplementation((key: string) => {
         const config: Record<string, string> = {
           JWT_SECRET: "test-secret",
@@ -50,20 +56,20 @@ describe("AuthService", () => {
         };
         return config[key];
       }),
+    } as unknown as jest.Mocked<ConfigService>;
+
+    prisma = {
+      user: {
+        update: jest.fn(),
+      },
     };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        { provide: UsersService, useValue: mockUsersService },
-        { provide: JwtService, useValue: mockJwtService },
-        { provide: ConfigService, useValue: mockConfigService },
-      ],
-    }).compile();
-
-    service = module.get<AuthService>(AuthService);
-    usersService = module.get(UsersService);
-    jwtService = module.get(JwtService);
+    service = new AuthService(
+      usersService,
+      jwtService,
+      configService,
+      prisma as unknown as PrismaService
+    );
   });
 
   afterEach(() => {
@@ -165,6 +171,87 @@ describe("AuthService", () => {
       await expect(service.refreshToken("invalid-token")).rejects.toThrow(
         UnauthorizedException
       );
+    });
+
+    it("should throw UnauthorizedException when token is valid but user does not exist", async () => {
+      jwtService.verify.mockReturnValue({ sub: "missing-user" });
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(service.refreshToken("valid-token")).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+  });
+
+  describe("changePassword", () => {
+    it("should throw UnauthorizedException when user is missing", async () => {
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.changePassword("missing-user", {
+          currentPassword: "old",
+          newPassword: "new",
+        })
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("should throw BadRequestException when current password is wrong", async () => {
+      usersService.findById.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.changePassword(mockUser.id, {
+          currentPassword: "wrong",
+          newPassword: "new",
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("should update password when current password is valid", async () => {
+      usersService.findById.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue("next-hash");
+
+      const result = await service.changePassword(mockUser.id, {
+        currentPassword: "old",
+        newPassword: "new",
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+        data: { password: "next-hash" },
+      });
+      expect(result).toEqual({ message: "Password changed successfully" });
+    });
+  });
+
+  describe("logout", () => {
+    it("should return a success message", async () => {
+      await expect(service.logout(mockUser.id)).resolves.toEqual({
+        message: "Logged out successfully",
+      });
+    });
+  });
+
+  describe("validateUser", () => {
+    it("should return null when user does not exist", async () => {
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(service.validateUser("missing")).resolves.toBeNull();
+    });
+
+    it("should return sanitized user when user exists", async () => {
+      usersService.findById.mockResolvedValue(mockUser);
+
+      const result = await service.validateUser(mockUser.id);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: mockUser.id,
+          email: mockUser.email,
+        })
+      );
+      expect(result).not.toHaveProperty("password");
     });
   });
 });

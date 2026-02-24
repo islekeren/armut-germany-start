@@ -5,9 +5,24 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components";
 import { useAuth } from "@/contexts";
-import { requestsApi, type ServiceRequest } from "@/lib/api";
+import { getStoredAccessToken, requestsApi, type ServiceRequest } from "@/lib/api";
 
-const mockRequests = [
+type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
+
+interface RequestCard {
+  id: string;
+  title: string;
+  category: string;
+  status: DisplayRequestStatus;
+  createdAt: string;
+  location: string;
+  quotes: number;
+  description: string;
+  bookedProvider?: string;
+  completedAt?: string;
+}
+
+const mockRequests: RequestCard[] = [
   {
     id: "1",
     title: "Apartment cleaning needed (80sqm)",
@@ -53,7 +68,7 @@ const mockRequests = [
 ];
 
 // Map API status to display status
-const mapApiStatus = (status: string): string => {
+const mapApiStatus = (status: string): DisplayRequestStatus => {
   switch (status) {
     case "open":
       return "active";
@@ -69,10 +84,10 @@ const mapApiStatus = (status: string): string => {
 };
 
 // Transform API request to display format
-const transformRequest = (request: ServiceRequest) => ({
+const transformRequest = (request: ServiceRequest): RequestCard => ({
   id: request.id,
   title: request.title,
-  category: request.categoryId, // Could be mapped to category name if needed
+  category: request.category?.nameEn || request.category?.slug || request.categoryId,
   status: mapApiStatus(request.status),
   createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
     month: "long",
@@ -80,7 +95,7 @@ const transformRequest = (request: ServiceRequest) => ({
     year: "numeric",
   }),
   location: `${request.postalCode} ${request.city}`,
-  quotes: 0, // Would come from a separate quotes endpoint
+  quotes: request._count?.quotes ?? request.quotes?.length ?? 0,
   description: request.description,
   bookedProvider: undefined as string | undefined,
   completedAt: undefined as string | undefined,
@@ -90,35 +105,29 @@ export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
   const { isAuthenticated } = useAuth();
   const [filter, setFilter] = useState("alle");
-  const [requests, setRequests] = useState(mockRequests);
+  const [requests, setRequests] = useState<RequestCard[]>(mockRequests);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const getAccessToken = () => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("armut_access_token");
-  };
-
   useEffect(() => {
     const fetchRequests = async () => {
-      const token = getAccessToken();
+      const token = getStoredAccessToken();
       if (!token) {
         // Use mock data if not authenticated
+        setRequests(mockRequests);
         setIsLoading(false);
         return;
       }
 
       try {
         const apiRequests = await requestsApi.getMyRequests(token);
-        if (apiRequests && apiRequests.length > 0) {
-          const transformedRequests = apiRequests.map(transformRequest);
-          // Combine API requests with mock data (API first)
-          setRequests([...transformedRequests, ...mockRequests]);
-        }
+        const transformedRequests = (apiRequests || []).map(transformRequest);
+        setRequests(transformedRequests);
       } catch (err) {
         console.error("Failed to fetch requests:", err);
         setError(err instanceof Error ? err.message : "Failed to load requests");
         // Keep using mock data on error
+        setRequests(mockRequests);
       } finally {
         setIsLoading(false);
       }

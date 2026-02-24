@@ -1,115 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components";
-import { useAuth } from "@/contexts";
-import { requestsApi, type ServiceRequest } from "@/lib/api";
+import {
+  getStoredAccessToken,
+  messagesApi,
+  quotesApi,
+  requestsApi,
+  type Quote,
+  type ServiceRequest,
+} from "@/lib/api";
 
-const mockRequests = [
-  {
-    id: "1",
-    title: "Apartment cleaning needed (80sqm)",
-    category: "Cleaning",
-    status: "active",
-    createdAt: "January 10, 2026",
-    location: "10115 Berlin",
-    description:
-      "I need a thorough cleaning of my 3-room apartment (approx. 80sqm). Kitchen and bathroom should be cleaned especially thoroughly. Windows do not need to be cleaned.",
-    preferredDate: "Flexible",
-    budget: "€100-150",
-  },
-  {
-    id: "2",
-    title: "Moving helpers needed",
-    category: "Moving",
-    status: "active",
-    createdAt: "January 8, 2026",
-    location: "10117 Berlin",
-    description:
-      "Moving from a 2-room apartment to a new apartment. Need help carrying boxes and furniture.",
-    preferredDate: "January 20, 2026",
-    budget: "€180-250",
-  },
-  {
-    id: "3",
-    title: "Paint bathroom",
-    category: "Painter",
-    status: "booked",
-    createdAt: "January 5, 2026",
-    location: "10119 Berlin",
-    description: "Repaint bathroom, approx. 8sqm. White walls and ceiling.",
-    preferredDate: "January 25, 2026",
-    budget: "€120-180",
-  },
-  {
-    id: "4",
-    title: "Winterize garden",
-    category: "Garden",
-    status: "completed",
-    createdAt: "December 1, 2025",
-    location: "10115 Berlin",
-    description: "Trim hedges, remove leaves, and winterize plants.",
-    preferredDate: "December 10, 2025",
-    budget: "€90-140",
-  },
-];
+type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
+type SortOption = "priceAsc" | "priceDesc" | "bestRating" | "newest";
 
-const mockQuotes = [
-  {
-    id: "1",
-    provider: {
-      name: "Smith Services",
-      contact: "John Smith",
-      rating: 4.9,
-      reviews: 127,
-      memberSince: "2023",
-      image: null,
-    },
-    price: 120,
-    message:
-      "Hello! I would be happy to take care of the cleaning. With over 10 years of experience, I guarantee you the best quality. I bring all cleaning supplies.",
-    validUntil: "January 17, 2026",
-    createdAt: "2 hours ago",
-  },
-  {
-    id: "2",
-    provider: {
-      name: "Johnson Cleaning",
-      contact: "Anna Johnson",
-      rating: 4.8,
-      reviews: 89,
-      memberSince: "2024",
-      image: null,
-    },
-    price: 135,
-    message:
-      "Hi! My team and I would love to make your apartment shine. We only use eco-friendly cleaning products.",
-    validUntil: "January 18, 2026",
-    createdAt: "5 hours ago",
-  },
-  {
-    id: "3",
-    provider: {
-      name: "Clean & Fresh",
-      contact: "Thomas Weber",
-      rating: 4.7,
-      reviews: 156,
-      memberSince: "2022",
-      image: null,
-    },
-    price: 110,
-    message:
-      "Dear customer, I would be happy to provide you with a quote. The cleaning can be done on short notice.",
-    validUntil: "January 16, 2026",
-    createdAt: "1 day ago",
-  },
-];
+interface RequestViewModel {
+  id: string;
+  title: string;
+  category: string;
+  status: DisplayRequestStatus;
+  createdAt: string;
+  location: string;
+  description: string;
+  preferredDate: string;
+  budget: string;
+}
 
-// Map API status to display status
-const mapApiStatus = (status: string): string => {
+const mapApiStatus = (status: string): DisplayRequestStatus => {
   switch (status) {
     case "open":
       return "active";
@@ -124,11 +44,10 @@ const mapApiStatus = (status: string): string => {
   }
 };
 
-// Transform API request to display format
-const transformRequest = (request: ServiceRequest) => ({
+const transformRequest = (request: ServiceRequest): RequestViewModel => ({
   id: request.id,
   title: request.title,
-  category: request.categoryId,
+  category: request.category?.nameEn || request.category?.slug || request.categoryId,
   status: mapApiStatus(request.status),
   createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
     month: "long",
@@ -145,11 +64,11 @@ const transformRequest = (request: ServiceRequest) => ({
       })
     : "Flexible",
   budget:
-    request.budgetMin && request.budgetMax
+    request.budgetMin !== undefined && request.budgetMax !== undefined
       ? `€${request.budgetMin}-${request.budgetMax}`
-      : request.budgetMin
+      : request.budgetMin !== undefined
         ? `€${request.budgetMin}+`
-        : request.budgetMax
+        : request.budgetMax !== undefined
           ? `Up to €${request.budgetMax}`
           : "Flexible",
 });
@@ -159,64 +78,125 @@ export default function RequestDetailPage() {
   const tRequests = useTranslations("customer.requests");
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+
+  const [request, setRequest] = useState<RequestViewModel | null>(null);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
-  const [request, setRequest] = useState(mockRequests[0]);
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isAcceptingQuoteId, setIsAcceptingQuoteId] = useState<string | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const requestId = params.id as string;
 
-  const getAccessToken = () => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("armut_access_token");
-  };
+  const loadData = useCallback(async () => {
+    if (!requestId) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const apiRequest = await requestsApi.getById(requestId);
+      setRequest(transformRequest(apiRequest));
+
+      const token = getStoredAccessToken();
+      if (token) {
+        const quoteData = await quotesApi.getByRequest(token, requestId);
+        setQuotes(quoteData);
+      } else {
+        setQuotes([]);
+      }
+    } catch (err) {
+      console.error("Failed to load request details:", err);
+      setError(err instanceof Error ? err.message : t("loadError"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [requestId, t]);
 
   useEffect(() => {
-    const fetchRequest = async () => {
-      if (!requestId) {
-        setIsLoading(false);
-        return;
+    loadData();
+  }, [loadData]);
+
+  const sortedQuotes = useMemo(() => {
+    const result = [...quotes];
+
+    result.sort((a, b) => {
+      if (sortBy === "priceAsc") return a.price - b.price;
+      if (sortBy === "priceDesc") return b.price - a.price;
+      if (sortBy === "bestRating") {
+        return (b.provider?.ratingAvg || 0) - (a.provider?.ratingAvg || 0);
       }
+      return (
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    });
 
-      const mockMatch = mockRequests.find((item) => item.id === requestId);
-      if (mockMatch) {
-        setRequest(mockMatch);
-        setIsLoading(false);
-        return;
-      }
+    return result;
+  }, [quotes, sortBy]);
 
-      try {
-        const apiRequest = await requestsApi.getById(requestId);
-        if (apiRequest) {
-          setRequest(transformRequest(apiRequest));
-        }
-      } catch (err) {
-        console.error("Failed to fetch request:", err);
-        setError(err instanceof Error ? err.message : "Failed to load request");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const handleAcceptQuote = async (quoteId: string) => {
+    const token = getStoredAccessToken();
+    if (!token) {
+      setError(t("loginRequired"));
+      return;
+    }
 
-    fetchRequest();
-  }, [requestId, isAuthenticated]);
+    setError(null);
+    setSuccessMessage(null);
+    setIsAcceptingQuoteId(quoteId);
 
-  const handleAcceptQuote = (quoteId: string) => {
-    // Handle quote acceptance
-    alert(t("acceptingQuote"));
+    try {
+      await quotesApi.respond(token, quoteId, "accepted");
+      await loadData();
+      setSuccessMessage(t("acceptSuccess"));
+      setSelectedQuote(quoteId);
+    } catch (err) {
+      console.error("Failed to accept quote:", err);
+      setError(err instanceof Error ? err.message : t("acceptError"));
+    } finally {
+      setIsAcceptingQuoteId(null);
+    }
+  };
+
+  const handleSendMessage = async (quote: Quote) => {
+    const token = getStoredAccessToken();
+    if (!token) {
+      setError(t("loginRequired"));
+      return;
+    }
+
+    const participantId = quote.provider?.user.id;
+    if (!participantId) {
+      setError(t("messageError"));
+      return;
+    }
+
+    try {
+      const conversation = await messagesApi.createConversation(token, {
+        participantId,
+        requestId,
+      });
+      router.push(`/messages?conversation=${conversation.id}`);
+    } catch (err) {
+      console.error("Failed to open conversation:", err);
+      setError(err instanceof Error ? err.message : t("messageError"));
+    }
   };
 
   const handleCloseRequest = async () => {
-    const token = getAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
-      setError("You must be logged in to close a request");
+      setError(t("loginRequired"));
       return;
     }
 
     setIsClosing(true);
+    setError(null);
+
     try {
       await requestsApi.cancel(requestId, token);
       setShowCloseConfirm(false);
@@ -246,6 +226,19 @@ export default function RequestDetailPage() {
     );
   }
 
+  if (!request) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
+            {error || t("loadError")}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -254,6 +247,11 @@ export default function RequestDetailPage() {
         {error && (
           <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
             {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+            {successMessage}
           </div>
         )}
 
@@ -266,7 +264,6 @@ export default function RequestDetailPage() {
         </nav>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Request Details */}
           <aside className="lg:col-span-1">
             <div className="sticky top-8 rounded-xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
@@ -277,7 +274,6 @@ export default function RequestDetailPage() {
               </div>
 
               <h1 className="mb-4 text-xl font-bold">{request.title}</h1>
-
               <p className="mb-6 text-muted">{request.description}</p>
 
               <div className="space-y-3 border-t border-border pt-4">
@@ -311,16 +307,13 @@ export default function RequestDetailPage() {
                 </button>
               </div>
 
-              {/* Close Confirmation Modal */}
               {showCloseConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                   <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
                     <h3 className="mb-2 text-lg font-semibold">
                       {t("closeConfirmTitle")}
                     </h3>
-                    <p className="mb-6 text-muted">
-                      {t("closeConfirmMessage")}
-                    </p>
+                    <p className="mb-6 text-muted">{t("closeConfirmMessage")}</p>
                     <div className="flex gap-3">
                       <button
                         onClick={() => setShowCloseConfirm(false)}
@@ -343,95 +336,114 @@ export default function RequestDetailPage() {
             </div>
           </aside>
 
-          {/* Quotes */}
           <div className="lg:col-span-2">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold">
-                {t("quotesReceived", { count: mockQuotes.length })}
+                {t("quotesReceived", { count: quotes.length })}
               </h2>
-              <select className="rounded-lg border border-border px-3 py-2 text-sm">
-                <option>{t("sortOptions.priceAsc")}</option>
-                <option>{t("sortOptions.priceDesc")}</option>
-                <option>{t("sortOptions.bestRating")}</option>
-                <option>{t("sortOptions.newest")}</option>
+              <select
+                className="rounded-lg border border-border px-3 py-2 text-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+              >
+                <option value="priceAsc">{t("sortOptions.priceAsc")}</option>
+                <option value="priceDesc">{t("sortOptions.priceDesc")}</option>
+                <option value="bestRating">{t("sortOptions.bestRating")}</option>
+                <option value="newest">{t("sortOptions.newest")}</option>
               </select>
             </div>
 
+            {sortedQuotes.length === 0 && (
+              <div className="rounded-xl bg-white p-8 text-center text-muted shadow-sm">
+                {t("noQuotes")}
+              </div>
+            )}
+
             <div className="space-y-4">
-              {mockQuotes.map((quote) => (
-                <div
-                  key={quote.id}
-                  className={`rounded-xl bg-white p-6 shadow-sm transition ${
-                    selectedQuote === quote.id
-                      ? "ring-2 ring-primary"
-                      : "hover:shadow-md"
-                  }`}
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row">
-                    {/* Provider Info */}
-                    <div className="flex flex-1 gap-4">
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-white">
-                        {quote.provider.name.charAt(0)}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{quote.provider.name}</h3>
-                        <p className="text-sm text-muted">
-                          {quote.provider.contact}
-                        </p>
-                        <div className="mt-1 flex items-center gap-2 text-sm">
-                          <span className="text-yellow-500">★</span>
-                          <span className="font-medium">
-                            {quote.provider.rating}
-                          </span>
-                          <span className="text-muted">
-                            ({quote.provider.reviews} {t("reviews")})
-                          </span>
+              {sortedQuotes.map((quote) => {
+                const providerName =
+                  quote.provider?.companyName ||
+                  `${quote.provider?.user.firstName || ""} ${
+                    quote.provider?.user.lastName || ""
+                  }`.trim() ||
+                  "Provider";
+                const providerContact = `${quote.provider?.user.firstName || ""} ${
+                  quote.provider?.user.lastName || ""
+                }`.trim();
+                const createdAt = new Date(quote.createdAt).toLocaleString();
+                const validUntil = new Date(quote.validUntil).toLocaleDateString();
+                const canAccept = quote.status === "pending";
+
+                return (
+                  <div
+                    key={quote.id}
+                    onClick={() => setSelectedQuote(quote.id)}
+                    className={`rounded-xl bg-white p-6 shadow-sm transition ${
+                      selectedQuote === quote.id ? "ring-2 ring-primary" : "hover:shadow-md"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row">
+                      <div className="flex flex-1 gap-4">
+                        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-white">
+                          {providerName.charAt(0)}
                         </div>
-                        <p className="mt-1 text-xs text-muted">
-                          {t("memberSince")} {quote.provider.memberSince}
-                        </p>
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{providerName}</h3>
+                          <p className="text-sm text-muted">{providerContact}</p>
+                          <div className="mt-1 flex items-center gap-2 text-sm">
+                            <span className="text-yellow-500">★</span>
+                            <span className="font-medium">
+                              {quote.provider?.ratingAvg?.toFixed(1) || "-"}
+                            </span>
+                            <span className="text-muted">
+                              ({quote.provider?.totalReviews || 0} {t("reviews")})
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted">
+                            {t("memberSince")} -
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-primary">{quote.price}€</div>
+                        <div className="text-sm text-muted">{t("fixedPrice")}</div>
                       </div>
                     </div>
 
-                    {/* Price */}
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-primary">
-                        {quote.price}€
+                    <div className="mt-4 rounded-lg bg-background p-4">
+                      <p className="text-sm text-muted">{quote.message}</p>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-sm text-muted">
+                        {t("validUntil")} {validUntil} • {createdAt}
                       </div>
-                      <div className="text-sm text-muted">{t("fixedPrice")}</div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSendMessage(quote)}
+                          className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background"
+                        >
+                          {t("sendMessage")}
+                        </button>
+                        <button
+                          onClick={() => handleAcceptQuote(quote.id)}
+                          disabled={!canAccept || isAcceptingQuoteId === quote.id}
+                          className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isAcceptingQuoteId === quote.id
+                            ? t("acceptingQuote")
+                            : canAccept
+                              ? t("acceptQuote")
+                              : quote.status}
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Message */}
-                  <div className="mt-4 rounded-lg bg-background p-4">
-                    <p className="text-sm text-muted">{quote.message}</p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm text-muted">
-                      {t("validUntil")} {quote.validUntil} • {quote.createdAt}
-                    </div>
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/messages?provider=${quote.id}`}
-                        className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background"
-                      >
-                        {t("sendMessage")}
-                      </Link>
-                      <button
-                        onClick={() => handleAcceptQuote(quote.id)}
-                        className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90"
-                      >
-                        {t("acceptQuote")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Tips */}
             <div className="mt-8 rounded-xl bg-primary/5 p-6">
               <h3 className="mb-3 font-semibold">{t("tips.title")}</h3>
               <ul className="space-y-2 text-sm text-muted">

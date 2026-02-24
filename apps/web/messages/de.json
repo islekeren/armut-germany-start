@@ -382,6 +382,12 @@
       "loading": "Ihre Anfragen werden geladen..."
     },
     "requestDetail": {
+      "loadError": "Anfragedetails konnten nicht geladen werden",
+      "loginRequired": "Bitte melden Sie sich an, um fortzufahren",
+      "messageError": "Konversation konnte nicht geöffnet werden",
+      "acceptSuccess": "Angebot erfolgreich angenommen",
+      "acceptError": "Angebot konnte nicht angenommen werden",
+      "noQuotes": "Für diese Anfrage liegen noch keine Angebote vor",
       "location": "Standort",
       "preferredDate": "Wunschtermin",
       "budget": "Budget",
@@ -418,8 +424,19 @@
     },
     "messages": {
       "title": "Nachrichten",
+      "loading": "Konversationen werden geladen...",
+      "loadingMessages": "Nachrichten werden geladen...",
+      "loginRequired": "Bitte melden Sie sich an, um Nachrichten zu sehen",
+      "loadError": "Konversationen konnten nicht geladen werden",
+      "loadMessagesError": "Nachrichten konnten nicht geladen werden",
+      "sendError": "Nachricht konnte nicht gesendet werden",
+      "noConversations": "Noch keine Konversationen",
+      "conversationFallback": "Konversation",
+      "unknownUser": "Benutzer",
+      "noMessagesYet": "Noch keine Nachrichten",
       "placeholder": "Nachricht schreiben...",
       "send": "Senden",
+      "sending": "Wird gesendet...",
       "selectConversation": "Wählen Sie eine Konversation aus der Liste"
     }
   },
@@ -482,6 +499,7 @@
       "title": "Offene Anfragen",
       "subtitle": "{count} Anfragen in Ihrem Servicegebiet",
       "loading": "Wird geladen...",
+      "loadError": "Anfragen konnten nicht geladen werden",
       "noRequests": "Keine Anfragen gefunden",
       "filters": {
         "all": "Alle",
@@ -492,6 +510,17 @@
       "postedAt": "Vor {time}",
       "memberSince": "Mitglied seit {year}",
       "sendOffer": "Angebot senden",
+      "sendingOffer": "Wird gesendet...",
+      "quotePrice": "Angebotspreis (€)",
+      "quoteMessage": "Nachricht",
+      "quoteMessagePlaceholder": "Beschreiben Sie Ihr Angebot und was enthalten ist...",
+      "validUntil": "Gültig bis",
+      "cancel": "Abbrechen",
+      "authRequired": "Bitte melden Sie sich an, um ein Angebot zu senden",
+      "invalidPrice": "Bitte geben Sie einen gültigen Preis ein",
+      "invalidMessage": "Bitte fügen Sie eine Nachricht zu Ihrem Angebot hinzu",
+      "quoteSent": "Angebot erfolgreich gesendet",
+      "quoteError": "Angebot konnte nicht gesendet werden",
       "tips": {
         "title": "Tipps für bessere Angebote",
         "tip1": "Antworten Sie schnell - frühe Angebote werden eher angenommen",

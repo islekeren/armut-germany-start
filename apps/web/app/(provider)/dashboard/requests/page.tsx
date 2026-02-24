@@ -3,7 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { providerApi, ProviderRequest } from "@/lib/api";
+import {
+  getStoredAccessToken,
+  providerApi,
+  ProviderRequest,
+  quotesApi,
+} from "@/lib/api";
 
 export default function RequestsPage() {
   const t = useTranslations("provider.requests");
@@ -13,13 +18,27 @@ export default function RequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [requests, setRequests] = useState<ProviderRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [quoteSuccess, setQuoteSuccess] = useState<string | null>(null);
+  const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
+  const [quoteModalRequest, setQuoteModalRequest] = useState<ProviderRequest | null>(
+    null
+  );
+  const [quoteForm, setQuoteForm] = useState({
+    price: "",
+    message: "",
+    validUntil: "",
+  });
 
   const filters = ["all", "cleaning", "renovation", "garden"];
 
   useEffect(() => {
     const fetchRequests = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const token = localStorage.getItem("armut_access_token");
+        const token = getStoredAccessToken();
         if (token) {
           const category = filter === "all" ? undefined : filter;
           const response = await providerApi.getRequests(token, { category });
@@ -27,13 +46,78 @@ export default function RequestsPage() {
         }
       } catch (error) {
         console.error("Failed to fetch requests", error);
+        setError(t("loadError"));
       } finally {
         setLoading(false);
       }
     };
 
     fetchRequests();
-  }, [filter]);
+  }, [filter, t]);
+
+  const getDefaultValidUntil = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return date.toISOString().split("T")[0] || "";
+  };
+
+  const openQuoteModal = (request: ProviderRequest) => {
+    setQuoteError(null);
+    setQuoteSuccess(null);
+    setQuoteModalRequest(request);
+    setQuoteForm({
+      price: request.budgetMin ? request.budgetMin.toString() : "",
+      message: "",
+      validUntil: getDefaultValidUntil(),
+    });
+  };
+
+  const closeQuoteModal = () => {
+    if (isSubmittingQuote) return;
+    setQuoteModalRequest(null);
+  };
+
+  const handleSubmitQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quoteModalRequest) return;
+
+    const token = getStoredAccessToken();
+    if (!token) {
+      setQuoteError(t("authRequired"));
+      return;
+    }
+
+    const numericPrice = Number(quoteForm.price);
+    if (!numericPrice || numericPrice <= 0) {
+      setQuoteError(t("invalidPrice"));
+      return;
+    }
+
+    if (!quoteForm.message.trim()) {
+      setQuoteError(t("invalidMessage"));
+      return;
+    }
+
+    setIsSubmittingQuote(true);
+    setQuoteError(null);
+
+    try {
+      await quotesApi.create(token, {
+        requestId: quoteModalRequest.id,
+        price: numericPrice,
+        message: quoteForm.message.trim(),
+        validUntil: quoteForm.validUntil,
+      });
+
+      setRequests((prev) => prev.filter((item) => item.id !== quoteModalRequest.id));
+      setQuoteSuccess(t("quoteSent"));
+      setQuoteModalRequest(null);
+    } catch (err) {
+      setQuoteError(err instanceof Error ? err.message : t("quoteError"));
+    } finally {
+      setIsSubmittingQuote(false);
+    }
+  };
 
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -111,6 +195,18 @@ export default function RequestsPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
+            {error}
+          </div>
+        )}
+
+        {quoteSuccess && (
+          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+            {quoteSuccess}
+          </div>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Requests List */}
           <div className="space-y-4 lg:col-span-2">
@@ -173,7 +269,7 @@ export default function RequestsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Open quote modal
+                        openQuoteModal(request);
                       }}
                       className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
                     >
@@ -218,6 +314,89 @@ export default function RequestsPage() {
           </aside>
         </div>
       </div>
+
+      {quoteModalRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-semibold">{t("sendOffer")}</h2>
+            <p className="mt-1 text-sm text-muted">{quoteModalRequest.title}</p>
+
+            <form onSubmit={handleSubmitQuote} className="mt-6 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  {t("quotePrice")}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={quoteForm.price}
+                  onChange={(e) =>
+                    setQuoteForm((prev) => ({ ...prev, price: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  {t("quoteMessage")}
+                </label>
+                <textarea
+                  rows={4}
+                  value={quoteForm.message}
+                  onChange={(e) =>
+                    setQuoteForm((prev) => ({ ...prev, message: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  placeholder={t("quoteMessagePlaceholder")}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  {t("validUntil")}
+                </label>
+                <input
+                  type="date"
+                  value={quoteForm.validUntil}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) =>
+                    setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  required
+                />
+              </div>
+
+              {quoteError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {quoteError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeQuoteModal}
+                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background"
+                  disabled={isSubmittingQuote}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+                  disabled={isSubmittingQuote}
+                >
+                  {isSubmittingQuote ? t("sendingOffer") : t("sendOffer")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

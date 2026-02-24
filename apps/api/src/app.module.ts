@@ -12,6 +12,9 @@ import { CategoriesModule } from "./modules/categories/categories.module";
 import { ProvidersModule } from "./modules/providers/providers.module";
 import { BookingsModule } from "./modules/bookings/bookings.module";
 import { ReviewsModule } from "./modules/reviews/reviews.module";
+import { MessagesModule } from "./modules/messages/messages.module";
+import { QuotesModule } from "./modules/quotes/quotes.module";
+import { UploadsModule } from "./modules/uploads/uploads.module";
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { ReviewsModule } from "./modules/reviews/reviews.module";
     ProvidersModule,
     BookingsModule,
     ReviewsModule,
+    MessagesModule,
+    QuotesModule,
+    UploadsModule,
   ],
 })
 export class AppModule {}

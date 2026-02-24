@@ -382,6 +382,12 @@
       "loading": "Loading your requests..."
     },
     "requestDetail": {
+      "loadError": "Failed to load request details",
+      "loginRequired": "Please log in to continue",
+      "messageError": "Failed to open conversation",
+      "acceptSuccess": "Quote accepted successfully",
+      "acceptError": "Failed to accept quote",
+      "noQuotes": "No quotes yet for this request",
       "location": "Location",
       "preferredDate": "Preferred Date",
       "budget": "Budget",
@@ -418,8 +424,19 @@
     },
     "messages": {
       "title": "Messages",
+      "loading": "Loading conversations...",
+      "loadingMessages": "Loading messages...",
+      "loginRequired": "Please log in to view messages",
+      "loadError": "Failed to load conversations",
+      "loadMessagesError": "Failed to load messages",
+      "sendError": "Failed to send message",
+      "noConversations": "No conversations yet",
+      "conversationFallback": "Conversation",
+      "unknownUser": "User",
+      "noMessagesYet": "No messages yet",
       "placeholder": "Write a message...",
       "send": "Send",
+      "sending": "Sending...",
       "selectConversation": "Select a conversation from the list"
     }
   },
@@ -482,6 +499,7 @@
       "title": "Open Requests",
       "subtitle": "{count} requests in your service area",
       "loading": "Loading...",
+      "loadError": "Failed to load requests",
       "noRequests": "No requests found",
       "filters": {
         "all": "All",
@@ -492,6 +510,17 @@
       "postedAt": "Posted {time} ago",
       "memberSince": "Member since {year}",
       "sendOffer": "Send Offer",
+      "sendingOffer": "Sending...",
+      "quotePrice": "Quote Price (€)",
+      "quoteMessage": "Message",
+      "quoteMessagePlaceholder": "Describe your offer and what's included...",
+      "validUntil": "Valid Until",
+      "cancel": "Cancel",
+      "authRequired": "Please log in to send an offer",
+      "invalidPrice": "Please enter a valid price",
+      "invalidMessage": "Please add a message for your offer",
+      "quoteSent": "Offer sent successfully",
+      "quoteError": "Failed to send offer",
       "tips": {
         "title": "Tips for Better Offers",
         "tip1": "Respond quickly - early offers are more likely to be accepted",

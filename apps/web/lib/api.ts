@@ -9,19 +9,24 @@ export async function apiRequest<T>(
   options: ApiOptions = {}
 ): Promise<T> {
   const { token, ...fetchOptions } = options;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
+  const headers = new Headers(fetchOptions.headers || undefined);
 
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  // Let the browser set multipart boundary for FormData automatically.
+  if (
+    fetchOptions.body &&
+    !(fetchOptions.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set("Content-Type", "application/json");
   }
 
   // The NestJS API has a global prefix of /api
   const url = `${API_URL}/api${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...fetchOptions,
     headers,
@@ -32,7 +37,22 @@ export async function apiRequest<T>(
     throw new Error(error.message || `API Error: ${response.status}`);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const contentType = response.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return text as T;
+}
+
+export function getStoredAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("armut_access_token");
 }
 
 // Auth API calls
@@ -194,6 +214,7 @@ export interface ServiceRequest {
   id: string;
   customerId: string;
   categoryId: string;
+  category?: Category;
   title: string;
   description: string;
   address: string;
@@ -208,6 +229,10 @@ export interface ServiceRequest {
   status: "open" | "in_progress" | "completed" | "cancelled";
   createdAt: string;
   updatedAt: string;
+  _count?: {
+    quotes: number;
+  };
+  quotes?: unknown[];
 }
 
 export interface CreateRequestData {
@@ -505,6 +530,265 @@ export const providerApi = {
     apiRequest(`/providers/me/reviews/${reviewId}/reply`, {
       method: "POST",
       body: JSON.stringify({ reply }),
+      token,
+    }),
+};
+
+export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired";
+
+export interface Quote {
+  id: string;
+  requestId: string;
+  providerId: string;
+  customerId: string;
+  price: number;
+  message: string;
+  validUntil: string;
+  status: QuoteStatus;
+  createdAt: string;
+  updatedAt: string;
+  provider?: {
+    id: string;
+    companyName?: string | null;
+    ratingAvg?: number;
+    totalReviews?: number;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      profileImage?: string | null;
+      phone?: string | null;
+    };
+  };
+  request?: {
+    id: string;
+    title?: string;
+    category?: Category;
+  };
+}
+
+export interface CreateQuoteData {
+  requestId: string;
+  price: number;
+  message: string;
+  validUntil: string;
+}
+
+export interface UpdateQuoteData {
+  price?: number;
+  message?: string;
+  validUntil?: string;
+}
+
+export const quotesApi = {
+  create: (token: string, data: CreateQuoteData) =>
+    apiRequest<Quote>("/quotes", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  getByRequest: (token: string, requestId: string) =>
+    apiRequest<Quote[]>(`/quotes/request/${requestId}`, { token }),
+
+  getMyQuotes: (token: string) =>
+    apiRequest<Quote[]>("/quotes/my-quotes", { token }),
+
+  getReceivedQuotes: (token: string) =>
+    apiRequest<Quote[]>("/quotes/received", { token }),
+
+  getById: (token: string, id: string) =>
+    apiRequest<Quote>(`/quotes/${id}`, { token }),
+
+  update: (token: string, id: string, data: UpdateQuoteData) =>
+    apiRequest<Quote>(`/quotes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  respond: (token: string, id: string, action: "accepted" | "rejected") =>
+    apiRequest<Quote>(`/quotes/${id}/respond`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+      token,
+    }),
+
+  withdraw: (token: string, id: string) =>
+    apiRequest(`/quotes/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+};
+
+export interface ConversationParticipant {
+  id: string;
+  userId: string;
+  conversationId?: string;
+  joinedAt?: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profileImage?: string | null;
+  };
+}
+
+export interface MessageItem {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  attachments: string[];
+  readAt?: string | null;
+  createdAt: string;
+  sender?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profileImage?: string | null;
+  };
+}
+
+export interface ConversationItem {
+  id: string;
+  requestId?: string | null;
+  lastMessageAt: string;
+  createdAt: string;
+  updatedAt: string;
+  participants: ConversationParticipant[];
+  messages?: MessageItem[];
+  unreadCount?: number;
+  otherParticipant?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profileImage?: string | null;
+  };
+  request?: {
+    id: string;
+    title?: string;
+    category?: Category;
+  };
+}
+
+export interface MessagesPageResponse {
+  data: MessageItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export const messagesApi = {
+  createConversation: (
+    token: string,
+    data: { participantId: string; requestId?: string }
+  ) =>
+    apiRequest<ConversationItem>("/messages/conversations", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  getConversations: (token: string) =>
+    apiRequest<ConversationItem[]>("/messages/conversations", { token }),
+
+  getConversation: (token: string, conversationId: string) =>
+    apiRequest<ConversationItem>(`/messages/conversations/${conversationId}`, {
+      token,
+    }),
+
+  getMessages: (token: string, conversationId: string, page = 1, limit = 50) =>
+    apiRequest<MessagesPageResponse>(
+      `/messages/conversations/${conversationId}/messages?page=${page}&limit=${limit}`,
+      { token }
+    ),
+
+  sendMessage: (
+    token: string,
+    data: { conversationId: string; content: string; attachments?: string[] }
+  ) =>
+    apiRequest<MessageItem>("/messages/send", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  markAsRead: (token: string, conversationId: string) =>
+    apiRequest<{ success: boolean }>("/messages/read", {
+      method: "POST",
+      body: JSON.stringify({ conversationId }),
+      token,
+    }),
+
+  getUnreadCount: (token: string) =>
+    apiRequest<{ unreadCount: number }>("/messages/unread-count", { token }),
+};
+
+export type UploadFolder =
+  | "profiles"
+  | "portfolios"
+  | "documents"
+  | "requests"
+  | "messages";
+
+export interface UploadResult {
+  key: string;
+  url: string;
+  filename: string;
+  mimetype: string;
+  size: number;
+}
+
+function buildFilesFormData(files: File[], fieldName = "files") {
+  const formData = new FormData();
+  files.forEach((file) => formData.append(fieldName, file));
+  return formData;
+}
+
+export const uploadsApi = {
+  uploadProfileImage: (token: string, file: File) => {
+    const formData = buildFilesFormData([file], "file");
+    return apiRequest<UploadResult>("/uploads/profile", {
+      method: "POST",
+      body: formData,
+      token,
+    });
+  },
+
+  uploadRequestImages: (token: string, files: File[]) =>
+    apiRequest<UploadResult[]>("/uploads/request", {
+      method: "POST",
+      body: buildFilesFormData(files),
+      token,
+    }),
+
+  uploadMessageAttachments: (token: string, files: File[]) =>
+    apiRequest<UploadResult[]>("/uploads/message", {
+      method: "POST",
+      body: buildFilesFormData(files),
+      token,
+    }),
+
+  getPresignedUploadUrl: (
+    token: string,
+    data: { folder: UploadFolder; filename: string; contentType: string }
+  ) =>
+    apiRequest<{ uploadUrl: string; key: string; publicUrl: string }>(
+      "/uploads/presigned",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        token,
+      }
+    ),
+
+  deleteFile: (token: string, key: string) =>
+    apiRequest<{ success: boolean }>(`/uploads/${encodeURIComponent(key)}`, {
+      method: "DELETE",
       token,
     }),
 };

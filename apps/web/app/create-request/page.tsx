@@ -6,7 +6,12 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "@/components";
 import { useAuth } from "@/contexts";
-import { requestsApi, type CreateRequestData } from "@/lib/api";
+import {
+  getStoredAccessToken,
+  requestsApi,
+  type CreateRequestData,
+  uploadsApi,
+} from "@/lib/api";
 
 const categoryKeys = [
   { id: "cleaning", key: "cleaning", icon: "🧹" },
@@ -27,7 +32,7 @@ export default function CreateRequestPage() {
   const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const initialCategory = searchParams.get("category") || searchParams.get("kategorie") || "";
 
   const [step, setStep] = useState(1);
@@ -53,11 +58,6 @@ export default function CreateRequestPage() {
     return t(`categories.${selected.key}.name`);
   };
 
-  const getAccessToken = () => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("armut_access_token");
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -71,9 +71,18 @@ export default function CreateRequestPage() {
     setIsLoading(true);
 
     try {
-      const token = getAccessToken();
+      const token = getStoredAccessToken();
       if (!token) {
         throw new Error(t("createRequest.errorNoToken"));
+      }
+
+      let imageUrls: string[] = [];
+      if (formData.images.length > 0) {
+        const uploadedImages = await uploadsApi.uploadRequestImages(
+          token,
+          formData.images
+        );
+        imageUrls = uploadedImages.map((item) => item.url);
       }
 
       // Prepare the request data
@@ -89,11 +98,8 @@ export default function CreateRequestPage() {
         preferredDate: formData.preferredDate || undefined,
         budgetMin: formData.budgetMin ? parseFloat(formData.budgetMin) : undefined,
         budgetMax: formData.budgetMax ? parseFloat(formData.budgetMax) : undefined,
-        images: [], // Would normally be uploaded URLs
+        images: imageUrls,
       };
-
-      // TODO: Handle image uploads here if needed
-      // For now, we skip image upload as it would require a separate upload endpoint
 
       await requestsApi.create(requestData, token);
       
