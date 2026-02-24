@@ -9,18 +9,18 @@ import { useAuth } from "@/contexts";
 import { requestsApi, type CreateRequestData } from "@/lib/api";
 
 const categoryKeys = [
-  { id: "reinigung", key: "cleaning", icon: "🧹" },
-  { id: "umzug", key: "moving", icon: "📦" },
-  { id: "renovierung", key: "renovation", icon: "🔨" },
-  { id: "garten", key: "garden", icon: "🌳" },
-  { id: "elektriker", key: "electrician", icon: "⚡" },
-  { id: "klempner", key: "plumber", icon: "🔧" },
-  { id: "maler", key: "painter", icon: "🎨" },
-  { id: "schlosser", key: "locksmith", icon: "🔐" },
-  { id: "nachhilfe", key: "tutoring", icon: "📚" },
-  { id: "fotografie", key: "photography", icon: "📷" },
-  { id: "computerhilfe", key: "computerHelp", icon: "💻" },
-  { id: "tierpflege", key: "petCare", icon: "🐕" },
+  { id: "cleaning", key: "cleaning", icon: "🧹" },
+  { id: "moving", key: "moving", icon: "📦" },
+  { id: "renovation", key: "renovation", icon: "🔨" },
+  { id: "garden", key: "garden", icon: "🌳" },
+  { id: "electrician", key: "electrician", icon: "⚡" },
+  { id: "plumber", key: "plumber", icon: "🔧" },
+  { id: "painter", key: "painter", icon: "🎨" },
+  { id: "locksmith", key: "locksmith", icon: "🔐" },
+  { id: "tutoring", key: "tutoring", icon: "📚" },
+  { id: "photography", key: "photography", icon: "📷" },
+  { id: "computerHelp", key: "computerHelp", icon: "💻" },
+  { id: "petCare", key: "petCare", icon: "🐕" },
 ];
 
 export default function CreateRequestPage() {
@@ -28,7 +28,7 @@ export default function CreateRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
-  const initialCategory = searchParams.get("kategorie") || "";
+  const initialCategory = searchParams.get("category") || searchParams.get("kategorie") || "";
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -47,6 +47,12 @@ export default function CreateRequestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getCategoryLabel = (categoryId: string) => {
+    const selected = categoryKeys.find((cat) => cat.id === categoryId);
+    if (!selected) return categoryId;
+    return t(`categories.${selected.key}.name`);
+  };
+
   const getAccessToken = () => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("armut_access_token");
@@ -58,7 +64,7 @@ export default function CreateRequestPage() {
 
     // Check if user is authenticated
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/create-request?kategorie=${formData.category}`);
+      router.push(`/login?redirect=/create-request?category=${formData.category}`);
       return;
     }
 
@@ -67,7 +73,7 @@ export default function CreateRequestPage() {
     try {
       const token = getAccessToken();
       if (!token) {
-        throw new Error("No authentication token found");
+        throw new Error(t("createRequest.errorNoToken"));
       }
 
       // Prepare the request data
@@ -95,7 +101,9 @@ export default function CreateRequestPage() {
       router.push("/my-requests");
     } catch (err) {
       console.error("Failed to create request:", err);
-      setError(err instanceof Error ? err.message : "Failed to create request");
+      setError(
+        err instanceof Error ? err.message : t("createRequest.errorCreating")
+      );
     } finally {
       setIsLoading(false);
     }
@@ -416,7 +424,7 @@ export default function CreateRequestPage() {
                   <div className="mb-1 text-sm text-muted">{t("createRequest.categoryLabel")}</div>
                   <div className="font-medium">
                     {categoryKeys.find((c) => c.id === formData.category)?.icon}{" "}
-                    {categoryKeys.find((c) => c.id === formData.category)?.key}
+                    {getCategoryLabel(formData.category)}
                   </div>
                 </div>
 
@@ -441,7 +449,9 @@ export default function CreateRequestPage() {
                     <div className="mb-1 text-sm text-muted">{t("createRequest.appointmentLabel")}</div>
                     <div className="font-medium">
                       {formData.preferredDate || t("createRequest.flexible")}
-                      {formData.preferredTime && `, ${formData.preferredTime}`}
+                      {formData.preferredTime
+                        ? `, ${t(`createRequest.${formData.preferredTime}`)}`
+                        : ""}
                     </div>
                   </div>
                 </div>

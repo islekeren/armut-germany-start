@@ -10,73 +10,73 @@ const prisma = new PrismaClient();
 const categories = [
   {
     slug: "cleaning",
-    nameDe: "Reinigung",
+    nameDe: "Cleaning",
     nameEn: "Cleaning",
     icon: "🧹",
   },
   {
     slug: "moving",
-    nameDe: "Umzug",
+    nameDe: "Moving",
     nameEn: "Moving",
     icon: "📦",
   },
   {
     slug: "renovation",
-    nameDe: "Renovierung",
+    nameDe: "Renovation",
     nameEn: "Renovation",
     icon: "🔨",
   },
   {
     slug: "garden",
-    nameDe: "Garten",
+    nameDe: "Garden",
     nameEn: "Garden",
     icon: "🌳",
   },
   {
     slug: "electrician",
-    nameDe: "Elektriker",
+    nameDe: "Electrician",
     nameEn: "Electrician",
     icon: "⚡",
   },
   {
     slug: "plumber",
-    nameDe: "Klempner",
+    nameDe: "Plumber",
     nameEn: "Plumber",
     icon: "🔧",
   },
   {
     slug: "painter",
-    nameDe: "Maler",
+    nameDe: "Painter",
     nameEn: "Painter",
     icon: "🎨",
   },
   {
     slug: "locksmith",
-    nameDe: "Schlosser",
+    nameDe: "Locksmith",
     nameEn: "Locksmith",
     icon: "🔐",
   },
   {
     slug: "tutoring",
-    nameDe: "Nachhilfe",
+    nameDe: "Tutoring",
     nameEn: "Tutoring",
     icon: "📚",
   },
   {
     slug: "photography",
-    nameDe: "Fotografie",
+    nameDe: "Photography",
     nameEn: "Photography",
     icon: "📷",
   },
   {
     slug: "computerHelp",
-    nameDe: "Computerhilfe",
+    nameDe: "Computer Help",
     nameEn: "Computer Help",
     icon: "💻",
   },
   {
     slug: "petCare",
-    nameDe: "Tierpflege",
+    nameDe: "Pet Care",
     nameEn: "Pet Care",
     icon: "🐕",
   },
@@ -148,6 +148,125 @@ async function main() {
 
   console.log(`✅ Upserted provider: ${providerEmail}`);
 
+  // Additional providers based on previous mock data
+  const additionalProviders = [
+    {
+      email: "mark@test.com",
+      firstName: "Mark",
+      lastName: "Palmer",
+      companyName: "Palmer Services",
+      description: "Reliable home services with an eye for detail.",
+      experienceYears: 10,
+      ratingAvg: 4.9,
+      totalReviews: 127,
+      service: {
+        categorySlug: "cleaning",
+        title: "Home Cleaning",
+        description: "Professional cleaning for apartments and houses.",
+        priceMin: 25,
+        priceMax: 35,
+        priceType: "hourly" as const,
+      },
+    },
+    {
+      email: "olivia@test.com",
+      firstName: "Olivia",
+      lastName: "Smith",
+      companyName: "Smith & Co",
+      description: "Friendly, punctual, and thorough service every time.",
+      experienceYears: 7,
+      ratingAvg: 4.8,
+      totalReviews: 89,
+      service: {
+        categorySlug: "cleaning",
+        title: "Deep Home Cleaning",
+        description: "Detailed cleaning with flexible scheduling.",
+        priceMin: 30,
+        priceMax: 40,
+        priceType: "hourly" as const,
+      },
+    },
+    {
+      email: "daniel@test.com",
+      firstName: "Daniel",
+      lastName: "Weaver",
+      companyName: "Weaver Home Care",
+      description: "Fast, tidy, and flexible scheduling.",
+      experienceYears: 8,
+      ratingAvg: 4.7,
+      totalReviews: 156,
+      service: {
+        categorySlug: "cleaning",
+        title: "Apartment Cleaning",
+        description: "Efficient and reliable cleaning services.",
+        priceMin: 28,
+        priceMax: 38,
+        priceType: "hourly" as const,
+      },
+    },
+  ];
+
+  for (const providerSeed of additionalProviders) {
+    const user = await prisma.user.upsert({
+      where: { email: providerSeed.email },
+      update: {},
+      create: {
+        email: providerSeed.email,
+        password: hashedPassword,
+        firstName: providerSeed.firstName,
+        lastName: providerSeed.lastName,
+        userType: "provider",
+        isVerified: true,
+        gdprConsent: true,
+        profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${providerSeed.firstName}`,
+      },
+    });
+
+    const providerProfile = await prisma.provider.upsert({
+      where: { userId: user.id },
+      update: {
+        companyName: providerSeed.companyName,
+        description: providerSeed.description,
+        ratingAvg: providerSeed.ratingAvg,
+        totalReviews: providerSeed.totalReviews,
+        isApproved: true,
+      },
+      create: {
+        userId: user.id,
+        companyName: providerSeed.companyName,
+        description: providerSeed.description,
+        experienceYears: providerSeed.experienceYears,
+        ratingAvg: providerSeed.ratingAvg,
+        totalReviews: providerSeed.totalReviews,
+        isApproved: true,
+        serviceAreaLat: 52.5200,
+        serviceAreaLng: 13.4050,
+        serviceAreaRadius: 50,
+      },
+    });
+
+    const serviceCategory = categoryMap.get(providerSeed.service.categorySlug);
+    if (serviceCategory) {
+      const existingService = await prisma.service.findFirst({
+        where: { providerId: providerProfile.id, categoryId: serviceCategory.id },
+      });
+
+      if (!existingService) {
+        await prisma.service.create({
+          data: {
+            providerId: providerProfile.id,
+            categoryId: serviceCategory.id,
+            title: providerSeed.service.title,
+            description: providerSeed.service.description,
+            priceMin: providerSeed.service.priceMin,
+            priceMax: providerSeed.service.priceMax,
+            priceType: providerSeed.service.priceType,
+          },
+        });
+      }
+    }
+  }
+
   // Create Customer User
   const customerEmail = "customer@test.com";
   const customerUser = await prisma.user.upsert({
@@ -157,7 +276,7 @@ async function main() {
       email: customerEmail,
       password: hashedPassword,
       firstName: "Anna",
-      lastName: "Müller",
+      lastName: "Miller",
       userType: "customer",
       isVerified: true,
       gdprConsent: true,
@@ -206,7 +325,7 @@ async function main() {
               description: "Need cleaning for 3 room apartment, standard cleaning.",
               postalCode: "10115",
               city: "Berlin",
-              address: "Torstraße 1",
+              address: "Torstrasse 1",
               lat: 52.53,
               lng: 13.4,
               budgetMin: 100,
@@ -227,7 +346,7 @@ async function main() {
             description: "Deep cleaning for handover.",
             postalCode: "10119",
             city: "Berlin",
-            address: "Brunnenstraße 10",
+            address: "Brunnenstrasse 10",
             lat: 52.53,
             lng: 13.4,
             budgetMin: 200,
@@ -246,16 +365,16 @@ async function main() {
       });
       
       if (!activeBookingExists) {
-        // Booking 1: Fensterreinigung (Window Cleaning)
+        // Booking 1: Window Cleaning
         const bookingReq1 = await prisma.serviceRequest.create({
           data: {
               customerId: customerUser.id,
               categoryId: cleaningCat.id,
-              title: "Fensterreinigung",
+              title: "Window Cleaning",
               description: "Window cleaning for apartment.",
               postalCode: "10115",
               city: "Berlin",
-              address: "Hauptstraße 12, 10115 Berlin",
+              address: "Hauptstrasse 12, 10115 Berlin",
               lat: 52.53,
               lng: 13.4,
               status: "in_progress",
@@ -284,16 +403,16 @@ async function main() {
             }
         });
 
-        // Booking 2: Büroreinigung (Office Cleaning) - Pending
+        // Booking 2: Office Cleaning - Pending
         const bookingReq2 = await prisma.serviceRequest.create({
           data: {
               customerId: customerUser.id,
               categoryId: cleaningCat.id,
-              title: "Büroreinigung",
+              title: "Office Cleaning",
               description: "Office cleaning for small office.",
               postalCode: "10117",
               city: "Berlin",
-              address: "Friedrichstraße 45, 10117 Berlin",
+              address: "Friedrichstrasse 45, 10117 Berlin",
               lat: 52.51,
               lng: 13.39,
               status: "in_progress",
@@ -322,16 +441,16 @@ async function main() {
             }
         });
 
-        // Booking 3: Grundreinigung (Deep Cleaning)
+        // Booking 3: Deep Cleaning
         const bookingReq3 = await prisma.serviceRequest.create({
           data: {
               customerId: customerUser.id,
               categoryId: cleaningCat.id,
-              title: "Grundreinigung",
+              title: "Deep Cleaning",
               description: "Deep cleaning for apartment.",
               postalCode: "10439",
               city: "Berlin",
-              address: "Schönhauser Allee 78, 10439 Berlin",
+              address: "Schoenhauser Allee 78, 10439 Berlin",
               lat: 52.55,
               lng: 13.42,
               status: "in_progress",
@@ -366,9 +485,9 @@ async function main() {
 
   // Create Additional Customers for Mock Data
   const additionalCustomers = [
-    { email: "thomas@test.com", firstName: "Thomas", lastName: "Weber" },
-    { email: "sarah@test.com", firstName: "Sarah", lastName: "Klein" },
-    { email: "michael@test.com", firstName: "Michael", lastName: "Braun" },
+    { email: "thomas@test.com", firstName: "Thomas", lastName: "Webb" },
+    { email: "sarah@test.com", firstName: "Sarah", lastName: "Lewis" },
+    { email: "michael@test.com", firstName: "Michael", lastName: "Brown" },
   ];
   
   const customerMap = new Map();
@@ -457,17 +576,17 @@ async function main() {
 
   // Create open requests matching mock data in requests page
   if (renovierungCat) {
-    const count = await prisma.serviceRequest.count({ where: { title: "Badezimmer renovieren" } });
+    const count = await prisma.serviceRequest.count({ where: { title: "Renovate a bathroom" } });
     if (count === 0) {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerMap.get("thomas@test.com").id,
           categoryId: renovierungCat.id,
-          title: "Badezimmer renovieren",
-          description: "Komplette Renovierung eines kleinen Badezimmers (6qm). Neue Fliesen, Sanitäranlagen.",
+          title: "Renovate a bathroom",
+          description: "Full renovation of a small bathroom (6 sqm). New tiles and fixtures.",
           postalCode: "10117",
           city: "Berlin",
-          address: "Friedrichstraße 10",
+          address: "Friedrichstrasse 10",
           lat: 52.52,
           lng: 13.39,
           budgetMin: 2000,
@@ -475,21 +594,21 @@ async function main() {
           status: "open",
         }
       });
-      console.log("✅ Created open request: Badezimmer renovieren");
+      console.log("✅ Created open request: Renovate a bathroom");
     }
   }
   if (gardenCat) {
-    const count = await prisma.serviceRequest.count({ where: { title: "Garten winterfest machen" } });
+    const count = await prisma.serviceRequest.count({ where: { title: "Prepare garden for winter" } });
     if (count === 0) {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerMap.get("sarah@test.com").id,
           categoryId: gardenCat.id,
-          title: "Garten winterfest machen",
-          description: "Garten (200qm) muss winterfest gemacht werden. Hecken schneiden, Laub entfernen.",
+          title: "Prepare garden for winter",
+          description: "Garden (200 sqm) needs winter prep. Trim hedges and remove leaves.",
           postalCode: "10119",
           city: "Berlin",
-          address: "Gartenstraße 15",
+          address: "Gartenstrasse 15",
           lat: 52.53,
           lng: 13.41,
           budgetMin: 150,
@@ -497,18 +616,18 @@ async function main() {
           status: "open",
         }
       });
-      console.log("✅ Created open request: Garten winterfest machen");
+      console.log("✅ Created open request: Prepare garden for winter");
     }
   }
   if (elektrikerCat) {
-    const count = await prisma.serviceRequest.count({ where: { title: "Elektrische Installation prüfen" } });
+    const count = await prisma.serviceRequest.count({ where: { title: "Inspect electrical installation" } });
     if (count === 0) {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerMap.get("michael@test.com").id,
           categoryId: elektrikerCat.id,
-          title: "Elektrische Installation prüfen",
-          description: "Alte Elektrik in Altbauwohnung überprüfen und ggf. erneuern. Sicherungskasten modernisieren.",
+          title: "Inspect electrical installation",
+          description: "Check old wiring in an older apartment and upgrade the fuse box if needed.",
           postalCode: "10405",
           city: "Berlin",
           address: "Prenzlauer Allee 50",
@@ -519,7 +638,7 @@ async function main() {
           status: "open",
         }
       });
-      console.log("✅ Created open request: Elektrische Installation prüfen");
+      console.log("✅ Created open request: Inspect electrical installation");
     }
   }
 
@@ -530,16 +649,16 @@ async function main() {
     });
     
     if (!existingReview) {
-      // Review 1: Fensterreinigung - 5 stars
+      // Review 1: Window cleaning - 5 stars
       const reviewReq1 = await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
           categoryId: cleaningCat.id,
-          title: "Fensterreinigung",
+          title: "Window Cleaning",
           description: "Window cleaning completed",
           postalCode: "10115",
           city: "Berlin",
-          address: "Hauptstraße 12",
+          address: "Hauptstrasse 12",
           lat: 52.53,
           lng: 13.4,
           status: "completed",
@@ -574,22 +693,22 @@ async function main() {
           reviewerId: customerUser.id,
           revieweeId: providerUser.id,
           rating: 5,
-          comment: "Hervorragende Arbeit! Die Fenster glänzen wie neu. Sehr pünktlich und professionell. Kann ich nur weiterempfehlen!",
+          comment: "Excellent work! The windows shine like new. Very punctual and professional. Highly recommended!",
           providerReply: null,
         }
       });
 
-      // Review 2: Büroreinigung - 5 stars with reply
+      // Review 2: Office cleaning - 5 stars with reply
       const thomasUser = customerMap.get("thomas@test.com");
       const reviewReq2 = await prisma.serviceRequest.create({
         data: {
           customerId: thomasUser.id,
           categoryId: cleaningCat.id,
-          title: "Büroreinigung",
+          title: "Office Cleaning",
           description: "Office cleaning completed",
           postalCode: "10117",
           city: "Berlin",
-          address: "Friedrichstraße 45",
+          address: "Friedrichstrasse 45",
           lat: 52.51,
           lng: 13.39,
           status: "completed",
@@ -624,22 +743,22 @@ async function main() {
           reviewerId: thomasUser.id,
           revieweeId: providerUser.id,
           rating: 5,
-          comment: "Sehr zufrieden mit dem Service. Sauber, gründlich und zuverlässig. Werden wir wieder buchen.",
-          providerReply: "Vielen Dank für Ihre positive Bewertung! Wir freuen uns auf die weitere Zusammenarbeit.",
+          comment: "Very satisfied with the service. Clean, thorough, and reliable. We'll book again.",
+          providerReply: "Thank you for the positive review! We look forward to working together again.",
         }
       });
 
-      // Review 3: Grundreinigung - 4 stars with reply
+      // Review 3: Deep cleaning - 4 stars with reply
       const sarahUser = customerMap.get("sarah@test.com");
       const reviewReq3 = await prisma.serviceRequest.create({
         data: {
           customerId: sarahUser.id,
           categoryId: cleaningCat.id,
-          title: "Grundreinigung",
+          title: "Deep Cleaning",
           description: "Deep cleaning completed",
           postalCode: "10439",
           city: "Berlin",
-          address: "Schönhauser Allee 78",
+          address: "Schoenhauser Allee 78",
           lat: 52.55,
           lng: 13.42,
           status: "completed",
@@ -674,22 +793,22 @@ async function main() {
           reviewerId: sarahUser.id,
           revieweeId: providerUser.id,
           rating: 4,
-          comment: "Gute Reinigung insgesamt. Ein kleiner Bereich wurde übersehen, aber nach Hinweis sofort erledigt.",
-          providerReply: "Danke für Ihr Feedback! Wir arbeiten ständig daran, uns zu verbessern.",
+          comment: "Good cleaning overall. A small area was missed, but it was fixed right away.",
+          providerReply: "Thanks for the feedback! We're always working to improve.",
         }
       });
 
-      // Review 4: Umzugsreinigung - 5 stars no reply
+      // Review 4: Move-out cleaning - 5 stars no reply
       const michaelUser = customerMap.get("michael@test.com");
       const reviewReq4 = await prisma.serviceRequest.create({
         data: {
           customerId: michaelUser.id,
           categoryId: cleaningCat.id,
-          title: "Umzugsreinigung",
+          title: "Move-out Cleaning",
           description: "Move-out cleaning completed",
           postalCode: "10119",
           city: "Berlin",
-          address: "Brunnenstraße 20",
+          address: "Brunnenstrasse 20",
           lat: 52.53,
           lng: 13.4,
           status: "completed",
@@ -724,7 +843,7 @@ async function main() {
           reviewerId: michaelUser.id,
           revieweeId: providerUser.id,
           rating: 5,
-          comment: "Perfekt! Die Wohnung war wie neu als sie fertig waren. Habe meine Kaution vollständig zurückbekommen.",
+          comment: "Perfect! The apartment looked brand new when they finished. I got my full deposit back.",
           providerReply: null,
         }
       });

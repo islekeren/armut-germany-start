@@ -116,7 +116,7 @@ describe("AppController (e2e)", () => {
     describe("GET /api/search/providers", () => {
       it("should search providers", () => {
         return request(app.getHttpServer())
-          .get("/api/search/providers?q=reinigung")
+          .get("/api/search/providers?q=cleaning")
           .expect(200)
           .expect((res) => {
             expect(res.body).toHaveProperty("data");

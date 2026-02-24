@@ -12,24 +12,76 @@
     "learnMore": "Learn More"
   },
   "nav": {
+    "home": "Home",
+    "categories": "Categories",
+    "howItWorks": "How it works",
     "dashboard": "Dashboard",
     "profile": "Profile",
     "myRequests": "My Requests",
     "messages": "Messages"
   },
   "categories": {
-    "cleaning": { "name": "Cleaning" },
-    "moving": { "name": "Moving" },
-    "renovation": { "name": "Renovation" },
-    "garden": { "name": "Garden" },
-    "electrician": { "name": "Electrician" },
-    "plumber": { "name": "Plumber" },
-    "painter": { "name": "Painter" },
-    "locksmith": { "name": "Locksmith" },
-    "tutoring": { "name": "Tutoring" },
-    "photography": { "name": "Photography" },
-    "computerHelp": { "name": "Computer Help" },
-    "petCare": { "name": "Pet Care" }
+    "title": "Categories",
+    "cleaning": { "name": "Cleaning", "description": "Home and office cleaning services." },
+    "moving": { "name": "Moving", "description": "Move-in and move-out help." },
+    "renovation": { "name": "Renovation", "description": "Renovation and remodeling experts." },
+    "garden": { "name": "Garden", "description": "Garden care and landscaping." },
+    "electrician": { "name": "Electrician", "description": "Electrical installation and repairs." },
+    "plumber": { "name": "Plumber", "description": "Plumbing and heating services." },
+    "painter": { "name": "Painter", "description": "Interior and exterior painting." },
+    "locksmith": { "name": "Locksmith", "description": "Lock changes and emergency access." },
+    "tutoring": { "name": "Tutoring", "description": "Private lessons and tutoring." },
+    "photography": { "name": "Photography", "description": "Event and portrait photography." },
+    "computerHelp": { "name": "Computer Help", "description": "IT support and device setup." },
+    "petCare": { "name": "Pet Care", "description": "Pet sitting and care services." }
+  },
+  "categoriesPage": {
+    "title": "Service Categories",
+    "subtitle": "Find trusted professionals across the most popular home and local services.",
+    "cardDescription": "Browse trusted professionals for {name} services.",
+    "providersCount": "{count, plural, one {# provider} other {# providers}}"
+  },
+  "homePage": {
+    "categoryCardDescription": "Find trusted professionals for {name}."
+  },
+  "categoryPage": {
+    "heroSubtitle": "Browse trusted professionals for {name} services.",
+    "ctaTitle": "Get free quotes",
+    "ctaSubtitle": "Describe your needs and receive up to 5 tailored offers.",
+    "ctaButton": "Create a request",
+    "filters": {
+      "title": "Filters",
+      "postalCode": "Postal code",
+      "postalPlaceholder": "e.g., 10115",
+      "minimumRating": "Minimum rating",
+      "allRatings": "All ratings",
+      "rating4": "4+ stars",
+      "rating45": "4.5+ stars",
+      "price": "Price",
+      "allPrices": "All prices",
+      "budget": "Budget",
+      "mid": "Mid-range",
+      "premium": "Premium",
+      "apply": "Apply filters"
+    },
+    "providersFound": "{count, plural, one {# provider found} other {# providers found}}",
+    "sortTopRated": "Top rated",
+    "sortMostReviews": "Most reviews",
+    "sortLowestPrice": "Lowest price",
+    "noProviders": "No providers found for this category yet. Check back soon.",
+    "priceQuote": "Request a quote",
+    "priceFrom": "From {value}",
+    "priceUpTo": "Up to {value}",
+    "priceRange": "{min}-{max}",
+    "priceHourlyFrom": "From {value}/hr",
+    "priceHourlyUpTo": "Up to {value}/hr",
+    "priceHourlyRange": "From {min}-{max}/hr",
+    "reviewsCount": "({count, plural, one {# review} other {# reviews}})",
+    "requestQuote": "Request quote",
+    "viewProfile": "View profile",
+    "pagination": "Page {current} of {total}",
+    "previous": "Previous",
+    "next": "Next"
   },
   "createRequest": {
     "step1": "Category",
@@ -75,7 +127,8 @@
     "submitting": "Submitting...",
     "submitRequest": "Submit Request",
     "loginRequired": "You need to be logged in to submit a request. You will be redirected to login.",
-    "errorCreating": "Failed to create request. Please try again."
+    "errorCreating": "Failed to create request. Please try again.",
+    "errorNoToken": "No authentication token found."
   },
   "hero": {
     "title": "Find the Perfect Service Provider",
@@ -83,8 +136,18 @@
     "searchPlaceholder": "What service are you looking for?",
     "postalCode": "Postal code"
   },
+  "cta": {
+    "providerTitle": "Grow your business with Armut",
+    "providerSubtitle": "Join thousands of providers and get matched with new customers in your area.",
+    "registerNow": "Register now",
+    "readyToStart": "Ready to Get Started?",
+    "createFirstRequest": "Create your first request and receive free quotes from verified professionals.",
+    "createRequestNow": "Create Request Now"
+  },
   "howItWorks": {
     "title": "How It Works",
+    "pageTitle": "How Armut Germany Works",
+    "pageSubtitle": "Find qualified professionals in just a few simple steps. Free, fast, and secure.",
     "step1": {
       "title": "Submit Request",
       "description": "Describe your needs and receive free quotes."
@@ -96,10 +159,83 @@
     "step3": {
       "title": "Book & Review",
       "description": "Choose the best provider and share your experience."
+    },
+    "detailedStep1": {
+      "title": "Describe Your Need",
+      "description": "Tell us what service you need. The more details you provide, the more accurate the offers you'll receive from our verified professionals."
+    },
+    "detailedStep2": {
+      "title": "Receive Free Offers",
+      "description": "Get up to 5 personalized quotes from qualified providers in your area. Compare prices, reviews, and experience to find the perfect match."
+    },
+    "detailedStep3": {
+      "title": "Choose & Book",
+      "description": "Select the provider that best meets your needs. Communicate directly, set a date, and get the job done professionally."
+    },
+    "step4": {
+      "title": "Leave a Review",
+      "description": "Share your experience to help others make informed decisions and help providers build their reputation."
+    }
+  },
+  "benefits": {
+    "free": {
+      "title": "100% Free",
+      "description": "Submitting requests and receiving quotes is completely free. No hidden fees, no obligations."
+    },
+    "verified": {
+      "title": "Verified Providers",
+      "description": "All our professionals are verified and reviewed by real customers, ensuring quality and reliability."
+    },
+    "fast": {
+      "title": "Quick Responses",
+      "description": "Receive quotes within 24 hours. Most requests get responses in just a few hours."
+    },
+    "secure": {
+      "title": "Secure & Safe",
+      "description": "Your data is protected. We only share your request with relevant providers in your area."
+    },
+    "quality": {
+      "title": "Top Quality",
+      "description": "Get the best service quality from experienced professionals with proven track records."
+    },
+    "local": {
+      "title": "Local Experts",
+      "description": "Connect with trusted professionals in your area who know the local market and speak your language."
+    }
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "q1": {
+      "question": "How much does it cost to use Armut?",
+      "answer": "It's completely free for customers! You can submit requests, receive quotes, and communicate with providers at no cost. You only pay the provider for the service once you decide to book."
+    },
+    "q2": {
+      "question": "How quickly will I receive offers?",
+      "answer": "Most requests receive the first offers within a few hours. Generally, you can expect to receive up to 5 quotes within 24 hours of submitting your request."
+    },
+    "q3": {
+      "question": "Are the providers verified?",
+      "answer": "Yes! All providers on our platform are verified. We check their credentials and all reviews are from real customers who have used their services."
+    },
+    "q4": {
+      "question": "Do I have to accept an offer?",
+      "answer": "No, there's absolutely no obligation. You can review all offers, ask questions, and only proceed if you find the right provider for your needs."
+    },
+    "q5": {
+      "question": "What if I'm not satisfied with the service?",
+      "answer": "Customer satisfaction is our priority. If you experience any issues, please contact our support team. We'll work with you and the provider to resolve the matter."
     }
   },
   "footer": {
     "description": "The leading platform for services in Germany.",
+    "forCustomers": "For Customers",
+    "help": "Help Center",
+    "forProviders": "For Providers",
+    "becomeProvider": "Become a Provider",
+    "pricing": "Pricing",
+    "successStories": "Success Stories",
+    "legal": "Legal",
+    "imprint": "Imprint",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy"
   },

@@ -5,16 +5,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { providerApi, ProviderProfile } from "@/lib/api";
 
-// Map category slugs from API to frontend keys
-const categorySlugMap: Record<string, string> = {
-  "reinigung": "cleaning",
-  "umzug": "moving",
-  "renovierung": "renovation",
-  "garten": "garden",
-  "elektriker": "electrician",
-  "klempner": "plumber",
-};
-
 export default function ProviderProfilePage() {
   const t = useTranslations("provider.profile");
   const tNav = useTranslations("provider.dashboard.navigation");
@@ -48,11 +38,7 @@ export default function ProviderProfilePage() {
           
           // Map services to category keys
           const categoryList = Array.from(
-            new Set(
-              profile.services.map(
-                (s) => categorySlugMap[s.category.slug] || s.category.slug
-              )
-            )
+            new Set(profile.services.map((s) => s.category.slug))
           );
           
           // Get price range from first service

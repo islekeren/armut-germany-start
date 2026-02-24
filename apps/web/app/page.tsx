@@ -1,19 +1,53 @@
-"use client";
-
 import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { Header, Footer } from "@/components";
+import { getTranslations, getLocale } from "next-intl/server";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { getCategories } from "@/lib/api";
 
-export default function Home() {
-  const t = useTranslations();
+export default async function Home() {
+  const t = await getTranslations();
+  const locale = await getLocale();
+  const isGerman = locale.startsWith("de");
+  const categories = (await getCategories()).slice(0, 6);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       {/* Header */}
-      <Header />
+      <header className="bg-white shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-primary">Armut</span>
+              <span className="text-sm text-muted">Germany</span>
+            </div>
+            <nav className="hidden gap-6 md:flex">
+              <Link href="/categories" className="text-muted hover:text-foreground">
+                {t("nav.categories")}
+              </Link>
+              <Link href="/how-it-works" className="text-muted hover:text-foreground">
+                {t("nav.howItWorks")}
+              </Link>
+            </nav>
+            <div className="flex items-center gap-4">
+              <LanguageToggle />
+              <Link
+                href="/login"
+                className="text-muted hover:text-foreground"
+              >
+                {t("common.login")}
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-lg bg-primary px-4 py-2 text-white hover:bg-primary-dark"
+              >
+                {t("common.register")}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-primary to-primary-dark py-20 text-white flex-1">
+      <section className="bg-gradient-to-b from-primary to-primary-dark py-20 text-white">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <h1 className="mb-6 text-4xl font-bold md:text-5xl lg:text-6xl">
             {t("hero.title")}
@@ -40,21 +74,32 @@ export default function Home() {
               </button>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* CTA Buttons */}
-          <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/register"
-              className="rounded-lg bg-white px-8 py-3 font-semibold text-primary hover:bg-white/90"
-            >
-              {t("common.register")}
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border-2 border-white px-8 py-3 font-semibold text-white hover:bg-white/10"
-            >
-              {t("common.login")}
-            </Link>
+      {/* Categories Section */}
+      <section className="py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 className="mb-8 text-center text-3xl font-bold">{t("categories.title")}</h2>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {categories.map((category) => {
+              const displayName = isGerman ? category.nameDe : category.nameEn;
+              return (
+                <Link
+                  key={category.id}
+                  href={`/category/${category.slug}`}
+                  className="group rounded-xl bg-white p-6 shadow-sm transition hover:shadow-md"
+                >
+                  <div className="mb-4 text-4xl">{category.icon}</div>
+                  <h3 className="mb-2 text-xl font-semibold group-hover:text-primary">
+                    {displayName}
+                  </h3>
+                  <p className="text-muted">
+                    {t("homePage.categoryCardDescription", { name: displayName })}
+                  </p>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -95,8 +140,62 @@ export default function Home() {
         </div>
       </section>
 
+      {/* CTA Section */}
+      <section className="bg-secondary py-16 text-white">
+        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="mb-4 text-3xl font-bold">{t("cta.providerTitle")}</h2>
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-white/90">
+            {t("cta.providerSubtitle")}
+          </p>
+          <Link
+            href="/become-provider"
+            className="inline-block rounded-lg bg-white px-8 py-3 font-semibold text-secondary hover:bg-white/90"
+          >
+            {t("cta.registerNow")}
+          </Link>
+        </div>
+      </section>
+
       {/* Footer */}
-      <Footer />
+      <footer className="bg-foreground py-12 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-8 md:grid-cols-4">
+            <div>
+              <h3 className="mb-4 text-lg font-semibold">Armut Germany</h3>
+              <p className="text-white/70">
+                {t("footer.description")}
+              </p>
+            </div>
+            <div>
+              <h4 className="mb-4 font-semibold">{t("footer.forCustomers")}</h4>
+              <ul className="space-y-2 text-white/70">
+                <li><Link href="/categories" className="hover:text-white">{t("nav.categories")}</Link></li>
+                <li><Link href="/how-it-works" className="hover:text-white">{t("nav.howItWorks")}</Link></li>
+                <li><Link href="/hilfe" className="hover:text-white">{t("footer.help")}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="mb-4 font-semibold">{t("footer.forProviders")}</h4>
+              <ul className="space-y-2 text-white/70">
+                <li><Link href="/become-provider" className="hover:text-white">{t("footer.becomeProvider")}</Link></li>
+                <li><Link href="/preise" className="hover:text-white">{t("footer.pricing")}</Link></li>
+                <li><Link href="/erfolgsgeschichten" className="hover:text-white">{t("footer.successStories")}</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="mb-4 font-semibold">{t("footer.legal")}</h4>
+              <ul className="space-y-2 text-white/70">
+                <li><Link href="/imprint" className="hover:text-white">{t("footer.imprint")}</Link></li>
+                <li><Link href="/privacy" className="hover:text-white">{t("footer.privacy")}</Link></li>
+                <li><Link href="/terms" className="hover:text-white">{t("footer.terms")}</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-8 border-t border-white/20 pt-8 text-center text-white/70">
+            <p>&copy; {new Date().getFullYear()} Armut Germany. {t("common.allRightsReserved")}</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

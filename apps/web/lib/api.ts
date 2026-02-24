@@ -66,6 +66,83 @@ export async function getCategories(): Promise<Category[]> {
   return apiRequest<Category[]>("/categories");
 }
 
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  return apiRequest<Category | null>(`/categories/${slug}`);
+}
+
+export interface ProviderService {
+  id: string;
+  categoryId: string;
+  title: string;
+  description: string;
+  priceType: "fixed" | "hourly" | "quote";
+  priceMin: number | null;
+  priceMax: number | null;
+  category: {
+    id: string;
+    slug: string;
+    nameDe: string;
+    nameEn: string;
+    icon: string;
+  };
+}
+
+export interface PublicProvider {
+  id: string;
+  userId: string;
+  companyName: string | null;
+  description: string;
+  experienceYears: number;
+  serviceAreaRadius: number;
+  serviceAreaLat: number;
+  serviceAreaLng: number;
+  ratingAvg: number;
+  totalReviews: number;
+  isApproved: boolean;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profileImage: string | null;
+  };
+  services: ProviderService[];
+}
+
+export interface ProvidersResponse {
+  data: PublicProvider[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export const providersApi = {
+  getAll: (query?: {
+    categoryId?: string;
+    minRating?: number;
+    page?: number;
+    limit?: number;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+  }) => {
+    const params = new URLSearchParams();
+    if (query?.categoryId) params.append("categoryId", query.categoryId);
+    if (query?.minRating !== undefined) params.append("minRating", query.minRating.toString());
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    if (query?.lat !== undefined) params.append("lat", query.lat.toString());
+    if (query?.lng !== undefined) params.append("lng", query.lng.toString());
+    if (query?.radius !== undefined) params.append("radius", query.radius.toString());
+    const queryString = params.toString();
+    return apiRequest<ProvidersResponse>(
+      `/providers${queryString ? `?${queryString}` : ""}`
+    );
+  },
+};
+
 export interface LoginData {
   email: string;
   password: string;

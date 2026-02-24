@@ -10,6 +10,8 @@ import { AdminModule } from "./modules/admin/admin.module";
 import { RequestsModule } from "./modules/requests/requests.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { ProvidersModule } from "./modules/providers/providers.module";
+import { BookingsModule } from "./modules/bookings/bookings.module";
+import { ReviewsModule } from "./modules/reviews/reviews.module";
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { ProvidersModule } from "./modules/providers/providers.module";
     RequestsModule,
     CategoriesModule,
     ProvidersModule,
+    BookingsModule,
+    ReviewsModule,
   ],
 })
 export class AppModule {}

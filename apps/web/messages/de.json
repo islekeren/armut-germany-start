@@ -12,24 +12,76 @@
     "learnMore": "Mehr erfahren"
   },
   "nav": {
+    "home": "Startseite",
+    "categories": "Kategorien",
+    "howItWorks": "So funktioniert's",
     "dashboard": "Dashboard",
     "profile": "Profil",
     "myRequests": "Meine Anfragen",
     "messages": "Nachrichten"
   },
   "categories": {
-    "cleaning": { "name": "Reinigung" },
-    "moving": { "name": "Umzug" },
-    "renovation": { "name": "Renovierung" },
-    "garden": { "name": "Garten" },
-    "electrician": { "name": "Elektriker" },
-    "plumber": { "name": "Klempner" },
-    "painter": { "name": "Maler" },
-    "locksmith": { "name": "Schlosser" },
-    "tutoring": { "name": "Nachhilfe" },
-    "photography": { "name": "Fotografie" },
-    "computerHelp": { "name": "Computerhilfe" },
-    "petCare": { "name": "Tierpflege" }
+    "title": "Kategorien",
+    "cleaning": { "name": "Reinigung", "description": "Reinigungsservices für Zuhause und Büro." },
+    "moving": { "name": "Umzug", "description": "Umzugshelfer für Ein- und Auszug." },
+    "renovation": { "name": "Renovierung", "description": "Renovierung und Umbau vom Profi." },
+    "garden": { "name": "Garten", "description": "Gartenpflege und Landschaftsgestaltung." },
+    "electrician": { "name": "Elektriker", "description": "Elektroinstallationen und Reparaturen." },
+    "plumber": { "name": "Klempner", "description": "Sanitär- und Heizungsarbeiten." },
+    "painter": { "name": "Maler", "description": "Innen- und Außenanstriche." },
+    "locksmith": { "name": "Schlosser", "description": "Schließdienst und Schlosswechsel." },
+    "tutoring": { "name": "Nachhilfe", "description": "Privatunterricht und Nachhilfe." },
+    "photography": { "name": "Fotografie", "description": "Event- und Porträtfotografie." },
+    "computerHelp": { "name": "Computerhilfe", "description": "IT-Support und Geräteeinrichtung." },
+    "petCare": { "name": "Tierpflege", "description": "Betreuung und Pflege von Haustieren." }
+  },
+  "categoriesPage": {
+    "title": "Dienstleistungskategorien",
+    "subtitle": "Finden Sie geprüfte Anbieter für beliebte Dienstleistungen rund ums Zuhause.",
+    "cardDescription": "Finden Sie geprüfte Anbieter für {name}.",
+    "providersCount": "{count, plural, one {# Anbieter} other {# Anbieter}}"
+  },
+  "homePage": {
+    "categoryCardDescription": "Finden Sie geprüfte Anbieter für {name}."
+  },
+  "categoryPage": {
+    "heroSubtitle": "Finden Sie geprüfte Anbieter für {name}.",
+    "ctaTitle": "Kostenlose Angebote erhalten",
+    "ctaSubtitle": "Beschreiben Sie Ihren Bedarf und erhalten Sie bis zu 5 Angebote.",
+    "ctaButton": "Anfrage erstellen",
+    "filters": {
+      "title": "Filter",
+      "postalCode": "Postleitzahl",
+      "postalPlaceholder": "z. B. 10115",
+      "minimumRating": "Mindestbewertung",
+      "allRatings": "Alle Bewertungen",
+      "rating4": "4+ Sterne",
+      "rating45": "4,5+ Sterne",
+      "price": "Preis",
+      "allPrices": "Alle Preise",
+      "budget": "Günstig",
+      "mid": "Mittel",
+      "premium": "Premium",
+      "apply": "Filter anwenden"
+    },
+    "providersFound": "{count, plural, one {# Anbieter gefunden} other {# Anbieter gefunden}}",
+    "sortTopRated": "Beste Bewertung",
+    "sortMostReviews": "Meiste Bewertungen",
+    "sortLowestPrice": "Niedrigster Preis",
+    "noProviders": "Noch keine Anbieter in dieser Kategorie. Schauen Sie bald wieder vorbei.",
+    "priceQuote": "Preis auf Anfrage",
+    "priceFrom": "Ab {value}",
+    "priceUpTo": "Bis {value}",
+    "priceRange": "{min}-{max}",
+    "priceHourlyFrom": "Ab {value}/Std.",
+    "priceHourlyUpTo": "Bis {value}/Std.",
+    "priceHourlyRange": "Ab {min}-{max}/Std.",
+    "reviewsCount": "({count, plural, one {# Bewertung} other {# Bewertungen}})",
+    "requestQuote": "Angebot anfordern",
+    "viewProfile": "Profil ansehen",
+    "pagination": "Seite {current} von {total}",
+    "previous": "Zurück",
+    "next": "Weiter"
   },
   "createRequest": {
     "step1": "Kategorie",
@@ -75,7 +127,8 @@
     "submitting": "Wird gesendet...",
     "submitRequest": "Anfrage absenden",
     "loginRequired": "Sie müssen angemeldet sein, um eine Anfrage zu senden. Sie werden zur Anmeldung weitergeleitet.",
-    "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
+    "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+    "errorNoToken": "Kein Authentifizierungs-Token gefunden."
   },
   "hero": {
     "title": "Finden Sie den perfekten Dienstleister",
@@ -83,8 +136,18 @@
     "searchPlaceholder": "Welchen Service suchen Sie?",
     "postalCode": "Postleitzahl"
   },
+  "cta": {
+    "providerTitle": "Wachsen Sie mit Armut",
+    "providerSubtitle": "Schließen Sie sich tausenden Anbietern an und finden Sie neue Kunden in Ihrer Nähe.",
+    "registerNow": "Jetzt registrieren",
+    "readyToStart": "Bereit zu starten?",
+    "createFirstRequest": "Erstellen Sie Ihre erste Anfrage und erhalten Sie kostenlose Angebote von verifizierten Profis.",
+    "createRequestNow": "Jetzt Anfrage erstellen"
+  },
   "howItWorks": {
     "title": "So funktioniert es",
+    "pageTitle": "So funktioniert Armut Germany",
+    "pageSubtitle": "Finden Sie qualifizierte Fachleute in wenigen einfachen Schritten. Kostenlos, schnell und sicher.",
     "step1": {
       "title": "Anfrage stellen",
       "description": "Beschreiben Sie Ihren Bedarf und erhalten Sie kostenlose Angebote."
@@ -96,10 +159,83 @@
     "step3": {
       "title": "Buchen & bewerten",
       "description": "Wählen Sie den besten Anbieter und teilen Sie Ihre Erfahrung."
+    },
+    "detailedStep1": {
+      "title": "Beschreiben Sie Ihren Bedarf",
+      "description": "Teilen Sie uns mit, welche Dienstleistung Sie benötigen. Je mehr Details Sie angeben, desto genauer sind die Angebote, die Sie von unseren verifizierten Profis erhalten."
+    },
+    "detailedStep2": {
+      "title": "Kostenlose Angebote erhalten",
+      "description": "Erhalten Sie bis zu 5 personalisierte Angebote von qualifizierten Anbietern in Ihrer Nähe. Vergleichen Sie Preise, Bewertungen und Erfahrung, um den perfekten Anbieter zu finden."
+    },
+    "detailedStep3": {
+      "title": "Auswählen & buchen",
+      "description": "Wählen Sie den Anbieter, der Ihren Anforderungen am besten entspricht. Kommunizieren Sie direkt, vereinbaren Sie einen Termin und lassen Sie die Arbeit professionell erledigen."
+    },
+    "step4": {
+      "title": "Bewertung abgeben",
+      "description": "Teilen Sie Ihre Erfahrung, um anderen bei fundierten Entscheidungen zu helfen und Anbietern beim Aufbau ihres Rufs zu unterstützen."
+    }
+  },
+  "benefits": {
+    "free": {
+      "title": "100% Kostenlos",
+      "description": "Das Einstellen von Anfragen und das Erhalten von Angeboten ist völlig kostenlos. Keine versteckten Gebühren, keine Verpflichtungen."
+    },
+    "verified": {
+      "title": "Verifizierte Anbieter",
+      "description": "Alle unsere Fachleute sind verifiziert und von echten Kunden bewertet, um Qualität und Zuverlässigkeit zu gewährleisten."
+    },
+    "fast": {
+      "title": "Schnelle Antworten",
+      "description": "Erhalten Sie Angebote innerhalb von 24 Stunden. Die meisten Anfragen erhalten bereits nach wenigen Stunden Antworten."
+    },
+    "secure": {
+      "title": "Sicher & Geschützt",
+      "description": "Ihre Daten sind geschützt. Wir teilen Ihre Anfrage nur mit relevanten Anbietern in Ihrer Nähe."
+    },
+    "quality": {
+      "title": "Top-Qualität",
+      "description": "Erhalten Sie beste Servicequalität von erfahrenen Profis mit nachgewiesener Erfolgsbilanz."
+    },
+    "local": {
+      "title": "Lokale Experten",
+      "description": "Verbinden Sie sich mit vertrauenswürdigen Profis in Ihrer Nähe, die den lokalen Markt kennen und Ihre Sprache sprechen."
+    }
+  },
+  "faq": {
+    "title": "Häufig gestellte Fragen",
+    "q1": {
+      "question": "Wie viel kostet die Nutzung von Armut?",
+      "answer": "Für Kunden ist es völlig kostenlos! Sie können Anfragen stellen, Angebote erhalten und mit Anbietern kommunizieren, ohne etwas zu bezahlen. Sie zahlen nur den Anbieter für die Dienstleistung, wenn Sie sich für eine Buchung entscheiden."
+    },
+    "q2": {
+      "question": "Wie schnell erhalte ich Angebote?",
+      "answer": "Die meisten Anfragen erhalten die ersten Angebote innerhalb weniger Stunden. In der Regel können Sie mit bis zu 5 Angeboten innerhalb von 24 Stunden nach Einreichung Ihrer Anfrage rechnen."
+    },
+    "q3": {
+      "question": "Sind die Anbieter verifiziert?",
+      "answer": "Ja! Alle Anbieter auf unserer Plattform sind verifiziert. Wir überprüfen ihre Qualifikationen und alle Bewertungen stammen von echten Kunden, die ihre Dienstleistungen genutzt haben."
+    },
+    "q4": {
+      "question": "Muss ich ein Angebot annehmen?",
+      "answer": "Nein, es besteht absolut keine Verpflichtung. Sie können alle Angebote prüfen, Fragen stellen und nur weitermachen, wenn Sie den richtigen Anbieter für Ihre Bedürfnisse gefunden haben."
+    },
+    "q5": {
+      "question": "Was ist, wenn ich mit dem Service nicht zufrieden bin?",
+      "answer": "Kundenzufriedenheit ist unsere Priorität. Wenn Sie Probleme haben, kontaktieren Sie bitte unser Support-Team. Wir werden mit Ihnen und dem Anbieter zusammenarbeiten, um das Problem zu lösen."
     }
   },
   "footer": {
     "description": "Die führende Plattform für Dienstleistungen in Deutschland.",
+    "forCustomers": "Für Kunden",
+    "help": "Hilfe",
+    "forProviders": "Für Anbieter",
+    "becomeProvider": "Anbieter werden",
+    "pricing": "Preise",
+    "successStories": "Erfolgsgeschichten",
+    "legal": "Rechtliches",
+    "imprint": "Impressum",
     "terms": "AGB",
     "privacy": "Datenschutz"
   },
