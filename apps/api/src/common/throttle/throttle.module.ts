@@ -16,18 +16,6 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
             ttl: 60000,
             limit: configService.get("RATE_LIMIT_DEFAULT") || 100,
           },
-          {
-            // Strict rate limit for auth endpoints: 10 requests per minute
-            name: "strict",
-            ttl: 60000,
-            limit: configService.get("RATE_LIMIT_STRICT") || 10,
-          },
-          {
-            // Relaxed rate limit for public endpoints: 200 requests per minute
-            name: "relaxed",
-            ttl: 60000,
-            limit: configService.get("RATE_LIMIT_RELAXED") || 200,
-          },
         ],
       }),
     }),

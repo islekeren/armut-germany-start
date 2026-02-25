@@ -598,6 +598,23 @@
       "send": "Send",
       "cancel": "Cancel",
       "ratingBreakdown": "Rating Breakdown"
+    },
+    "messages": {
+      "title": "Messages",
+      "loading": "Loading conversations...",
+      "loadingMessages": "Loading messages...",
+      "loginRequired": "Please log in to view messages",
+      "loadError": "Failed to load conversations",
+      "loadMessagesError": "Failed to load messages",
+      "sendError": "Failed to send message",
+      "noConversations": "No conversations yet",
+      "conversationFallback": "Conversation",
+      "unknownUser": "User",
+      "noMessagesYet": "No messages yet",
+      "placeholder": "Write a message...",
+      "send": "Send",
+      "sending": "Sending...",
+      "selectConversation": "Select a conversation from the list"
     }
   },
   "providerOnboarding": {

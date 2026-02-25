@@ -1,8 +1,10 @@
 import { Controller, Post, Body, Get, UseGuards, Req } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { RegisterDto, LoginDto, RefreshTokenDto, ChangePasswordDto } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 @Controller("auth")
 export class AuthController {
   constructor(private authService: AuthService) {}

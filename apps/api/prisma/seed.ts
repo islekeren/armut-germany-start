@@ -852,6 +852,108 @@ async function main() {
     }
   }
 
+  // Create seeded conversation and messages between the main provider and customer
+  const seedRequest = await prisma.serviceRequest.findFirst({
+    where: {
+      customerId: customerUser.id,
+      title: "Have apartment cleaned (80sqm)",
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  let seededConversation = await prisma.conversation.findFirst({
+    where: {
+      participants: {
+        some: { userId: providerUser.id },
+      },
+      AND: [
+        {
+          participants: {
+            some: { userId: customerUser.id },
+          },
+        },
+      ],
+      requestId: seedRequest?.id ?? null,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (!seededConversation) {
+    seededConversation = await prisma.conversation.create({
+      data: {
+        requestId: seedRequest?.id,
+        participants: {
+          create: [{ userId: providerUser.id }, { userId: customerUser.id }],
+        },
+      },
+    });
+    console.log("âœ… Created seeded conversation");
+  }
+
+  const seededMessagesCount = await prisma.message.count({
+    where: { conversationId: seededConversation.id },
+  });
+
+  if (seededMessagesCount === 0) {
+    const firstMessageAt = new Date("2026-02-21T09:10:00.000Z");
+    const secondMessageAt = new Date("2026-02-21T09:22:00.000Z");
+    const thirdMessageAt = new Date("2026-02-21T09:30:00.000Z");
+    const fourthMessageAt = new Date("2026-02-21T09:36:00.000Z");
+    const fifthMessageAt = new Date("2026-02-21T09:42:00.000Z");
+
+    await prisma.message.createMany({
+      data: [
+        {
+          conversationId: seededConversation.id,
+          senderId: customerUser.id,
+          content: "Hi John, is Monday morning possible for the cleaning?",
+          attachments: [],
+          createdAt: firstMessageAt,
+          readAt: secondMessageAt,
+        },
+        {
+          conversationId: seededConversation.id,
+          senderId: providerUser.id,
+          content: "Hi Anna, yes Monday works. I can be there at 09:00.",
+          attachments: [],
+          createdAt: secondMessageAt,
+          readAt: thirdMessageAt,
+        },
+        {
+          conversationId: seededConversation.id,
+          senderId: customerUser.id,
+          content: "Perfect. Should I provide any cleaning products?",
+          attachments: [],
+          createdAt: thirdMessageAt,
+          readAt: fourthMessageAt,
+        },
+        {
+          conversationId: seededConversation.id,
+          senderId: providerUser.id,
+          content: "No need, I will bring everything required.",
+          attachments: [],
+          createdAt: fourthMessageAt,
+          readAt: fifthMessageAt,
+        },
+        {
+          conversationId: seededConversation.id,
+          senderId: customerUser.id,
+          content: "Great, see you on Monday then.",
+          attachments: [],
+          createdAt: fifthMessageAt,
+          readAt: null,
+        },
+      ],
+    });
+
+    await prisma.conversation.update({
+      where: { id: seededConversation.id },
+      data: { lastMessageAt: fifthMessageAt },
+    });
+
+    console.log("âœ… Created seeded messages");
+  }
+
   // Update provider rating stats based on reviews
   const reviewStats = await prisma.review.aggregate({
     where: { revieweeId: providerUser.id },

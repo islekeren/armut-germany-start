@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { Header, Footer } from "@/components";
 import { getCategories } from "@/lib/api";
 
 export default async function Home() {
@@ -12,39 +12,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Germany</span>
-            </div>
-            <nav className="hidden gap-6 md:flex">
-              <Link href="/categories" className="text-muted hover:text-foreground">
-                {t("nav.categories")}
-              </Link>
-              <Link href="/how-it-works" className="text-muted hover:text-foreground">
-                {t("nav.howItWorks")}
-              </Link>
-            </nav>
-            <div className="flex items-center gap-4">
-              <LanguageToggle />
-              <Link
-                href="/login"
-                className="text-muted hover:text-foreground"
-              >
-                {t("common.login")}
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-lg bg-primary px-4 py-2 text-white hover:bg-primary-dark"
-              >
-                {t("common.register")}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-primary to-primary-dark py-20 text-white">

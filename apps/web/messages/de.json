@@ -598,6 +598,23 @@
       "send": "Senden",
       "cancel": "Abbrechen",
       "ratingBreakdown": "Bewertungsübersicht"
+    },
+    "messages": {
+      "title": "Nachrichten",
+      "loading": "Konversationen werden geladen...",
+      "loadingMessages": "Nachrichten werden geladen...",
+      "loginRequired": "Bitte melden Sie sich an, um Nachrichten zu sehen",
+      "loadError": "Konversationen konnten nicht geladen werden",
+      "loadMessagesError": "Nachrichten konnten nicht geladen werden",
+      "sendError": "Nachricht konnte nicht gesendet werden",
+      "noConversations": "Noch keine Konversationen",
+      "conversationFallback": "Konversation",
+      "unknownUser": "Benutzer",
+      "noMessagesYet": "Noch keine Nachrichten",
+      "placeholder": "Nachricht schreiben...",
+      "send": "Senden",
+      "sending": "Wird gesendet...",
+      "selectConversation": "Wählen Sie eine Konversation aus der Liste"
     }
   },
   "providerOnboarding": {

@@ -37,6 +37,14 @@ export function Header() {
             <span className="text-2xl font-bold text-primary">Armut</span>
             <span className="text-sm text-muted">Germany</span>
           </Link>
+          <nav className="hidden gap-6 md:flex">
+            <Link href="/categories" className="text-muted hover:text-foreground">
+              {t("nav.categories")}
+            </Link>
+            <Link href="/how-it-works" className="text-muted hover:text-foreground">
+              {t("nav.howItWorks")}
+            </Link>
+          </nav>
           <div className="flex items-center gap-4">
             <LanguageToggle />
             {isLoading ? (

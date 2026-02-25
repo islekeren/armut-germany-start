@@ -1,23 +1,13 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { Header, Footer } from "@/components";
-import { getCategories, providersApi } from "@/lib/api";
+import { getCategories } from "@/lib/api";
 
 export default async function CategoriesPage() {
   const t = await getTranslations("categoriesPage");
   const locale = await getLocale();
   const isGerman = locale.startsWith("de");
   const categories = await getCategories();
-  const providerCounts = await Promise.all(
-    categories.map(async (category) => {
-      const result = await providersApi.getAll({
-        categoryId: category.id,
-        page: 1,
-        limit: 1,
-      });
-      return result.meta.total;
-    })
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +43,7 @@ export default async function CategoriesPage() {
                     {t("cardDescription", { name: displayName })}
                   </p>
                   <div className="mt-4 text-sm text-primary">
-                    {t("providersCount", { count: providerCounts[index] ?? 0 })}
+                    {t("providersCount", { count: (category as any)._count?.services ?? 0 })}
                   </div>
                 </Link>
               );

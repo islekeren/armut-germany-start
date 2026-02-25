@@ -9,6 +9,11 @@ export class CategoriesService {
     return this.prisma.category.findMany({
       where: { isActive: true },
       orderBy: { nameDe: "asc" },
+      include: {
+        _count: {
+          select: { services: true },
+        },
+      },
     });
   }
 
