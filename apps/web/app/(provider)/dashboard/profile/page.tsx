@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { PanelCard, ProviderSubpageShell } from "@/components";
+import {
+  FormInput,
+  FormLabel,
+  FormSelect,
+  FormTextarea,
+  PanelCard,
+  ProviderSubpageShell,
+} from "@/components";
 import { providerApi } from "@/lib/api";
 
 export default function ProviderProfilePage() {
@@ -97,74 +104,64 @@ export default function ProviderProfilePage() {
             <h2 className="mb-4 text-lg font-semibold">{t("companyInfo")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("companyName")} {t("required")}
-                </label>
-                <input
+                <FormLabel>{t("companyName")} {t("required")}</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.companyName}
                   onChange={(e) =>
                     setFormData({ ...formData, companyName: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                   required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("contactName")} {t("required")}
-                </label>
-                <input
+                <FormLabel>{t("contactName")} {t("required")}</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.contactName}
                   onChange={(e) =>
                     setFormData({ ...formData, contactName: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                   required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("email")} {t("required")}
-                </label>
-                <input
+                <FormLabel>{t("email")} {t("required")}</FormLabel>
+                <FormInput
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                   required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("phone")} {t("required")}
-                </label>
-                <input
+                <FormLabel>{t("phone")} {t("required")}</FormLabel>
+                <FormInput
                   type="tel"
                   value={formData.phone}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                   required
                 />
               </div>
             </div>
 
             <div className="mt-4">
-              <label className="mb-2 block text-sm font-medium">
-                {t("description")} {t("required")}
-              </label>
-              <textarea
+              <FormLabel>{t("description")} {t("required")}</FormLabel>
+              <FormTextarea
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
                 rows={4}
-                className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                accent="primary"
                 required
               />
               <p className="mt-1 text-sm text-muted">
@@ -177,9 +174,7 @@ export default function ProviderProfilePage() {
           <PanelCard>
             <h2 className="mb-4 text-lg font-semibold">{t("services")}</h2>
             <div>
-              <label className="mb-2 block text-sm font-medium">
-                Your selected category {t("required")}
-              </label>
+              <FormLabel>Your selected category {t("required")}</FormLabel>
               <p className="mb-2 text-sm text-muted">
                 You can&apos;t change your selected category. For more info, go to
                 Help.
@@ -198,42 +193,36 @@ export default function ProviderProfilePage() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("experienceYears")}
-                </label>
-                <input
+                <FormLabel>{t("experienceYears")}</FormLabel>
+                <FormInput
                   type="number"
                   value={formData.experienceYears}
                   onChange={(e) =>
                     setFormData({ ...formData, experienceYears: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("priceFrom")}
-                </label>
-                <input
+                <FormLabel>{t("priceFrom")}</FormLabel>
+                <FormInput
                   type="number"
                   value={formData.priceMin}
                   onChange={(e) =>
                     setFormData({ ...formData, priceMin: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("priceTo")}
-                </label>
-                <input
+                <FormLabel>{t("priceTo")}</FormLabel>
+                <FormInput
                   type="number"
                   value={formData.priceMax}
                   onChange={(e) =>
                     setFormData({ ...formData, priceMax: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                 />
               </div>
             </div>
@@ -244,47 +233,43 @@ export default function ProviderProfilePage() {
             <h2 className="mb-4 text-lg font-semibold">{t("serviceArea")}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("postalCode")} {t("required")}
-                </label>
-                <input
+                <FormLabel>{t("postalCode")} {t("required")}</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.postalCode}
                   onChange={(e) =>
                     setFormData({ ...formData, postalCode: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                   required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">{t("city")} {t("required")}</label>
-                <input
+                <FormLabel>{t("city")} {t("required")}</FormLabel>
+                <FormInput
                   type="text"
                   value={formData.city}
                   onChange={(e) =>
                     setFormData({ ...formData, city: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                   required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("serviceRadius")}
-                </label>
-                <select
+                <FormLabel>{t("serviceRadius")}</FormLabel>
+                <FormSelect
                   value={formData.serviceRadius}
                   onChange={(e) =>
                     setFormData({ ...formData, serviceRadius: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                  accent="primary"
                 >
                   <option value="10">10 km</option>
                   <option value="25">25 km</option>
                   <option value="50">50 km</option>
                   <option value="100">100 km</option>
-                </select>
+                </FormSelect>
               </div>
             </div>
           </PanelCard>
@@ -294,9 +279,7 @@ export default function ProviderProfilePage() {
             <h2 className="mb-4 text-lg font-semibold">{t("images")}</h2>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("profilePicture")}
-                </label>
+                <FormLabel>{t("profilePicture")}</FormLabel>
                 <div className="flex items-center gap-4">
                   {profileImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -319,9 +302,7 @@ export default function ProviderProfilePage() {
                 </div>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  {t("gallery")}
-                </label>
+                <FormLabel>{t("gallery")}</FormLabel>
                 <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
                   <p className="text-sm text-muted">
                     {t("dragImages")}
@@ -352,3 +333,4 @@ export default function ProviderProfilePage() {
     </ProviderSubpageShell>
   );
 }
+

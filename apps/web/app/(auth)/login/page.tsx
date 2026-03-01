@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { SimpleHeader } from "@/components";
+import { FormInput, FormLabel, SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
 
 export default function LoginPage() {
@@ -66,28 +66,26 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
+              <FormLabel className="text-foreground">
                 {t("auth.login.email")}
-              </label>
-              <input
+              </FormLabel>
+              <FormInput
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                 placeholder="ihre@email.de"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
+              <FormLabel className="text-foreground">
                 {t("auth.login.password")}
-              </label>
-              <input
+              </FormLabel>
+              <FormInput
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                 placeholder="••••••••"
                 required
               />

@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { LanguageToggle } from "@/components";
+import {
+  FormInput,
+  FormLabel,
+  FormSelect,
+  FormTextarea,
+  LanguageToggle,
+} from "@/components";
 import { useAuth } from "@/contexts";
 import {
   getStoredAccessToken,
@@ -214,63 +220,57 @@ export default function CreateRequestPage() {
 
               <div className="space-y-6">
                 <div>
-                  <label className="mb-2 block font-medium">
-                    {t("createRequest.requestTitle")}
-                  </label>
-                  <input
+                  <FormLabel size="base">{t("createRequest.requestTitle")}</FormLabel>
+                  <FormInput
                     type="text"
                     value={formData.title}
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
                     }
                     placeholder={t("createRequest.requestTitlePlaceholder")}
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                    accent="primary"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block font-medium">
-                    {t("createRequest.description")}
-                  </label>
-                  <textarea
+                  <FormLabel size="base">{t("createRequest.description")}</FormLabel>
+                  <FormTextarea
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
                     placeholder={t("createRequest.descriptionPlaceholder")}
                     rows={5}
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                    accent="primary"
                     required
                   />
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block font-medium">
-                      {t("createRequest.postalCode")}
-                    </label>
-                    <input
+                    <FormLabel size="base">{t("createRequest.postalCode")}</FormLabel>
+                    <FormInput
                       type="text"
                       value={formData.postalCode}
                       onChange={(e) =>
                         setFormData({ ...formData, postalCode: e.target.value })
                       }
                       placeholder={t("createRequest.postalCodePlaceholder")}
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                      accent="primary"
                       required
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block font-medium">{t("createRequest.city")}</label>
-                    <input
+                    <FormLabel size="base">{t("createRequest.city")}</FormLabel>
+                    <FormInput
                       type="text"
                       value={formData.city}
                       onChange={(e) =>
                         setFormData({ ...formData, city: e.target.value })
                       }
                       placeholder={t("createRequest.cityPlaceholder")}
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                      accent="primary"
                       required
                     />
                   </div>
@@ -278,10 +278,8 @@ export default function CreateRequestPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block font-medium">
-                      {t("createRequest.preferredDate")}
-                    </label>
-                    <input
+                    <FormLabel size="base">{t("createRequest.preferredDate")}</FormLabel>
+                    <FormInput
                       type="date"
                       value={formData.preferredDate}
                       onChange={(e) =>
@@ -290,14 +288,12 @@ export default function CreateRequestPage() {
                           preferredDate: e.target.value,
                         })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                      accent="primary"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block font-medium">
-                      {t("createRequest.preferredTime")}
-                    </label>
-                    <select
+                    <FormLabel size="base">{t("createRequest.preferredTime")}</FormLabel>
+                    <FormSelect
                       value={formData.preferredTime}
                       onChange={(e) =>
                         setFormData({
@@ -305,23 +301,21 @@ export default function CreateRequestPage() {
                           preferredTime: e.target.value,
                         })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
+                      accent="primary"
                     >
                       <option value="">{t("createRequest.flexible")}</option>
                       <option value="morning">{t("createRequest.morning")}</option>
                       <option value="afternoon">{t("createRequest.afternoon")}</option>
                       <option value="evening">{t("createRequest.evening")}</option>
-                    </select>
+                    </FormSelect>
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-2 block font-medium">
-                    {t("createRequest.budget")}
-                  </label>
+                  <FormLabel size="base">{t("createRequest.budget")}</FormLabel>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
-                      <input
+                      <FormInput
                         type="number"
                         value={formData.budgetMin}
                         onChange={(e) =>
@@ -331,14 +325,14 @@ export default function CreateRequestPage() {
                           })
                         }
                         placeholder={t("createRequest.budgetMin")}
-                        className="w-full rounded-lg border border-border px-4 py-3 pr-8 focus:border-primary focus:outline-none"
+                        accent="primary" className="pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
                         €
                       </span>
                     </div>
                     <div className="relative">
-                      <input
+                      <FormInput
                         type="number"
                         value={formData.budgetMax}
                         onChange={(e) =>
@@ -348,7 +342,7 @@ export default function CreateRequestPage() {
                           })
                         }
                         placeholder={t("createRequest.budgetMax")}
-                        className="w-full rounded-lg border border-border px-4 py-3 pr-8 focus:border-primary focus:outline-none"
+                        accent="primary" className="pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
                         €
@@ -358,9 +352,7 @@ export default function CreateRequestPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block font-medium">
-                    {t("createRequest.addPhotos")}
-                  </label>
+                  <FormLabel size="base">{t("createRequest.addPhotos")}</FormLabel>
                   <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
                     <input
                       type="file"
@@ -521,3 +513,4 @@ export default function CreateRequestPage() {
     </div>
   );
 }
+

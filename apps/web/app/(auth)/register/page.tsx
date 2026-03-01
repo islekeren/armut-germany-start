@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { SimpleHeader } from "@/components";
+import { FormInput, FormLabel, SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
 
 export default function RegisterPage() {
@@ -56,11 +56,18 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const { confirmPassword, ...registerData } = formData;
+      const registerData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        userType: formData.userType,
+        gdprConsent: formData.gdprConsent,
+      };
       await register(registerData);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || t("auth.register.errorDefault"));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.register.errorDefault"));
     } finally {
       setIsLoading(false);
     }
@@ -92,61 +99,57 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">
+                <FormLabel className="text-foreground">
                   {t("auth.register.firstName")}
-                </label>
-                <input
+                </FormLabel>
+                <FormInput
                   type="text"
                   value={formData.firstName}
                   onChange={(e) =>
                     setFormData({ ...formData, firstName: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                   required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">
+                <FormLabel className="text-foreground">
                   {t("auth.register.lastName")}
-                </label>
-                <input
+                </FormLabel>
+                <FormInput
                   type="text"
                   value={formData.lastName}
                   onChange={(e) =>
                     setFormData({ ...formData, lastName: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
+              <FormLabel className="text-foreground">
                 {t("auth.register.email")}
-              </label>
-              <input
+              </FormLabel>
+              <FormInput
                 type="email"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
+              <FormLabel className="text-foreground">
                 {t("auth.register.password")}
-              </label>
-              <input
+              </FormLabel>
+              <FormInput
                 type="password"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
-                className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                 placeholder={t("auth.register.passwordPlaceholder")}
                 minLength={8}
                 required
@@ -154,24 +157,23 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
+              <FormLabel className="text-foreground">
                 {t("auth.register.confirmPassword")}
-              </label>
-              <input
+              </FormLabel>
+              <FormInput
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) =>
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
-                className="w-full rounded-lg border border-border px-4 py-3 focus:border-primary focus:outline-none"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">
+              <FormLabel className="text-foreground">
                 {t("auth.register.registerAs")}
-              </label>
+              </FormLabel>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"

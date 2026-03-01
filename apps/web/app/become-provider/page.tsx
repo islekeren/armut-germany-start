@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Header, Footer } from "@/components";
+import { Footer, FormInput, FormLabel, FormSelect, Header } from "@/components";
 
 const benefitKeys = [
   "newCustomers",
@@ -162,61 +162,61 @@ export default function BecomeProviderPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium">
+                <FormLabel>
                   {t("becomeProvider.form.companyName")}
-                </label>
-                <input
+                </FormLabel>
+                <FormInput
                   type="text"
                   value={formData.companyName}
                   onChange={(e) =>
                     setFormData({ ...formData, companyName: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                  accent="secondary"
                   required
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium">
+                <FormLabel>
                   {t("becomeProvider.form.contactPerson")}
-                </label>
-                <input
+                </FormLabel>
+                <FormInput
                   type="text"
                   value={formData.contactName}
                   onChange={(e) =>
                     setFormData({ ...formData, contactName: e.target.value })
                   }
-                  className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                  accent="secondary"
                   required
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <FormLabel>
                     {t("becomeProvider.form.email")}
-                  </label>
-                  <input
+                  </FormLabel>
+                  <FormInput
                     type="email"
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <FormLabel>
                     {t("becomeProvider.form.phone")}
-                  </label>
-                  <input
+                  </FormLabel>
+                  <FormInput
                     type="tel"
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
@@ -224,15 +224,15 @@ export default function BecomeProviderPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <FormLabel>
                     {t("becomeProvider.form.mainCategory")}
-                  </label>
-                  <select
+                  </FormLabel>
+                  <FormSelect
                     value={formData.category}
                     onChange={(e) =>
                       setFormData({ ...formData, category: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   >
                     <option value="">{t("becomeProvider.form.pleaseSelect")}</option>
@@ -241,19 +241,19 @@ export default function BecomeProviderPage() {
                         {t(`categories.${key}.name`)}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <FormLabel>
                     {t("becomeProvider.form.postalCode")}
-                  </label>
-                  <input
+                  </FormLabel>
+                  <FormInput
                     type="text"
                     value={formData.postalCode}
                     onChange={(e) =>
                       setFormData({ ...formData, postalCode: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>

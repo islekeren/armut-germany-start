@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SimpleHeader } from "@/components";
+import {
+  FormInput,
+  FormLabel,
+  FormSelect,
+  FormTextarea,
+  SimpleHeader,
+} from "@/components";
 import { useAuth } from "@/contexts";
 import { useTranslations, useLocale } from "next-intl";
 import { getCategories, providerApi, type Category } from "@/lib/api";
@@ -105,10 +111,7 @@ export default function ProviderOnboardingPage() {
     }
   }, [searchParams]);
 
-  const progressPercent = useMemo(
-    () => Math.round(((currentStep + 1) / steps.length) * 100),
-    [currentStep]
-  );
+  const progressPercent = Math.round(((currentStep + 1) / steps.length) * 100);
 
   const validateStep = () => {
     setError("");
@@ -201,8 +204,8 @@ export default function ProviderOnboardingPage() {
       });
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || t("errors.generic"));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("errors.generic"));
     } finally {
       setIsSubmitting(false);
     }
@@ -268,9 +271,7 @@ export default function ProviderOnboardingPage() {
             {currentStep === 0 && (
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("labels.serviceCategories")}
-                  </label>
+                  <FormLabel className="text-foreground">{t("labels.serviceCategories")}</FormLabel>
                   {loadingCategories ? (
                     <div className="text-sm text-muted">Loading categories...</div>
                   ) : (
@@ -301,42 +302,36 @@ export default function ProviderOnboardingPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.experience")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.experience")}</FormLabel>
+                    <FormInput
                       type="number"
                       value={formData.experienceYears}
                       onChange={(e) =>
                         setFormData({ ...formData, experienceYears: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.priceMin")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.priceMin")}</FormLabel>
+                    <FormInput
                       type="number"
                       value={formData.priceMin}
                       onChange={(e) =>
                         setFormData({ ...formData, priceMin: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                       {t("labels.priceMax")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.priceMax")}</FormLabel>
+                    <FormInput
                       type="number"
                       value={formData.priceMax}
                       onChange={(e) =>
                         setFormData({ ...formData, priceMax: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                     />
                   </div>
                 </div>
@@ -346,30 +341,26 @@ export default function ProviderOnboardingPage() {
             {currentStep === 1 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("labels.firstName")}
-                  </label>
-                  <input
+                  <FormLabel className="text-foreground">{t("labels.firstName")}</FormLabel>
+                  <FormInput
                     type="text"
                     value={formData.firstName}
                     onChange={(e) =>
                       setFormData({ ...formData, firstName: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                     {t("labels.lastName")}
-                  </label>
-                  <input
+                  <FormLabel className="text-foreground">{t("labels.lastName")}</FormLabel>
+                  <FormInput
                     type="text"
                     value={formData.lastName}
                     onChange={(e) =>
                       setFormData({ ...formData, lastName: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
@@ -379,64 +370,56 @@ export default function ProviderOnboardingPage() {
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("labels.streetAddress")}
-                  </label>
-                  <input
+                  <FormLabel className="text-foreground">{t("labels.streetAddress")}</FormLabel>
+                  <FormInput
                     type="text"
                     value={formData.streetAddress}
                     onChange={(e) =>
                       setFormData({ ...formData, streetAddress: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.postalCode")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.postalCode")}</FormLabel>
+                    <FormInput
                       type="text"
                       value={formData.postalCode}
                       onChange={(e) =>
                         setFormData({ ...formData, postalCode: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                       required
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.city")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.city")}</FormLabel>
+                    <FormInput
                       type="text"
                       value={formData.city}
                       onChange={(e) =>
                         setFormData({ ...formData, city: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                       required
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.serviceRadius")}
-                    </label>
-                    <select
+                    <FormLabel className="text-foreground">{t("labels.serviceRadius")}</FormLabel>
+                    <FormSelect
                       value={formData.serviceRadius}
                       onChange={(e) =>
                         setFormData({ ...formData, serviceRadius: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                     >
                       <option value="10">10 km</option>
                       <option value="25">25 km</option>
                       <option value="50">50 km</option>
                       <option value="100">100 km</option>
-                    </select>
+                    </FormSelect>
                   </div>
                 </div>
               </div>
@@ -445,30 +428,26 @@ export default function ProviderOnboardingPage() {
             {currentStep === 3 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("labels.phone")}
-                  </label>
-                  <input
+                  <FormLabel className="text-foreground">{t("labels.phone")}</FormLabel>
+                  <FormInput
                     type="tel"
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("labels.email")}
-                  </label>
-                  <input
+                  <FormLabel className="text-foreground">{t("labels.email")}</FormLabel>
+                  <FormInput
                     type="email"
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
@@ -479,74 +458,64 @@ export default function ProviderOnboardingPage() {
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.companyName")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.companyName")}</FormLabel>
+                    <FormInput
                       type="text"
                       value={formData.companyName}
                       onChange={(e) =>
                         setFormData({ ...formData, companyName: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                       required
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.website")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.website")}</FormLabel>
+                    <FormInput
                       type="text"
                       value={formData.website}
                       onChange={(e) =>
                         setFormData({ ...formData, website: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("labels.description")}
-                  </label>
-                  <textarea
+                  <FormLabel className="text-foreground">{t("labels.description")}</FormLabel>
+                  <FormTextarea
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows={4}
-                    className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                    accent="secondary"
                     required
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.password")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.password")}</FormLabel>
+                    <FormInput
                       type="password"
                       value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                       minLength={8}
                       required
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      {t("labels.confirmPassword")}
-                    </label>
-                    <input
+                    <FormLabel className="text-foreground">{t("labels.confirmPassword")}</FormLabel>
+                    <FormInput
                       type="password"
                       value={formData.confirmPassword}
                       onChange={(e) =>
                         setFormData({ ...formData, confirmPassword: e.target.value })
                       }
-                      className="w-full rounded-lg border border-border px-4 py-3 focus:border-secondary focus:outline-none"
+                      accent="secondary"
                       minLength={8}
                       required
                     />
@@ -604,3 +573,4 @@ export default function ProviderOnboardingPage() {
     </div>
   );
 }
+
