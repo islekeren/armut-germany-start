@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Header } from "@/components";
+import { AlertBanner, Header, MessagesWorkspace } from "@/components";
 import { useAuth } from "@/contexts";
 import {
   getStoredAccessToken,
@@ -174,151 +174,43 @@ export default function MessagesPage() {
 
       {error && (
         <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
+          <AlertBanner variant="warning">
             {error}
-          </div>
+          </AlertBanner>
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-full border-r border-border bg-white sm:w-80 lg:w-96">
-          <div className="border-b border-border p-4">
-            <h2 className="text-lg font-semibold">{t("title")}</h2>
-          </div>
-
-          <div className="overflow-y-auto">
-            {isLoadingConversations && (
-              <div className="p-4 text-sm text-muted">{t("loading")}</div>
-            )}
-
-            {!isLoadingConversations && conversations.length === 0 && (
-              <div className="p-4 text-sm text-muted">{t("noConversations")}</div>
-            )}
-
-            {conversations.map((conversation) => {
-              const otherName = getOtherParticipantName(conversation);
-              const lastMessage = conversation.messages?.[0];
-              const unreadCount = conversation.unreadCount || 0;
-
-              return (
-                <button
-                  key={conversation.id}
-                  onClick={() => setSelectedConversationId(conversation.id)}
-                  className={`flex w-full items-start gap-3 border-b border-border p-4 text-left transition hover:bg-background ${
-                    selectedConversationId === conversation.id ? "bg-background" : ""
-                  }`}
-                >
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-white">
-                    {otherName.charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium">{otherName}</span>
-                      <span className="text-xs text-muted">
-                        {formatListTime(conversation.lastMessageAt)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted">
-                      {getConversationLabel(conversation)}
-                    </p>
-                    <p className="mt-1 truncate text-sm text-muted">
-                      {lastMessage?.content || t("noMessagesYet")}
-                    </p>
-                  </div>
-                  {unreadCount > 0 && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        <div className="hidden flex-1 flex-col sm:flex">
-          {selectedConversation ? (
-            <>
-              <div className="flex items-center gap-4 border-b border-border bg-white p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-white">
-                  {getOtherParticipantName(selectedConversation).charAt(0)}
-                </div>
-                <div>
-                  <h3 className="font-semibold">
-                    {getOtherParticipantName(selectedConversation)}
-                  </h3>
-                  <p className="text-sm text-muted">
-                    {getConversationLabel(selectedConversation)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4">
-                {isLoadingMessages ? (
-                  <div className="text-sm text-muted">{t("loadingMessages")}</div>
-                ) : (
-                  <div className="mx-auto max-w-2xl space-y-4">
-                    {messages.map((message) => {
-                      const isOwnMessage = message.senderId === user?.id;
-                      return (
-                        <div
-                          key={message.id}
-                          className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-xs rounded-2xl px-4 py-2 lg:max-w-md ${
-                              isOwnMessage ? "bg-primary text-white" : "bg-white"
-                            }`}
-                          >
-                            <p>{message.content}</p>
-                            <p
-                              className={`mt-1 text-right text-xs ${
-                                isOwnMessage ? "text-white/70" : "text-muted"
-                              }`}
-                            >
-                              {formatTime(message.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-border bg-white p-4">
-                <form
-                  onSubmit={handleSendMessage}
-                  className="mx-auto flex max-w-2xl gap-4"
-                >
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={t("placeholder")}
-                    className="flex-1 rounded-full border border-border px-4 py-2 focus:border-primary focus:outline-none"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSending || !newMessage.trim()}
-                    className="rounded-full bg-primary px-6 py-2 font-medium text-white hover:bg-primary-dark disabled:opacity-50"
-                  >
-                    {isSending ? t("sending") : t("send")}
-                  </button>
-                </form>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <p className="text-muted">{t("selectConversation")}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-1 items-center justify-center sm:hidden">
-          <p className="text-muted">{t("selectConversation")}</p>
-        </div>
-      </div>
+      <MessagesWorkspace
+        title={t("title")}
+        loadingLabel={t("loading")}
+        noConversationsLabel={t("noConversations")}
+        noMessagesYetLabel={t("noMessagesYet")}
+        loadingMessagesLabel={t("loadingMessages")}
+        selectConversationLabel={t("selectConversation")}
+        messagePlaceholder={t("placeholder")}
+        sendLabel={t("send")}
+        sendingLabel={t("sending")}
+        conversations={conversations}
+        messages={messages}
+        selectedConversationId={selectedConversationId}
+        selectedConversation={selectedConversation}
+        isLoadingConversations={isLoadingConversations}
+        isLoadingMessages={isLoadingMessages}
+        isSending={isSending}
+        currentUserId={user?.id}
+        newMessage={newMessage}
+        onNewMessageChange={setNewMessage}
+        onSelectConversation={setSelectedConversationId}
+        onSendMessage={handleSendMessage}
+        getOtherParticipantName={getOtherParticipantName}
+        getConversationLabel={getConversationLabel}
+        formatListTime={formatListTime}
+        formatTime={formatTime}
+        asideClassName="w-full border-r border-border bg-white sm:w-80 lg:w-96"
+        chatHeaderClassName="bg-white"
+        composerClassName="bg-white"
+        incomingBubbleClassName="bg-white"
+      />
     </div>
   );
 }

@@ -20,15 +20,16 @@ export default async function CategoryPage({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams?: { page?: string };
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ page?: string }>;
 }) {
   const t = await getTranslations("categoryPage");
   const tNav = await getTranslations("nav");
   const locale = await getLocale();
   const isGerman = locale.startsWith("de");
-  const { slug } = params;
-  const currentPage = Math.max(1, Number(searchParams?.page) || 1);
+  const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
+  const currentPage = Math.max(1, Number(resolvedSearchParams?.page) || 1);
   const limit = 10;
 
   const category = await getCategoryBySlug(slug);

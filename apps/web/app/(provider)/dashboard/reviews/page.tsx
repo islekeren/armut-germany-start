@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
+import { PanelCard, ProviderSubpageShell } from "@/components";
 import { providerApi, ProviderReview } from "@/lib/api";
 
 interface ReviewStats {
@@ -78,37 +78,11 @@ export default function ReviewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Pro</span>
-            </Link>
-            <Link href="/dashboard" className="text-muted hover:text-foreground">
-              {tNav("overview")}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <nav className="mb-6 text-sm text-muted">
-          <Link href="/dashboard" className="hover:text-primary">
-            {tNav("overview")}
-          </Link>
-          {" / "}
-          <span>{t("title")}</span>
-        </nav>
-
-        <h1 className="mb-8 text-2xl font-bold">{t("title")}</h1>
-
-        <div className="grid gap-8 lg:grid-cols-3">
+    <ProviderSubpageShell title={t("title")} backLabel={tNav("overview")}>
+      <div className="grid gap-8 lg:grid-cols-3">
           {/* Stats */}
           <aside>
-            <div className="sticky top-8 rounded-xl bg-white p-6 shadow-sm">
+            <PanelCard className="sticky top-8">
               <div className="mb-6 text-center">
                 <div className="text-5xl font-bold text-primary">
                   {stats.average.toFixed(1)}
@@ -152,19 +126,19 @@ export default function ReviewsPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </PanelCard>
           </aside>
 
           {/* Reviews List */}
           <div className="space-y-4 lg:col-span-2">
             {reviews.length === 0 ? (
-              <div className="rounded-xl bg-white p-8 text-center shadow-sm">
+              <PanelCard className="p-8 text-center">
                 <div className="text-4xl mb-4">⭐</div>
                 <p className="text-muted">{t("noReviews") || "No reviews yet"}</p>
-              </div>
+              </PanelCard>
             ) : (
               reviews.map((review) => (
-                <div key={review.id} className="rounded-xl bg-white p-6 shadow-sm">
+                <PanelCard key={review.id}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-semibold text-white">
@@ -229,12 +203,11 @@ export default function ReviewsPage() {
                       </div>
                     </div>
                   )}
-                </div>
+                </PanelCard>
               ))
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </ProviderSubpageShell>
   );
 }

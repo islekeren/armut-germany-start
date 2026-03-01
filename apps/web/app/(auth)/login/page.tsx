@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
@@ -10,18 +10,21 @@ import { useAuth } from "@/contexts";
 export default function LoginPage() {
   const t = useTranslations();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const redirectTo = searchParams.get("redirect") || "/";
+
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push("/");
+      router.push(redirectTo);
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, redirectTo, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +33,9 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || t("auth.login.errorDefault"));
+      router.push(redirectTo);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.login.errorDefault"));
     } finally {
       setIsLoading(false);
     }

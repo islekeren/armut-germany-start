@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
+import { PanelCard, ProviderSubpageShell } from "@/components";
 import { providerApi, ProviderBooking } from "@/lib/api";
 
 export default function CalendarPage() {
@@ -106,35 +106,14 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Pro</span>
-            </Link>
-            <Link href="/dashboard" className="text-muted hover:text-foreground">
-              {tNav("overview")}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <nav className="mb-6 text-sm text-muted">
-          <Link href="/dashboard" className="hover:text-primary">
-            {tNav("overview")}
-          </Link>
-          {" / "}
-          <span>{t("title")}</span>
-        </nav>
-
+    <ProviderSubpageShell
+      title={t("title")}
+      backLabel={tNav("overview")}
+      headerSlot={
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={goToToday}
               className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background"
             >
@@ -145,11 +124,12 @@ export default function CalendarPage() {
             </button>
           </div>
         </div>
-
-        <div className="grid gap-8 lg:grid-cols-3">
+      }
+    >
+      <div className="grid gap-8 lg:grid-cols-3">
           {/* Calendar */}
           <div className="lg:col-span-2">
-            <div className="rounded-xl bg-white p-6 shadow-sm">
+            <PanelCard>
               <div className="mb-6 flex items-center justify-between">
                 <button 
                   onClick={goToPreviousMonth}
@@ -224,12 +204,12 @@ export default function CalendarPage() {
                   );
                 })}
               </div>
-            </div>
+            </PanelCard>
           </div>
 
           {/* Selected Day Details */}
           <aside>
-            <div className="sticky top-8 rounded-xl bg-white p-6 shadow-sm">
+            <PanelCard className="sticky top-8">
               <h3 className="mb-4 font-semibold">
                 {selectedDate
                   ? new Date(selectedDate).toLocaleDateString(locale, {
@@ -288,10 +268,9 @@ export default function CalendarPage() {
               <button className="mt-4 w-full rounded-lg border border-border py-2 text-sm hover:bg-background">
                 {t("addAppointment")}
               </button>
-            </div>
+            </PanelCard>
           </aside>
         </div>
-      </div>
-    </div>
+    </ProviderSubpageShell>
   );
 }

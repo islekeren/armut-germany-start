@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
 import {
   getStoredAccessToken,
   providerApi,
@@ -140,43 +140,14 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Pro</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="text-muted hover:text-foreground"
-              >
-                {tNav("overview")}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <nav className="mb-6 text-sm text-muted">
-          <Link href="/dashboard" className="hover:text-primary">
-            {tNav("overview")}
-          </Link>
-          {" / "}
-          <span>{t("title")}</span>
-        </nav>
-
+    <ProviderSubpageShell
+      title={t("title")}
+      backLabel={tNav("overview")}
+      headerSlot={
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{t("title")}</h1>
-            <p className="text-muted">
-              {t("subtitle", { count: requests.length })}
-            </p>
+            <p className="text-muted">{t("subtitle", { count: requests.length })}</p>
           </div>
           <div className="flex gap-2">
             {filters.map((f) => (
@@ -189,32 +160,33 @@ export default function RequestsPage() {
                     : "bg-white text-muted hover:bg-background"
                 }`}
               >
-                 {t(`filters.${f}`)}
+                {t(`filters.${f}`)}
               </button>
             ))}
           </div>
         </div>
+      }
+    >
+      {error && (
+        <AlertBanner variant="warning" className="mb-6">
+          {error}
+        </AlertBanner>
+      )}
 
-        {error && (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-700">
-            {error}
-          </div>
-        )}
+      {quoteSuccess && (
+        <AlertBanner variant="success" className="mb-6">
+          {quoteSuccess}
+        </AlertBanner>
+      )}
 
-        {quoteSuccess && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
-            {quoteSuccess}
-          </div>
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
           {/* Requests List */}
           <div className="space-y-4 lg:col-span-2">
             {requests.length === 0 ? (
-              <div className="rounded-xl bg-white p-8 text-center shadow-sm">
+              <PanelCard className="p-8 text-center">
                 <div className="text-4xl mb-4">📭</div>
                 <p className="text-muted">{t("noRequests") || "No requests found"}</p>
-              </div>
+              </PanelCard>
             ) : (
               requests.map((request) => (
                 <div
@@ -283,7 +255,7 @@ export default function RequestsPage() {
 
           {/* Sidebar */}
           <aside className="hidden lg:block">
-            <div className="sticky top-8 rounded-xl bg-white p-6 shadow-sm">
+            <PanelCard className="sticky top-8">
               <h3 className="mb-4 font-semibold">{t("tips.title")}</h3>
               <ul className="space-y-3 text-sm text-muted">
                 <li className="flex items-start gap-2">
@@ -310,10 +282,9 @@ export default function RequestsPage() {
                    {t("acceptanceRate")}
                 </div>
               </div>
-            </div>
+            </PanelCard>
           </aside>
         </div>
-      </div>
 
       {quoteModalRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -397,6 +368,6 @@ export default function RequestsPage() {
           </div>
         </div>
       )}
-    </div>
+    </ProviderSubpageShell>
   );
 }

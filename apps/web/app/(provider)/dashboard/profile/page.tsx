@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { providerApi, ProviderProfile } from "@/lib/api";
+import { PanelCard, ProviderSubpageShell } from "@/components";
+import { providerApi } from "@/lib/api";
 
 export default function ProviderProfilePage() {
   const t = useTranslations("provider.profile");
@@ -88,32 +89,11 @@ export default function ProviderProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              {tNav("overview")}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <nav className="mb-6 text-sm text-muted">
-          <Link href="/dashboard" className="hover:text-primary">
-            {tNav("overview")}
-          </Link>
-          {" / "}
-          <span>{t("title")}</span>
-        </nav>
-
-        <h1 className="mb-8 text-2xl font-bold">{t("title")}</h1>
-
+    <ProviderSubpageShell title={t("title")} backLabel={tNav("overview")}>
+      <div className="mx-auto max-w-4xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Company Info */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <PanelCard>
             <h2 className="mb-4 text-lg font-semibold">{t("companyInfo")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -191,17 +171,17 @@ export default function ProviderProfilePage() {
                 {t("descriptionHint")}
               </p>
             </div>
-          </div>
+          </PanelCard>
 
           {/* Services */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <PanelCard>
             <h2 className="mb-4 text-lg font-semibold">{t("services")}</h2>
             <div>
               <label className="mb-2 block text-sm font-medium">
                 Your selected category {t("required")}
               </label>
               <p className="mb-2 text-sm text-muted">
-                You can't change your selected category. For more info, go to
+                You can&apos;t change your selected category. For more info, go to
                 Help.
               </p>
               <div className="flex flex-wrap gap-2">
@@ -257,10 +237,10 @@ export default function ProviderProfilePage() {
                 />
               </div>
             </div>
-          </div>
+          </PanelCard>
 
           {/* Location */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <PanelCard>
             <h2 className="mb-4 text-lg font-semibold">{t("serviceArea")}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
@@ -307,10 +287,10 @@ export default function ProviderProfilePage() {
                 </select>
               </div>
             </div>
-          </div>
+          </PanelCard>
 
           {/* Profile Photo & Gallery */}
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <PanelCard>
             <h2 className="mb-4 text-lg font-semibold">{t("images")}</h2>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
@@ -319,6 +299,7 @@ export default function ProviderProfilePage() {
                 </label>
                 <div className="flex items-center gap-4">
                   {profileImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img 
                       src={profileImage} 
                       alt="Profile" 
@@ -348,7 +329,7 @@ export default function ProviderProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </PanelCard>
 
           {/* Submit */}
           <div className="flex justify-end gap-4">
@@ -368,6 +349,6 @@ export default function ProviderProfilePage() {
           </div>
         </form>
       </div>
-    </div>
+    </ProviderSubpageShell>
   );
 }
