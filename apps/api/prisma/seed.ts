@@ -85,6 +85,31 @@ const categories = [
 async function main() {
   console.log("🌱 Seeding database...");
 
+  // Clean up any duplicate categories with German slugs (from older seeds)
+  const validSlugs = categories.map(c => c.slug);
+  const allCategories = await prisma.category.findMany();
+  for (const cat of allCategories) {
+    if (!validSlugs.includes(cat.slug)) {
+      // Find matching English-slug category by nameEn
+      const matchingCategory = allCategories.find(
+        c => c.nameEn === cat.nameEn && validSlugs.includes(c.slug)
+      );
+      if (matchingCategory) {
+        // Migrate dependent records
+        await prisma.serviceRequest.updateMany({
+          where: { categoryId: cat.id },
+          data: { categoryId: matchingCategory.id },
+        });
+        await prisma.service.updateMany({
+          where: { categoryId: cat.id },
+          data: { categoryId: matchingCategory.id },
+        });
+      }
+      await prisma.category.delete({ where: { id: cat.id } });
+      console.log(`🧹 Removed duplicate category: ${cat.slug}`);
+    }
+  }
+
   // Create categories
   const categoryMap = new Map();
   for (const category of categories) {
