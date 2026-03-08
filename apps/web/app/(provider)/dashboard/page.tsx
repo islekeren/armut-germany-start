@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useEffect, useState } from "react";
-import { providerApi, DashboardData } from "@/lib/api";
+import { providerApi, DashboardData, messagesApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Initial empty state
@@ -25,13 +25,17 @@ export default function ProviderDashboard() {
   const { user } = useAuth(); // Assuming useAuth exists and provides user context
   const [data, setData] = useState<DashboardData>(initialData);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem("armut_access_token");
         if (token) {
-          const dashboardData = await providerApi.getDashboard(token);
+          const [dashboardData, unreadData] = await Promise.all([
+            providerApi.getDashboard(token),
+            messagesApi.getUnreadCount(token),
+          ]);
           // Format dates for display
           const formattedData = {
             ...dashboardData,
@@ -46,6 +50,7 @@ export default function ProviderDashboard() {
             }))
           };
           setData(formattedData);
+          setUnreadCount(unreadData.unreadCount);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
@@ -85,9 +90,11 @@ export default function ProviderDashboard() {
                 className="relative text-muted hover:text-foreground"
               >
                 <span className="text-xl">💬</span>
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-xs text-white">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-xs text-white">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
               <Link
                 href="/dashboard/profile"

@@ -1,3 +1,4 @@
+import { Type } from "class-transformer";
 import {
   IsString,
   IsNumber,
@@ -6,7 +7,40 @@ import {
   Min,
   Max,
   IsBoolean,
+  ValidateNested,
+  IsUrl,
+  IsIn,
+  ValidateIf,
 } from "class-validator";
+
+const WEEK_DAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+export class ProviderOpeningHourDto {
+  @IsString()
+  @IsIn(WEEK_DAYS)
+  day: string;
+
+  @IsBoolean()
+  closed: boolean;
+
+  @IsOptional()
+  @ValidateIf((obj: ProviderOpeningHourDto) => !obj.closed)
+  @IsString()
+  open?: string;
+
+  @IsOptional()
+  @ValidateIf((obj: ProviderOpeningHourDto) => !obj.closed)
+  @IsString()
+  close?: string;
+}
 
 export class CreateProviderDto {
   @IsOptional()
@@ -55,6 +89,52 @@ export class CreateProviderDto {
   @IsArray()
   @IsString({ each: true })
   documents?: string[];
+
+  @IsOptional()
+  @IsString()
+  headline?: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @IsString()
+  addressLine1?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUrl({ require_tld: false }, { message: "website must be a valid URL" })
+  website?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  galleryImages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  highlights?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  languages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProviderOpeningHourDto)
+  openingHours?: ProviderOpeningHourDto[];
 }
 
 export class UpdateProviderDto {
@@ -93,6 +173,72 @@ export class UpdateProviderDto {
   @IsArray()
   @IsString({ each: true })
   documents?: string[];
+}
+
+export class UpdateOwnProviderProfileDto extends UpdateProviderDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  priceMin?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  priceMax?: number;
+
+  @IsOptional()
+  @IsString()
+  headline?: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @IsString()
+  addressLine1?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUrl({ require_tld: false }, { message: "website must be a valid URL" })
+  website?: string;
+
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  phoneVisible?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  galleryImages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  highlights?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  languages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProviderOpeningHourDto)
+  openingHours?: ProviderOpeningHourDto[];
 }
 
 export class ApproveProviderDto {

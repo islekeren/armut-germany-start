@@ -22,51 +22,6 @@ interface RequestCard {
   completedAt?: string;
 }
 
-const mockRequests: RequestCard[] = [
-  {
-    id: "1",
-    title: "Apartment cleaning needed (80sqm)",
-    category: "Cleaning",
-    status: "active",
-    createdAt: "January 10, 2026",
-    location: "10115 Berlin",
-    quotes: 3,
-    description: "Thorough cleaning of my 3-room apartment",
-  },
-  {
-    id: "2",
-    title: "Moving helpers needed",
-    category: "Moving",
-    status: "active",
-    createdAt: "January 8, 2026",
-    location: "10117 Berlin",
-    quotes: 5,
-    description: "Moving from 2-room apartment to new apartment",
-  },
-  {
-    id: "3",
-    title: "Paint bathroom",
-    category: "Painter",
-    status: "booked",
-    createdAt: "January 5, 2026",
-    location: "10119 Berlin",
-    quotes: 4,
-    bookedProvider: "Master Painter Smith",
-    description: "Repaint bathroom, approx. 8sqm",
-  },
-  {
-    id: "4",
-    title: "Winterize garden",
-    category: "Garden",
-    status: "completed",
-    createdAt: "December 1, 2025",
-    location: "10115 Berlin",
-    quotes: 2,
-    completedAt: "December 15, 2025",
-    description: "Trim hedges, remove leaves",
-  },
-];
-
 // Map API status to display status
 const mapApiStatus = (status: string): DisplayRequestStatus => {
   switch (status) {
@@ -105,7 +60,7 @@ export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
   const { isAuthenticated } = useAuth();
   const [filter, setFilter] = useState("alle");
-  const [requests, setRequests] = useState<RequestCard[]>(mockRequests);
+  const [requests, setRequests] = useState<RequestCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,8 +68,7 @@ export default function MyRequestsPage() {
     const fetchRequests = async () => {
       const token = getStoredAccessToken();
       if (!token) {
-        // Use mock data if not authenticated
-        setRequests(mockRequests);
+        setError("Please log in to view your requests");
         setIsLoading(false);
         return;
       }
@@ -126,8 +80,6 @@ export default function MyRequestsPage() {
       } catch (err) {
         console.error("Failed to fetch requests:", err);
         setError(err instanceof Error ? err.message : "Failed to load requests");
-        // Keep using mock data on error
-        setRequests(mockRequests);
       } finally {
         setIsLoading(false);
       }

@@ -14,6 +14,7 @@ import { ProvidersService } from "./providers.service";
 import {
   CreateProviderDto,
   UpdateProviderDto,
+  UpdateOwnProviderProfileDto,
   ApproveProviderDto,
   ProviderQueryDto,
   ProviderRequestsQueryDto,
@@ -79,9 +80,27 @@ export class ProvidersController {
   replyToReview(
     @Req() req: any,
     @Param("reviewId") reviewId: string,
-    @Body() body: ReplyToReviewDto
+    @Body() body: ReplyToReviewDto,
   ) {
-    return this.providersService.replyToReview(req.user.id, reviewId, body.reply);
+    return this.providersService.replyToReview(
+      req.user.id,
+      reviewId,
+      body.reply,
+    );
+  }
+
+  @Put("me/profile")
+  @UseGuards(JwtAuthGuard)
+  updateMyProfile(
+    @Req() req: any,
+    @Body() updateDto: UpdateOwnProviderProfileDto,
+  ) {
+    return this.providersService.updateMyProfile(req.user.id, updateDto);
+  }
+
+  @Get(":id/profile")
+  getPublicProfile(@Param("id") id: string) {
+    return this.providersService.getPublicProfile(id);
   }
 
   @Get(":id")
@@ -94,7 +113,7 @@ export class ProvidersController {
   update(
     @Param("id") id: string,
     @Req() req: any,
-    @Body() updateProviderDto: UpdateProviderDto
+    @Body() updateProviderDto: UpdateProviderDto,
   ) {
     return this.providersService.update(id, req.user.id, updateProviderDto);
   }

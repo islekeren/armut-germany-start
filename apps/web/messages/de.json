@@ -22,18 +22,51 @@
   },
   "categories": {
     "title": "Kategorien",
-    "cleaning": { "name": "Reinigung", "description": "Reinigungsservices für Zuhause und Büro." },
-    "moving": { "name": "Umzug", "description": "Umzugshelfer für Ein- und Auszug." },
-    "renovation": { "name": "Renovierung", "description": "Renovierung und Umbau vom Profi." },
-    "garden": { "name": "Garten", "description": "Gartenpflege und Landschaftsgestaltung." },
-    "electrician": { "name": "Elektriker", "description": "Elektroinstallationen und Reparaturen." },
-    "plumber": { "name": "Klempner", "description": "Sanitär- und Heizungsarbeiten." },
+    "cleaning": {
+      "name": "Reinigung",
+      "description": "Reinigungsservices für Zuhause und Büro."
+    },
+    "moving": {
+      "name": "Umzug",
+      "description": "Umzugshelfer für Ein- und Auszug."
+    },
+    "renovation": {
+      "name": "Renovierung",
+      "description": "Renovierung und Umbau vom Profi."
+    },
+    "garden": {
+      "name": "Garten",
+      "description": "Gartenpflege und Landschaftsgestaltung."
+    },
+    "electrician": {
+      "name": "Elektriker",
+      "description": "Elektroinstallationen und Reparaturen."
+    },
+    "plumber": {
+      "name": "Klempner",
+      "description": "Sanitär- und Heizungsarbeiten."
+    },
     "painter": { "name": "Maler", "description": "Innen- und Außenanstriche." },
-    "locksmith": { "name": "Schlosser", "description": "Schließdienst und Schlosswechsel." },
-    "tutoring": { "name": "Nachhilfe", "description": "Privatunterricht und Nachhilfe." },
-    "photography": { "name": "Fotografie", "description": "Event- und Porträtfotografie." },
-    "computerHelp": { "name": "Computerhilfe", "description": "IT-Support und Geräteeinrichtung." },
-    "petCare": { "name": "Tierpflege", "description": "Betreuung und Pflege von Haustieren." }
+    "locksmith": {
+      "name": "Schlosser",
+      "description": "Schließdienst und Schlosswechsel."
+    },
+    "tutoring": {
+      "name": "Nachhilfe",
+      "description": "Privatunterricht und Nachhilfe."
+    },
+    "photography": {
+      "name": "Fotografie",
+      "description": "Event- und Porträtfotografie."
+    },
+    "computerHelp": {
+      "name": "Computerhilfe",
+      "description": "IT-Support und Geräteeinrichtung."
+    },
+    "petCare": {
+      "name": "Tierpflege",
+      "description": "Betreuung und Pflege von Haustieren."
+    }
   },
   "categoriesPage": {
     "title": "Dienstleistungskategorien",
@@ -83,13 +116,56 @@
     "previous": "Zurück",
     "next": "Weiter"
   },
+  "providerPublicProfile": {
+    "requestQuote": "Angebot anfordern",
+    "visitWebsite": "Webseite besuchen",
+    "about": "Über den Anbieter",
+    "highlights": "Highlights",
+    "languages": "Sprachen",
+    "services": "Leistungen",
+    "reviews": "Bewertungen",
+    "contact": "Kontakt",
+    "location": "Standort",
+    "serviceArea": "Einsatzgebiet",
+    "businessHours": "Öffnungszeiten",
+    "closed": "Geschlossen",
+    "unknownHours": "Öffnungszeiten sind nicht verfügbar.",
+    "quickFacts": "Auf einen Blick",
+    "experience": "Erfahrung",
+    "completedJobs": "Abgeschlossene Aufträge",
+    "acceptanceRate": "Annahmequote",
+    "memberSince": "Mitglied seit",
+    "years": "{count, plural, one {# Jahr} other {# Jahre}}",
+    "km": "{count} km",
+    "reviewsCount": "{count, plural, one {# Bewertung} other {# Bewertungen}}",
+    "ratedOn": "Bewertet am",
+    "providerReply": "Antwort des Anbieters",
+    "noComment": "Kein Textkommentar.",
+    "noReviews": "Noch keine Bewertungen vorhanden.",
+    "call": "Telefon",
+    "priceQuote": "Preis auf Anfrage",
+    "priceFrom": "Ab {value}",
+    "priceUpTo": "Bis {value}",
+    "priceRange": "{min}-{max}",
+    "priceHourlyFrom": "Ab {value}/Std.",
+    "priceHourlyUpTo": "Bis {value}/Std.",
+    "priceHourlyRange": "Ab {min}-{max}/Std.",
+    "days": {
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag",
+      "sunday": "Sonntag"
+    }
+  },
   "createRequest": {
     "step1": "Kategorie",
     "step2": "Details",
     "step3": "Überprüfen",
     "whatDoYouNeed": "Was brauchen Sie?",
-    "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",
-    "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
+    "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",    "loadingCategories": "Kategorien werden geladen...",    "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
     "moreDetailsBetterOffers": "Je mehr Details Sie angeben, desto bessere Angebote erhalten Sie.",
     "requestTitle": "Titel",
     "requestTitlePlaceholder": "z.B. Grundreinigung für 3-Zimmer-Wohnung",

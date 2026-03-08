@@ -30,14 +30,14 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  provider          Provider?
-  serviceRequests   ServiceRequest[]
-  quotesAsCustomer  Quote[]          @relation("CustomerQuotes")
-  bookingsAsCustomer Booking[]       @relation("CustomerBookings")
-  reviewsGiven      Review[]         @relation("ReviewsGiven")
-  reviewsReceived   Review[]         @relation("ReviewsReceived")
-  messagesSent      Message[]
-  conversations     ConversationParticipant[]
+  provider           Provider?
+  serviceRequests    ServiceRequest[]
+  quotesAsCustomer   Quote[]                   @relation("CustomerQuotes")
+  bookingsAsCustomer Booking[]                 @relation("CustomerBookings")
+  reviewsGiven       Review[]                  @relation("ReviewsGiven")
+  reviewsReceived    Review[]                  @relation("ReviewsReceived")
+  messagesSent       Message[]
+  conversations      ConversationParticipant[]
 
   @@index([email])
   @@index([userType])
@@ -63,13 +63,38 @@ model Provider {
   updatedAt         DateTime @updatedAt
 
   // Relations
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile  ProviderProfile?
   services Service[]
   quotes   Quote[]
   bookings Booking[]
 
   @@index([userId])
   @@index([isApproved])
+}
+
+model ProviderProfile {
+  id            String   @id @default(uuid())
+  providerId    String   @unique
+  slug          String   @unique
+  headline      String?
+  bio           String?
+  addressLine1  String?
+  city          String?
+  postalCode    String?
+  website       String?
+  coverImage    String?
+  phoneVisible  Boolean  @default(true)
+  galleryImages String[] @default([])
+  highlights    String[] @default([])
+  languages     String[] @default([])
+  openingHours  Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([slug])
 }
 
 // ==================== CATEGORIES ====================
@@ -155,8 +180,8 @@ model ServiceRequest {
   updatedAt     DateTime      @updatedAt
 
   // Relations
-  customer      User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  category      Category      @relation(fields: [categoryId], references: [id])
+  customer      User           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category      Category       @relation(fields: [categoryId], references: [id])
   quotes        Quote[]
   conversations Conversation[]
 
@@ -267,7 +292,7 @@ model Review {
   bookingId     String   @unique
   reviewerId    String
   revieweeId    String
-  rating        Int      // 1-5
+  rating        Int // 1-5
   comment       String?
   providerReply String?
   createdAt     DateTime @default(now())
@@ -316,13 +341,13 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   conversationId String
   senderId       String
   content        String
   attachments    String[]
   readAt         DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   // Relations
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

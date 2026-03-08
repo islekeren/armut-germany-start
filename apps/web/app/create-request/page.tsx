@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -17,22 +17,9 @@ import {
   requestsApi,
   type CreateRequestData,
   uploadsApi,
+  getCategories,
+  type Category,
 } from "@/lib/api";
-
-const categoryKeys = [
-  { id: "cleaning", key: "cleaning", icon: "🧹" },
-  { id: "moving", key: "moving", icon: "📦" },
-  { id: "renovation", key: "renovation", icon: "🔨" },
-  { id: "garden", key: "garden", icon: "🌳" },
-  { id: "electrician", key: "electrician", icon: "⚡" },
-  { id: "plumber", key: "plumber", icon: "🔧" },
-  { id: "painter", key: "painter", icon: "🎨" },
-  { id: "locksmith", key: "locksmith", icon: "🔐" },
-  { id: "tutoring", key: "tutoring", icon: "📚" },
-  { id: "photography", key: "photography", icon: "📷" },
-  { id: "computerHelp", key: "computerHelp", icon: "💻" },
-  { id: "petCare", key: "petCare", icon: "🐕" },
-];
 
 export default function CreateRequestPage() {
   const t = useTranslations();
@@ -42,6 +29,8 @@ export default function CreateRequestPage() {
   const initialCategory = searchParams.get("category") || searchParams.get("kategorie") || "";
 
   const [step, setStep] = useState(1);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [formData, setFormData] = useState({
     category: initialCategory,
     title: "",
@@ -58,10 +47,24 @@ export default function CreateRequestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    loadCategories();
+  }, []);
+
   const getCategoryLabel = (categoryId: string) => {
-    const selected = categoryKeys.find((cat) => cat.id === categoryId);
+    const selected = categories.find((cat) => cat.id === categoryId || cat.slug === categoryId);
     if (!selected) return categoryId;
-    return t(`categories.${selected.key}.name`);
+    return t(`categories.${selected.slug}.name`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,26 +188,33 @@ export default function CreateRequestPage() {
                 {t("createRequest.selectCategory")}
               </p>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {categoryKeys.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      setFormData({ ...formData, category: cat.id });
-                      nextStep();
-                    }}
-                    className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition hover:border-primary ${
-                      formData.category === cat.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border"
-                    }`}
-                  >
-                    <span className="text-2xl">{cat.icon}</span>
-                    <span className="font-medium">{t(`categories.${cat.key}.name`)}</span>
-                  </button>
-                ))}
-              </div>
+              {categoriesLoading ? (
+                <div className="py-12 text-center">
+                  <div className="mb-4 text-4xl">⏳</div>
+                  <p className="text-muted">{t("createRequest.loadingCategories")}</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, category: cat.id });
+                        nextStep();
+                      }}
+                      className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition hover:border-primary ${
+                        formData.category === cat.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                    >
+                      <span className="text-2xl">{cat.icon}</span>
+                      <span className="font-medium">{t(`categories.${cat.slug}.name`)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -421,7 +431,7 @@ export default function CreateRequestPage() {
                 <div className="rounded-lg bg-background p-4">
                   <div className="mb-1 text-sm text-muted">{t("createRequest.categoryLabel")}</div>
                   <div className="font-medium">
-                    {categoryKeys.find((c) => c.id === formData.category)?.icon}{" "}
+                    {categories.find((c) => c.id === formData.category)?.icon}{" "}
                     {getCategoryLabel(formData.category)}
                   </div>
                 </div>

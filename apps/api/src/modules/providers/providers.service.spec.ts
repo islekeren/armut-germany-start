@@ -23,11 +23,24 @@ describe("ProvidersService", () => {
     documents: [],
     createdAt: new Date(),
     updatedAt: new Date(),
+    profile: {
+      id: "profile-1",
+      providerId: "provider-1",
+      slug: "test-gmbh",
+      headline: "Trusted service partner",
+      bio: "Long bio",
+      phoneVisible: true,
+      galleryImages: [],
+      highlights: [],
+      languages: [],
+      openingHours: [],
+    },
     user: {
       id: "user-1",
       firstName: "Max",
       lastName: "Mustermann",
       email: "max@example.com",
+      phone: "+491234567",
       profileImage: null,
     },
     services: [],
@@ -37,11 +50,16 @@ describe("ProvidersService", () => {
     const mockPrismaService = {
       provider: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
         count: jest.fn(),
+      },
+      providerProfile: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
       },
       quote: {
         count: jest.fn(),
@@ -49,6 +67,10 @@ describe("ProvidersService", () => {
       booking: {
         count: jest.fn(),
         aggregate: jest.fn(),
+      },
+      review: {
+        findMany: jest.fn(),
+        groupBy: jest.fn(),
       },
     };
 
@@ -91,7 +113,7 @@ describe("ProvidersService", () => {
           where: expect.objectContaining({
             services: { some: { categoryId: "category-1", isActive: true } },
           }),
-        })
+        }),
       );
     });
 
@@ -106,7 +128,7 @@ describe("ProvidersService", () => {
           where: expect.objectContaining({
             ratingAvg: { gte: 4 },
           }),
-        })
+        }),
       );
     });
   });
@@ -128,7 +150,7 @@ describe("ProvidersService", () => {
       prisma.provider.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne("non-existent")).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
   });
@@ -154,7 +176,7 @@ describe("ProvidersService", () => {
       await expect(
         service.update("provider-1", "other-user", {
           description: "Updated",
-        })
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -164,7 +186,7 @@ describe("ProvidersService", () => {
       await expect(
         service.update("non-existent", "user-1", {
           description: "Updated",
-        })
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -193,7 +215,7 @@ describe("ProvidersService", () => {
       prisma.provider.findUnique.mockResolvedValue(null);
 
       await expect(service.approve("non-existent", true)).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
   });
@@ -203,7 +225,9 @@ describe("ProvidersService", () => {
       prisma.provider.findUnique.mockResolvedValue(mockProvider);
       prisma.quote.count.mockResolvedValue(10);
       prisma.booking.count.mockResolvedValue(5);
-      prisma.booking.aggregate.mockResolvedValue({ _sum: { totalPrice: 1500 } });
+      prisma.booking.aggregate.mockResolvedValue({
+        _sum: { totalPrice: 1500 },
+      });
 
       const result = await service.getStats("user-1");
 
@@ -216,8 +240,97 @@ describe("ProvidersService", () => {
       prisma.provider.findUnique.mockResolvedValue(null);
 
       await expect(service.getStats("other-user")).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
+    });
+  });
+
+  describe("updateMyProfile", () => {
+    it("updates provider profile and service pricing", async () => {
+      prisma.provider.findUnique.mockResolvedValue(mockProvider);
+      prisma.provider.update.mockResolvedValue({
+        ...mockProvider,
+        profile: {
+          ...mockProvider.profile,
+          headline: "Top rated in Berlin",
+        },
+      });
+
+      const result = await service.updateMyProfile("user-1", {
+        headline: "Top rated in Berlin",
+        priceMin: 35,
+      });
+
+      expect(result.profile.headline).toBe("Top rated in Berlin");
+      expect(prisma.provider.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "provider-1" },
+          data: expect.objectContaining({
+            services: expect.any(Object),
+          }),
+        }),
+      );
+    });
+
+    it("throws when provider does not exist", async () => {
+      prisma.provider.findUnique.mockResolvedValue(null);
+
+      await expect(service.updateMyProfile("missing-user", {})).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("getPublicProfile", () => {
+    it("returns public profile payload for approved provider", async () => {
+      prisma.provider.findFirst.mockResolvedValue(mockProvider);
+      prisma.review.findMany.mockResolvedValue([
+        {
+          id: "r1",
+          rating: 5,
+          comment: "Excellent work",
+          providerReply: null,
+          createdAt: new Date(),
+          reviewer: {
+            firstName: "Anna",
+            lastName: "Miller",
+            profileImage: null,
+          },
+          booking: {
+            quote: {
+              request: {
+                title: "Deep cleaning",
+                category: {
+                  id: "c1",
+                  nameEn: "Cleaning",
+                  nameDe: "Reinigung",
+                  slug: "cleaning",
+                  icon: "🧹",
+                },
+              },
+            },
+          },
+        },
+      ]);
+      prisma.review.groupBy.mockResolvedValue([
+        { rating: 5, _count: { rating: 1 } },
+      ]);
+      prisma.booking.count.mockResolvedValue(12);
+      prisma.quote.count.mockResolvedValueOnce(20).mockResolvedValueOnce(8);
+
+      const result = await service.getPublicProfile("provider-1");
+
+      expect(result.id).toBe("provider-1");
+      expect(result.reviews.items).toHaveLength(1);
+      expect(result.completedJobs).toBe(12);
+    });
+
+    it("throws when provider is not found", async () => {
+      prisma.provider.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getPublicProfile("missing-provider"),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

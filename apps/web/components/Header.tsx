@@ -86,7 +86,7 @@ export function Header() {
                           {t("nav.dashboard")}
                         </Link>
                         <Link
-                          href="/dashboard/profil"
+                          href="/dashboard/profile"
                           className="block px-4 py-2 text-sm hover:bg-gray-100"
                           onClick={() => setShowDropdown(false)}
                         >

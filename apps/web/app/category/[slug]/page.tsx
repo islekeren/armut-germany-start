@@ -65,8 +65,10 @@ export default async function CategoryPage({
           max: formatCurrency(max),
         });
       }
-      if (min !== null) return t("priceHourlyFrom", { value: formatCurrency(min) });
-      if (max !== null) return t("priceHourlyUpTo", { value: formatCurrency(max) });
+      if (min !== null)
+        return t("priceHourlyFrom", { value: formatCurrency(min) });
+      if (max !== null)
+        return t("priceHourlyUpTo", { value: formatCurrency(max) });
     }
 
     if (min !== null && max !== null && min !== max) {
@@ -125,9 +127,7 @@ export default async function CategoryPage({
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div>
               <h2 className="text-lg font-semibold">{t("ctaTitle")}</h2>
-              <p className="text-muted">
-                {t("ctaSubtitle")}
-              </p>
+              <p className="text-muted">{t("ctaSubtitle")}</p>
             </div>
             <Link
               href={`/create-request?category=${slug}`}
@@ -191,7 +191,9 @@ export default async function CategoryPage({
             {/* Providers List */}
             <div className="flex-1">
               <div className="mb-6 flex items-center justify-between">
-                <p className="text-muted">{t("providersFound", { count: meta.total })}</p>
+                <p className="text-muted">
+                  {t("providersFound", { count: meta.total })}
+                </p>
                 <select className="rounded-lg border border-border px-3 py-2 focus:border-primary focus:outline-none">
                   <option>{t("sortTopRated")}</option>
                   <option>{t("sortMostReviews")}</option>
@@ -206,10 +208,14 @@ export default async function CategoryPage({
               ) : (
                 <div className="space-y-4">
                   {providers.map((provider) => {
-                    const providerName = `${provider.user.firstName} ${provider.user.lastName}`.trim();
+                    const providerName =
+                      `${provider.user.firstName} ${provider.user.lastName}`.trim();
                     const companyName = provider.companyName || providerName;
                     const showPerson = companyName !== providerName;
-                    const service = getServiceForCategory(provider, category.id);
+                    const service = getServiceForCategory(
+                      provider,
+                      category.id,
+                    );
 
                     return (
                       <div
@@ -225,7 +231,9 @@ export default async function CategoryPage({
                               <div>
                                 <h3 className="font-semibold">{companyName}</h3>
                                 {showPerson ? (
-                                  <p className="text-sm text-muted">{providerName}</p>
+                                  <p className="text-sm text-muted">
+                                    {providerName}
+                                  </p>
                                 ) : null}
                               </div>
                               <div className="text-right">
@@ -240,17 +248,27 @@ export default async function CategoryPage({
                                 {ratingFormatter.format(provider.ratingAvg)}
                               </span>
                               <span className="text-muted">
-                                {t("reviewsCount", { count: provider.totalReviews })}
+                                {t("reviewsCount", {
+                                  count: provider.totalReviews,
+                                })}
                               </span>
                             </div>
-                            <p className="mt-2 text-muted">{provider.description}</p>
+                            <p className="mt-2 text-muted">
+                              {provider.description}
+                            </p>
                             <div className="mt-4 flex gap-3">
-                              <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark">
+                              <Link
+                                href={`/create-request?category=${slug}`}
+                                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+                              >
                                 {t("requestQuote")}
-                              </button>
-                              <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background">
+                              </Link>
+                              <Link
+                                href={`/providers/${provider.id}`}
+                                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background"
+                              >
                                 {t("viewProfile")}
-                              </button>
+                              </Link>
                             </div>
                           </div>
                         </div>
@@ -272,13 +290,18 @@ export default async function CategoryPage({
                     {t("previous")}
                   </Link>
                   <span className="px-3 text-sm text-muted">
-                    {t("pagination", { current: currentPage, total: meta.totalPages })}
+                    {t("pagination", {
+                      current: currentPage,
+                      total: meta.totalPages,
+                    })}
                   </span>
                   <Link
                     href={`/category/${slug}?page=${Math.min(meta.totalPages, currentPage + 1)}`}
                     aria-disabled={currentPage >= meta.totalPages}
                     className={`rounded-lg border border-border px-4 py-2 hover:bg-background ${
-                      currentPage >= meta.totalPages ? "pointer-events-none opacity-50" : ""
+                      currentPage >= meta.totalPages
+                        ? "pointer-events-none opacity-50"
+                        : ""
                     }`}
                   >
                     {t("next")}

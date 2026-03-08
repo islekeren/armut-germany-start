@@ -241,7 +241,7 @@ export default function RegisterPage() {
 
           <div className="mt-6 text-center text-sm text-muted">
             {t("auth.register.hasAccount")}{" "}
-            <Link href="/anmelden" className="text-primary hover:underline">
+            <Link href="/login" className="text-primary hover:underline">
               {t("auth.register.loginNow")}
             </Link>
           </div>

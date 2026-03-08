@@ -1,4 +1,4 @@
-import { PrismaClient, RequestStatus, BookingStatus, QuoteStatus, PaymentStatus } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 import * as bcrypt from "bcrypt";
 
@@ -82,17 +82,72 @@ const categories = [
   },
 ];
 
+function toSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+async function upsertProviderProfile(
+  providerId: string,
+  companyName: string | null,
+  fallbackName: string,
+) {
+  const baseSlug =
+    toSlug(companyName || fallbackName) || `provider-${providerId.slice(0, 8)}`;
+  const defaultHours = [
+    { day: "monday", closed: false, open: "08:00", close: "18:00" },
+    { day: "tuesday", closed: false, open: "08:00", close: "18:00" },
+    { day: "wednesday", closed: false, open: "08:00", close: "18:00" },
+    { day: "thursday", closed: false, open: "08:00", close: "18:00" },
+    { day: "friday", closed: false, open: "08:00", close: "18:00" },
+    { day: "saturday", closed: true },
+    { day: "sunday", closed: true },
+  ];
+
+  await prisma.providerProfile.upsert({
+    where: { providerId },
+    update: {
+      slug: `${baseSlug}-${providerId.slice(0, 6)}`,
+      headline: "Trusted local professional",
+      bio: "Reliable service provider with verified customer reviews on Armut.",
+      city: "Berlin",
+      postalCode: "10115",
+      phoneVisible: true,
+      highlights: ["Verified Provider", "Fast Response", "Transparent Pricing"],
+      languages: ["German", "English"],
+      openingHours: defaultHours,
+    },
+    create: {
+      providerId,
+      slug: `${baseSlug}-${providerId.slice(0, 6)}`,
+      headline: "Trusted local professional",
+      bio: "Reliable service provider with verified customer reviews on Armut.",
+      city: "Berlin",
+      postalCode: "10115",
+      phoneVisible: true,
+      highlights: ["Verified Provider", "Fast Response", "Transparent Pricing"],
+      languages: ["German", "English"],
+      openingHours: defaultHours,
+    },
+  });
+}
+
 async function main() {
   console.log("🌱 Seeding database...");
 
   // Clean up any duplicate categories with German slugs (from older seeds)
-  const validSlugs = categories.map(c => c.slug);
+  const validSlugs = categories.map((c) => c.slug);
   const allCategories = await prisma.category.findMany();
   for (const cat of allCategories) {
     if (!validSlugs.includes(cat.slug)) {
       // Find matching English-slug category by nameEn
       const matchingCategory = allCategories.find(
-        c => c.nameEn === cat.nameEn && validSlugs.includes(c.slug)
+        (c) => c.nameEn === cat.nameEn && validSlugs.includes(c.slug),
       );
       if (matchingCategory) {
         // Migrate dependent records
@@ -151,25 +206,31 @@ async function main() {
   const provider = await prisma.provider.upsert({
     where: { userId: providerUser.id },
     update: {
-        companyName: "John's Services",
-        description: "Professional services for your home.",
-        ratingAvg: 4.9,
-        totalReviews: 47,
-        isApproved: true,
+      companyName: "John's Services",
+      description: "Professional services for your home.",
+      ratingAvg: 4.9,
+      totalReviews: 47,
+      isApproved: true,
     },
     create: {
-        userId: providerUser.id,
-        companyName: "John's Services",
-        description: "Professional services for your home.",
-        experienceYears: 5,
-        ratingAvg: 4.9,
-        totalReviews: 47,
-        isApproved: true,
-        serviceAreaLat: 52.5200, // Berlin
-        serviceAreaLng: 13.4050,
-        serviceAreaRadius: 50,
-    }
+      userId: providerUser.id,
+      companyName: "John's Services",
+      description: "Professional services for your home.",
+      experienceYears: 5,
+      ratingAvg: 4.9,
+      totalReviews: 47,
+      isApproved: true,
+      serviceAreaLat: 52.52, // Berlin
+      serviceAreaLng: 13.405,
+      serviceAreaRadius: 50,
+    },
   });
+
+  await upsertProviderProfile(
+    provider.id,
+    provider.companyName,
+    `${providerUser.firstName} ${providerUser.lastName}`,
+  );
 
   console.log(`✅ Upserted provider: ${providerEmail}`);
 
@@ -264,16 +325,25 @@ async function main() {
         ratingAvg: providerSeed.ratingAvg,
         totalReviews: providerSeed.totalReviews,
         isApproved: true,
-        serviceAreaLat: 52.5200,
-        serviceAreaLng: 13.4050,
+        serviceAreaLat: 52.52,
+        serviceAreaLng: 13.405,
         serviceAreaRadius: 50,
       },
     });
 
+    await upsertProviderProfile(
+      providerProfile.id,
+      providerProfile.companyName,
+      `${providerSeed.firstName} ${providerSeed.lastName}`,
+    );
+
     const serviceCategory = categoryMap.get(providerSeed.service.categorySlug);
     if (serviceCategory) {
       const existingService = await prisma.service.findFirst({
-        where: { providerId: providerProfile.id, categoryId: serviceCategory.id },
+        where: {
+          providerId: providerProfile.id,
+          categoryId: serviceCategory.id,
+        },
       });
 
       if (!existingService) {
@@ -306,206 +376,210 @@ async function main() {
       isVerified: true,
       gdprConsent: true,
       profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Anna",
-    }, 
+    },
   });
-  
+
   console.log(`✅ Upserted customer: ${customerEmail}`);
 
   // Add Services to Provider
   const cleaningCat = categoryMap.get("cleaning");
   if (cleaningCat) {
-      // Check if service exists
-      const existingService = await prisma.service.findFirst({
-          where: { providerId: provider.id, categoryId: cleaningCat.id }
-      });
+    // Check if service exists
+    const existingService = await prisma.service.findFirst({
+      where: { providerId: provider.id, categoryId: cleaningCat.id },
+    });
 
-      if (!existingService) {
-        await prisma.service.create({
-            data: {
-                providerId: provider.id,
-                categoryId: cleaningCat.id,
-                title: "Professional Home Cleaning",
-                description: "Deep cleaning for your apartment or house.",
-                priceMin: 20,
-                priceMax: 30,
-                priceType: "hourly",
-            }
-        });
-        console.log("✅ Created cleaning service for provider");
-      }
+    if (!existingService) {
+      await prisma.service.create({
+        data: {
+          providerId: provider.id,
+          categoryId: cleaningCat.id,
+          title: "Professional Home Cleaning",
+          description: "Deep cleaning for your apartment or house.",
+          priceMin: 20,
+          priceMax: 30,
+          priceType: "hourly",
+        },
+      });
+      console.log("✅ Created cleaning service for provider");
+    }
   }
 
   // Create "Recent Requests" (Open requests matching provider service)
   if (cleaningCat) {
-      // Cleanup existing test data if needed? No, just create new ones unique enough or rely on cleanup elsewhere.
-      // But seeding is often additive or idempotent.
-      // Let's check if requests exist to avoid dupes on re-seed
-      const count = await prisma.serviceRequest.count({ where: { title: "Have apartment cleaned (80sqm)" } });
-      if (count === 0) {
-        await prisma.serviceRequest.create({
-            data: {
-              customerId: customerUser.id,
-              categoryId: cleaningCat.id,
-              title: "Have apartment cleaned (80sqm)",
-              description: "Need cleaning for 3 room apartment, standard cleaning.",
-              postalCode: "10115",
-              city: "Berlin",
-              address: "Torstrasse 1",
-              lat: 52.53,
-              lng: 13.4,
-              budgetMin: 100,
-              budgetMax: 150,
-              status: "open",
-            }
-        });
-        console.log(`✅ Created open request 1`);
-      }
+    // Cleanup existing test data if needed? No, just create new ones unique enough or rely on cleanup elsewhere.
+    // But seeding is often additive or idempotent.
+    // Let's check if requests exist to avoid dupes on re-seed
+    const count = await prisma.serviceRequest.count({
+      where: { title: "Have apartment cleaned (80sqm)" },
+    });
+    if (count === 0) {
+      await prisma.serviceRequest.create({
+        data: {
+          customerId: customerUser.id,
+          categoryId: cleaningCat.id,
+          title: "Have apartment cleaned (80sqm)",
+          description: "Need cleaning for 3 room apartment, standard cleaning.",
+          postalCode: "10115",
+          city: "Berlin",
+          address: "Torstrasse 1",
+          lat: 52.53,
+          lng: 13.4,
+          budgetMin: 100,
+          budgetMax: 150,
+          status: "open",
+        },
+      });
+      console.log(`✅ Created open request 1`);
+    }
 
-      const count2 = await prisma.serviceRequest.count({ where: { title: "Move out cleaning" } });
-      if (count2 === 0) {
-        await prisma.serviceRequest.create({
-          data: {
-            customerId: customerUser.id,
-            categoryId: cleaningCat.id,
-            title: "Move out cleaning",
-            description: "Deep cleaning for handover.",
-            postalCode: "10119",
-            city: "Berlin",
-            address: "Brunnenstrasse 10",
-            lat: 52.53,
-            lng: 13.4,
-            budgetMin: 200,
-            budgetMax: 300,
-            status: "open",
-          }
+    const count2 = await prisma.serviceRequest.count({
+      where: { title: "Move out cleaning" },
+    });
+    if (count2 === 0) {
+      await prisma.serviceRequest.create({
+        data: {
+          customerId: customerUser.id,
+          categoryId: cleaningCat.id,
+          title: "Move out cleaning",
+          description: "Deep cleaning for handover.",
+          postalCode: "10119",
+          city: "Berlin",
+          address: "Brunnenstrasse 10",
+          lat: 52.53,
+          lng: 13.4,
+          budgetMin: 200,
+          budgetMax: 300,
+          status: "open",
+        },
       });
       console.log(`✅ Created open request 2`);
-      }
+    }
   }
 
   // Create "Active Bookings" / Calendar Events
   if (cleaningCat) {
-      const activeBookingExists = await prisma.booking.findFirst({
-          where: { providerId: provider.id, status: "confirmed" }
+    const activeBookingExists = await prisma.booking.findFirst({
+      where: { providerId: provider.id, status: "confirmed" },
+    });
+
+    if (!activeBookingExists) {
+      // Booking 1: Window Cleaning
+      const bookingReq1 = await prisma.serviceRequest.create({
+        data: {
+          customerId: customerUser.id,
+          categoryId: cleaningCat.id,
+          title: "Window Cleaning",
+          description: "Window cleaning for apartment.",
+          postalCode: "10115",
+          city: "Berlin",
+          address: "Hauptstrasse 12, 10115 Berlin",
+          lat: 52.53,
+          lng: 13.4,
+          status: "in_progress",
+        },
       });
-      
-      if (!activeBookingExists) {
-        // Booking 1: Window Cleaning
-        const bookingReq1 = await prisma.serviceRequest.create({
-          data: {
-              customerId: customerUser.id,
-              categoryId: cleaningCat.id,
-              title: "Window Cleaning",
-              description: "Window cleaning for apartment.",
-              postalCode: "10115",
-              city: "Berlin",
-              address: "Hauptstrasse 12, 10115 Berlin",
-              lat: 52.53,
-              lng: 13.4,
-              status: "in_progress",
-          }
-        });
-        const quote1 = await prisma.quote.create({
-            data: {
-                requestId: bookingReq1.id,
-                providerId: provider.id,
-                customerId: customerUser.id,
-                price: 80,
-                message: "I can do this.",
-                validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                status: "accepted",
-            }
-        });
-        await prisma.booking.create({
-            data: {
-                quoteId: quote1.id,
-                customerId: customerUser.id,
-                providerId: provider.id,
-                scheduledDate: new Date("2026-02-15T10:00:00"),
-                status: "confirmed",
-                totalPrice: 80,
-                paymentStatus: "paid",
-            }
-        });
+      const quote1 = await prisma.quote.create({
+        data: {
+          requestId: bookingReq1.id,
+          providerId: provider.id,
+          customerId: customerUser.id,
+          price: 80,
+          message: "I can do this.",
+          validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          status: "accepted",
+        },
+      });
+      await prisma.booking.create({
+        data: {
+          quoteId: quote1.id,
+          customerId: customerUser.id,
+          providerId: provider.id,
+          scheduledDate: new Date("2026-02-15T10:00:00"),
+          status: "confirmed",
+          totalPrice: 80,
+          paymentStatus: "paid",
+        },
+      });
 
-        // Booking 2: Office Cleaning - Pending
-        const bookingReq2 = await prisma.serviceRequest.create({
-          data: {
-              customerId: customerUser.id,
-              categoryId: cleaningCat.id,
-              title: "Office Cleaning",
-              description: "Office cleaning for small office.",
-              postalCode: "10117",
-              city: "Berlin",
-              address: "Friedrichstrasse 45, 10117 Berlin",
-              lat: 52.51,
-              lng: 13.39,
-              status: "in_progress",
-          }
-        });
-        const quote2 = await prisma.quote.create({
-            data: {
-                requestId: bookingReq2.id,
-                providerId: provider.id,
-                customerId: customerUser.id,
-                price: 150,
-                message: "I can do this regularly.",
-                validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                status: "accepted",
-            }
-        });
-        await prisma.booking.create({
-            data: {
-                quoteId: quote2.id,
-                customerId: customerUser.id,
-                providerId: provider.id,
-                scheduledDate: new Date("2026-02-17T09:00:00"),
-                status: "pending",
-                totalPrice: 150,
-                paymentStatus: "pending",
-            }
-        });
+      // Booking 2: Office Cleaning - Pending
+      const bookingReq2 = await prisma.serviceRequest.create({
+        data: {
+          customerId: customerUser.id,
+          categoryId: cleaningCat.id,
+          title: "Office Cleaning",
+          description: "Office cleaning for small office.",
+          postalCode: "10117",
+          city: "Berlin",
+          address: "Friedrichstrasse 45, 10117 Berlin",
+          lat: 52.51,
+          lng: 13.39,
+          status: "in_progress",
+        },
+      });
+      const quote2 = await prisma.quote.create({
+        data: {
+          requestId: bookingReq2.id,
+          providerId: provider.id,
+          customerId: customerUser.id,
+          price: 150,
+          message: "I can do this regularly.",
+          validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          status: "accepted",
+        },
+      });
+      await prisma.booking.create({
+        data: {
+          quoteId: quote2.id,
+          customerId: customerUser.id,
+          providerId: provider.id,
+          scheduledDate: new Date("2026-02-17T09:00:00"),
+          status: "pending",
+          totalPrice: 150,
+          paymentStatus: "pending",
+        },
+      });
 
-        // Booking 3: Deep Cleaning
-        const bookingReq3 = await prisma.serviceRequest.create({
-          data: {
-              customerId: customerUser.id,
-              categoryId: cleaningCat.id,
-              title: "Deep Cleaning",
-              description: "Deep cleaning for apartment.",
-              postalCode: "10439",
-              city: "Berlin",
-              address: "Schoenhauser Allee 78, 10439 Berlin",
-              lat: 52.55,
-              lng: 13.42,
-              status: "in_progress",
-          }
-        });
-        const quote3 = await prisma.quote.create({
-            data: {
-                requestId: bookingReq3.id,
-                providerId: provider.id,
-                customerId: customerUser.id,
-                price: 200,
-                message: "Deep cleaning service.",
-                validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                status: "accepted",
-            }
-        });
-        await prisma.booking.create({
-            data: {
-                quoteId: quote3.id,
-                customerId: customerUser.id,
-                providerId: provider.id,
-                scheduledDate: new Date("2026-02-20T14:00:00"),
-                status: "confirmed",
-                totalPrice: 200,
-                paymentStatus: "paid",
-            }
-        });
+      // Booking 3: Deep Cleaning
+      const bookingReq3 = await prisma.serviceRequest.create({
+        data: {
+          customerId: customerUser.id,
+          categoryId: cleaningCat.id,
+          title: "Deep Cleaning",
+          description: "Deep cleaning for apartment.",
+          postalCode: "10439",
+          city: "Berlin",
+          address: "Schoenhauser Allee 78, 10439 Berlin",
+          lat: 52.55,
+          lng: 13.42,
+          status: "in_progress",
+        },
+      });
+      const quote3 = await prisma.quote.create({
+        data: {
+          requestId: bookingReq3.id,
+          providerId: provider.id,
+          customerId: customerUser.id,
+          price: 200,
+          message: "Deep cleaning service.",
+          validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          status: "accepted",
+        },
+      });
+      await prisma.booking.create({
+        data: {
+          quoteId: quote3.id,
+          customerId: customerUser.id,
+          providerId: provider.id,
+          scheduledDate: new Date("2026-02-20T14:00:00"),
+          status: "confirmed",
+          totalPrice: 200,
+          paymentStatus: "paid",
+        },
+      });
 
-        console.log("✅ Created calendar bookings (3 events)");
-      }
+      console.log("✅ Created calendar bookings (3 events)");
+    }
   }
 
   // Create Additional Customers for Mock Data
@@ -514,10 +588,10 @@ async function main() {
     { email: "sarah@test.com", firstName: "Sarah", lastName: "Lewis" },
     { email: "michael@test.com", firstName: "Michael", lastName: "Brown" },
   ];
-  
+
   const customerMap = new Map();
   customerMap.set(customerUser.email, customerUser);
-  
+
   for (const cust of additionalCustomers) {
     const user = await prisma.user.upsert({
       where: { email: cust.email },
@@ -545,7 +619,7 @@ async function main() {
   // Add services to provider for these categories so requests appear
   if (renovierungCat) {
     const existingService = await prisma.service.findFirst({
-      where: { providerId: provider.id, categoryId: renovierungCat.id }
+      where: { providerId: provider.id, categoryId: renovierungCat.id },
     });
     if (!existingService) {
       await prisma.service.create({
@@ -557,13 +631,13 @@ async function main() {
           priceMin: 2000,
           priceMax: 5000,
           priceType: "fixed",
-        }
+        },
       });
     }
   }
   if (gardenCat) {
     const existingService = await prisma.service.findFirst({
-      where: { providerId: provider.id, categoryId: gardenCat.id }
+      where: { providerId: provider.id, categoryId: gardenCat.id },
     });
     if (!existingService) {
       await prisma.service.create({
@@ -575,13 +649,13 @@ async function main() {
           priceMin: 100,
           priceMax: 300,
           priceType: "fixed",
-        }
+        },
       });
     }
   }
   if (elektrikerCat) {
     const existingService = await prisma.service.findFirst({
-      where: { providerId: provider.id, categoryId: elektrikerCat.id }
+      where: { providerId: provider.id, categoryId: elektrikerCat.id },
     });
     if (!existingService) {
       await prisma.service.create({
@@ -593,7 +667,7 @@ async function main() {
           priceMin: 50,
           priceMax: 500,
           priceType: "hourly",
-        }
+        },
       });
     }
   }
@@ -601,14 +675,17 @@ async function main() {
 
   // Create open requests matching mock data in requests page
   if (renovierungCat) {
-    const count = await prisma.serviceRequest.count({ where: { title: "Renovate a bathroom" } });
+    const count = await prisma.serviceRequest.count({
+      where: { title: "Renovate a bathroom" },
+    });
     if (count === 0) {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerMap.get("thomas@test.com").id,
           categoryId: renovierungCat.id,
           title: "Renovate a bathroom",
-          description: "Full renovation of a small bathroom (6 sqm). New tiles and fixtures.",
+          description:
+            "Full renovation of a small bathroom (6 sqm). New tiles and fixtures.",
           postalCode: "10117",
           city: "Berlin",
           address: "Friedrichstrasse 10",
@@ -617,20 +694,23 @@ async function main() {
           budgetMin: 2000,
           budgetMax: 3500,
           status: "open",
-        }
+        },
       });
       console.log("✅ Created open request: Renovate a bathroom");
     }
   }
   if (gardenCat) {
-    const count = await prisma.serviceRequest.count({ where: { title: "Prepare garden for winter" } });
+    const count = await prisma.serviceRequest.count({
+      where: { title: "Prepare garden for winter" },
+    });
     if (count === 0) {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerMap.get("sarah@test.com").id,
           categoryId: gardenCat.id,
           title: "Prepare garden for winter",
-          description: "Garden (200 sqm) needs winter prep. Trim hedges and remove leaves.",
+          description:
+            "Garden (200 sqm) needs winter prep. Trim hedges and remove leaves.",
           postalCode: "10119",
           city: "Berlin",
           address: "Gartenstrasse 15",
@@ -639,20 +719,23 @@ async function main() {
           budgetMin: 150,
           budgetMax: 250,
           status: "open",
-        }
+        },
       });
       console.log("✅ Created open request: Prepare garden for winter");
     }
   }
   if (elektrikerCat) {
-    const count = await prisma.serviceRequest.count({ where: { title: "Inspect electrical installation" } });
+    const count = await prisma.serviceRequest.count({
+      where: { title: "Inspect electrical installation" },
+    });
     if (count === 0) {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerMap.get("michael@test.com").id,
           categoryId: elektrikerCat.id,
           title: "Inspect electrical installation",
-          description: "Check old wiring in an older apartment and upgrade the fuse box if needed.",
+          description:
+            "Check old wiring in an older apartment and upgrade the fuse box if needed.",
           postalCode: "10405",
           city: "Berlin",
           address: "Prenzlauer Allee 50",
@@ -661,7 +744,7 @@ async function main() {
           budgetMin: 500,
           budgetMax: 1000,
           status: "open",
-        }
+        },
       });
       console.log("✅ Created open request: Inspect electrical installation");
     }
@@ -670,9 +753,9 @@ async function main() {
   // Create Completed Bookings with Reviews (from reviews page mock data)
   if (cleaningCat) {
     const existingReview = await prisma.review.findFirst({
-      where: { revieweeId: providerUser.id }
+      where: { revieweeId: providerUser.id },
     });
-    
+
     if (!existingReview) {
       // Review 1: Window cleaning - 5 stars
       const reviewReq1 = await prisma.serviceRequest.create({
@@ -687,7 +770,7 @@ async function main() {
           lat: 52.53,
           lng: 13.4,
           status: "completed",
-        }
+        },
       });
       const reviewQuote1 = await prisma.quote.create({
         data: {
@@ -698,7 +781,7 @@ async function main() {
           message: "Window cleaning",
           validUntil: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           status: "accepted",
-        }
+        },
       });
       const reviewBooking1 = await prisma.booking.create({
         data: {
@@ -710,7 +793,7 @@ async function main() {
           completedAt: new Date("2026-01-10T12:00:00"),
           totalPrice: 80,
           paymentStatus: "paid",
-        }
+        },
       });
       await prisma.review.create({
         data: {
@@ -718,9 +801,10 @@ async function main() {
           reviewerId: customerUser.id,
           revieweeId: providerUser.id,
           rating: 5,
-          comment: "Excellent work! The windows shine like new. Very punctual and professional. Highly recommended!",
+          comment:
+            "Excellent work! The windows shine like new. Very punctual and professional. Highly recommended!",
           providerReply: null,
-        }
+        },
       });
 
       // Review 2: Office cleaning - 5 stars with reply
@@ -737,7 +821,7 @@ async function main() {
           lat: 52.51,
           lng: 13.39,
           status: "completed",
-        }
+        },
       });
       const reviewQuote2 = await prisma.quote.create({
         data: {
@@ -748,7 +832,7 @@ async function main() {
           message: "Office cleaning",
           validUntil: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
           status: "accepted",
-        }
+        },
       });
       const reviewBooking2 = await prisma.booking.create({
         data: {
@@ -760,7 +844,7 @@ async function main() {
           completedAt: new Date("2026-01-05T13:00:00"),
           totalPrice: 150,
           paymentStatus: "paid",
-        }
+        },
       });
       await prisma.review.create({
         data: {
@@ -768,9 +852,11 @@ async function main() {
           reviewerId: thomasUser.id,
           revieweeId: providerUser.id,
           rating: 5,
-          comment: "Very satisfied with the service. Clean, thorough, and reliable. We'll book again.",
-          providerReply: "Thank you for the positive review! We look forward to working together again.",
-        }
+          comment:
+            "Very satisfied with the service. Clean, thorough, and reliable. We'll book again.",
+          providerReply:
+            "Thank you for the positive review! We look forward to working together again.",
+        },
       });
 
       // Review 3: Deep cleaning - 4 stars with reply
@@ -787,7 +873,7 @@ async function main() {
           lat: 52.55,
           lng: 13.42,
           status: "completed",
-        }
+        },
       });
       const reviewQuote3 = await prisma.quote.create({
         data: {
@@ -798,7 +884,7 @@ async function main() {
           message: "Deep cleaning",
           validUntil: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
           status: "accepted",
-        }
+        },
       });
       const reviewBooking3 = await prisma.booking.create({
         data: {
@@ -810,7 +896,7 @@ async function main() {
           completedAt: new Date("2025-12-28T17:00:00"),
           totalPrice: 200,
           paymentStatus: "paid",
-        }
+        },
       });
       await prisma.review.create({
         data: {
@@ -818,9 +904,11 @@ async function main() {
           reviewerId: sarahUser.id,
           revieweeId: providerUser.id,
           rating: 4,
-          comment: "Good cleaning overall. A small area was missed, but it was fixed right away.",
-          providerReply: "Thanks for the feedback! We're always working to improve.",
-        }
+          comment:
+            "Good cleaning overall. A small area was missed, but it was fixed right away.",
+          providerReply:
+            "Thanks for the feedback! We're always working to improve.",
+        },
       });
 
       // Review 4: Move-out cleaning - 5 stars no reply
@@ -837,7 +925,7 @@ async function main() {
           lat: 52.53,
           lng: 13.4,
           status: "completed",
-        }
+        },
       });
       const reviewQuote4 = await prisma.quote.create({
         data: {
@@ -848,7 +936,7 @@ async function main() {
           message: "Move-out cleaning",
           validUntil: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
           status: "accepted",
-        }
+        },
       });
       const reviewBooking4 = await prisma.booking.create({
         data: {
@@ -860,7 +948,7 @@ async function main() {
           completedAt: new Date("2025-12-20T14:00:00"),
           totalPrice: 250,
           paymentStatus: "paid",
-        }
+        },
       });
       await prisma.review.create({
         data: {
@@ -868,9 +956,10 @@ async function main() {
           reviewerId: michaelUser.id,
           revieweeId: providerUser.id,
           rating: 5,
-          comment: "Perfect! The apartment looked brand new when they finished. I got my full deposit back.",
+          comment:
+            "Perfect! The apartment looked brand new when they finished. I got my full deposit back.",
           providerReply: null,
-        }
+        },
       });
 
       console.log("✅ Created completed bookings with reviews (4 reviews)");
@@ -985,16 +1074,18 @@ async function main() {
     _avg: { rating: true },
     _count: { rating: true },
   });
-  
+
   if (reviewStats._avg.rating) {
     await prisma.provider.update({
       where: { id: provider.id },
       data: {
         ratingAvg: reviewStats._avg.rating,
         totalReviews: reviewStats._count.rating,
-      }
+      },
     });
-    console.log(`✅ Updated provider rating: ${reviewStats._avg.rating.toFixed(1)} (${reviewStats._count.rating} reviews)`);
+    console.log(
+      `✅ Updated provider rating: ${reviewStats._avg.rating.toFixed(1)} (${reviewStats._count.rating} reviews)`,
+    );
   }
 
   console.log("✅ Seeding complete!");

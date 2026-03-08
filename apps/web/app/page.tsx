@@ -139,15 +139,15 @@ export default async function Home() {
               <ul className="space-y-2 text-white/70">
                 <li><Link href="/categories" className="hover:text-white">{t("nav.categories")}</Link></li>
                 <li><Link href="/how-it-works" className="hover:text-white">{t("nav.howItWorks")}</Link></li>
-                <li><Link href="/hilfe" className="hover:text-white">{t("footer.help")}</Link></li>
+                <li><Link href="/help" className="hover:text-white">{t("footer.help")}</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="mb-4 font-semibold">{t("footer.forProviders")}</h4>
               <ul className="space-y-2 text-white/70">
                 <li><Link href="/become-provider" className="hover:text-white">{t("footer.becomeProvider")}</Link></li>
-                <li><Link href="/preise" className="hover:text-white">{t("footer.pricing")}</Link></li>
-                <li><Link href="/erfolgsgeschichten" className="hover:text-white">{t("footer.successStories")}</Link></li>
+                <li><Link href="/pricing" className="hover:text-white">{t("footer.pricing")}</Link></li>
+                <li><Link href="/success-stories" className="hover:text-white">{t("footer.successStories")}</Link></li>
               </ul>
             </div>
             <div>

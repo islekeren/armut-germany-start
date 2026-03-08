@@ -97,7 +97,7 @@ export default function LoginPage() {
                 <span className="text-sm text-muted">{t("auth.login.rememberMe")}</span>
               </label>
               <Link
-                href="/passwort-vergessen"
+                href="/forgot-password"
                 className="text-sm text-primary hover:underline"
               >
                 {t("auth.login.forgotPassword")}

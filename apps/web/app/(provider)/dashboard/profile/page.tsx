@@ -36,6 +36,9 @@ export default function ProviderProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -43,15 +46,15 @@ export default function ProviderProfilePage() {
         const token = localStorage.getItem("armut_access_token");
         if (token) {
           const profile = await providerApi.getProfile(token);
-          
+
           // Map services to category keys
           const categoryList = Array.from(
-            new Set(profile.services.map((s) => s.category.slug))
+            new Set(profile.services.map((s) => s.category.slug)),
           );
-          
+
           // Get price range from first service
           const firstService = profile.services[0];
-          
+
           setFormData({
             companyName: profile.companyName || "",
             contactName: `${profile.user.firstName} ${profile.user.lastName}`,
@@ -59,13 +62,13 @@ export default function ProviderProfilePage() {
             phone: profile.user.phone || "",
             description: profile.description,
             categories: categoryList,
-            postalCode: "", // Would need to reverse geocode
-            city: "Berlin", // Would need to reverse geocode
+            postalCode: profile.profile?.postalCode || "",
+            city: profile.profile?.city || "",
             serviceRadius: profile.serviceAreaRadius.toString(),
             priceMin: firstService?.priceMin?.toString() || "",
             priceMax: firstService?.priceMax?.toString() || "",
             experienceYears: profile.experienceYears.toString(),
-            website: "",
+            website: profile.profile?.website || "",
           });
           setProfileImage(profile.user.profileImage);
         }
@@ -82,9 +85,34 @@ export default function ProviderProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // TODO: Implement profile update API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    setSaveStatus("idle");
+
+    try {
+      const token = localStorage.getItem("armut_access_token");
+      if (!token) {
+        setSaveStatus("error");
+        return;
+      }
+
+      await providerApi.updateProfile(token, {
+        companyName: formData.companyName || undefined,
+        description: formData.description,
+        experienceYears: Number(formData.experienceYears) || 0,
+        serviceAreaRadius: Number(formData.serviceRadius) || 25,
+        priceMin: formData.priceMin ? Number(formData.priceMin) : undefined,
+        priceMax: formData.priceMax ? Number(formData.priceMax) : undefined,
+        city: formData.city || undefined,
+        postalCode: formData.postalCode || undefined,
+        website: formData.website || undefined,
+      });
+
+      setSaveStatus("success");
+    } catch (error) {
+      console.error("Failed to update provider profile", error);
+      setSaveStatus("error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (loading) {
@@ -104,7 +132,9 @@ export default function ProviderProfilePage() {
             <h2 className="mb-4 text-lg font-semibold">{t("companyInfo")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <FormLabel>{t("companyName")} {t("required")}</FormLabel>
+                <FormLabel>
+                  {t("companyName")} {t("required")}
+                </FormLabel>
                 <FormInput
                   type="text"
                   value={formData.companyName}
@@ -116,7 +146,9 @@ export default function ProviderProfilePage() {
                 />
               </div>
               <div>
-                <FormLabel>{t("contactName")} {t("required")}</FormLabel>
+                <FormLabel>
+                  {t("contactName")} {t("required")}
+                </FormLabel>
                 <FormInput
                   type="text"
                   value={formData.contactName}
@@ -128,7 +160,9 @@ export default function ProviderProfilePage() {
                 />
               </div>
               <div>
-                <FormLabel>{t("email")} {t("required")}</FormLabel>
+                <FormLabel>
+                  {t("email")} {t("required")}
+                </FormLabel>
                 <FormInput
                   type="email"
                   value={formData.email}
@@ -140,7 +174,9 @@ export default function ProviderProfilePage() {
                 />
               </div>
               <div>
-                <FormLabel>{t("phone")} {t("required")}</FormLabel>
+                <FormLabel>
+                  {t("phone")} {t("required")}
+                </FormLabel>
                 <FormInput
                   type="tel"
                   value={formData.phone}
@@ -154,7 +190,9 @@ export default function ProviderProfilePage() {
             </div>
 
             <div className="mt-4">
-              <FormLabel>{t("description")} {t("required")}</FormLabel>
+              <FormLabel>
+                {t("description")} {t("required")}
+              </FormLabel>
               <FormTextarea
                 value={formData.description}
                 onChange={(e) =>
@@ -164,9 +202,7 @@ export default function ProviderProfilePage() {
                 accent="primary"
                 required
               />
-              <p className="mt-1 text-sm text-muted">
-                {t("descriptionHint")}
-              </p>
+              <p className="mt-1 text-sm text-muted">{t("descriptionHint")}</p>
             </div>
           </PanelCard>
 
@@ -176,8 +212,8 @@ export default function ProviderProfilePage() {
             <div>
               <FormLabel>Your selected category {t("required")}</FormLabel>
               <p className="mb-2 text-sm text-muted">
-                You can&apos;t change your selected category. For more info, go to
-                Help.
+                You can&apos;t change your selected category. For more info, go
+                to Help.
               </p>
               <div className="flex flex-wrap gap-2">
                 {formData.categories.map((key) => (
@@ -198,7 +234,10 @@ export default function ProviderProfilePage() {
                   type="number"
                   value={formData.experienceYears}
                   onChange={(e) =>
-                    setFormData({ ...formData, experienceYears: e.target.value })
+                    setFormData({
+                      ...formData,
+                      experienceYears: e.target.value,
+                    })
                   }
                   accent="primary"
                 />
@@ -233,7 +272,9 @@ export default function ProviderProfilePage() {
             <h2 className="mb-4 text-lg font-semibold">{t("serviceArea")}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <FormLabel>{t("postalCode")} {t("required")}</FormLabel>
+                <FormLabel>
+                  {t("postalCode")} {t("required")}
+                </FormLabel>
                 <FormInput
                   type="text"
                   value={formData.postalCode}
@@ -245,7 +286,9 @@ export default function ProviderProfilePage() {
                 />
               </div>
               <div>
-                <FormLabel>{t("city")} {t("required")}</FormLabel>
+                <FormLabel>
+                  {t("city")} {t("required")}
+                </FormLabel>
                 <FormInput
                   type="text"
                   value={formData.city}
@@ -283,9 +326,9 @@ export default function ProviderProfilePage() {
                 <div className="flex items-center gap-4">
                   {profileImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={profileImage} 
-                      alt="Profile" 
+                    <img
+                      src={profileImage}
+                      alt="Profile"
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
@@ -304,9 +347,7 @@ export default function ProviderProfilePage() {
               <div>
                 <FormLabel>{t("gallery")}</FormLabel>
                 <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
-                  <p className="text-sm text-muted">
-                    {t("dragImages")}
-                  </p>
+                  <p className="text-sm text-muted">{t("dragImages")}</p>
                 </div>
               </div>
             </div>
@@ -314,6 +355,16 @@ export default function ProviderProfilePage() {
 
           {/* Submit */}
           <div className="flex justify-end gap-4">
+            {saveStatus === "success" ? (
+              <p className="self-center text-sm text-success">
+                Profile updated successfully.
+              </p>
+            ) : null}
+            {saveStatus === "error" ? (
+              <p className="self-center text-sm text-error">
+                Failed to update profile.
+              </p>
+            ) : null}
             <Link
               href="/dashboard"
               className="rounded-lg border border-border px-6 py-3 font-medium hover:bg-background"
@@ -333,4 +384,3 @@ export default function ProviderProfilePage() {
     </ProviderSubpageShell>
   );
 }
-

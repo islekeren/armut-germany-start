@@ -6,7 +6,7 @@ interface ApiOptions extends RequestInit {
 
 export async function apiRequest<T>(
   endpoint: string,
-  options: ApiOptions = {}
+  options: ApiOptions = {},
 ): Promise<T> {
   const { token, ...fetchOptions } = options;
   const headers = new Headers(fetchOptions.headers || undefined);
@@ -86,7 +86,9 @@ export async function getCategories(): Promise<Category[]> {
   return apiRequest<Category[]>("/categories");
 }
 
-export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+export async function getCategoryBySlug(
+  slug: string,
+): Promise<Category | null> {
   return apiRequest<Category | null>(`/categories/${slug}`);
 }
 
@@ -125,7 +127,78 @@ export interface PublicProvider {
     lastName: string;
     profileImage: string | null;
   };
+  profile?: {
+    slug: string;
+    headline: string | null;
+    city: string | null;
+  };
   services: ProviderService[];
+}
+
+export interface ProviderOpeningHour {
+  day: string;
+  closed: boolean;
+  open?: string | null;
+  close?: string | null;
+}
+
+export interface PublicProviderReviewItem {
+  id: string;
+  rating: number;
+  comment: string | null;
+  providerReply: string | null;
+  createdAt: string;
+  reviewer: {
+    name: string;
+    profileImage: string | null;
+  };
+  service: {
+    title: string;
+    category: Category;
+  };
+}
+
+export interface PublicProviderProfile {
+  id: string;
+  userId: string;
+  companyName: string | null;
+  description: string;
+  experienceYears: number;
+  serviceAreaRadius: number;
+  serviceAreaLat: number;
+  serviceAreaLng: number;
+  ratingAvg: number;
+  totalReviews: number;
+  completedJobs: number;
+  acceptanceRate: number;
+  memberSince: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    profileImage: string | null;
+  };
+  profile: {
+    slug: string | null;
+    headline: string | null;
+    bio: string;
+    addressLine1: string | null;
+    city: string | null;
+    postalCode: string | null;
+    website: string | null;
+    coverImage: string | null;
+    phoneVisible: boolean;
+    galleryImages: string[];
+    highlights: string[];
+    languages: string[];
+    openingHours: ProviderOpeningHour[];
+  };
+  services: ProviderService[];
+  reviews: {
+    breakdown: Record<number, number>;
+    items: PublicProviderReviewItem[];
+  };
 }
 
 export interface ProvidersResponse {
@@ -150,17 +223,22 @@ export const providersApi = {
   }) => {
     const params = new URLSearchParams();
     if (query?.categoryId) params.append("categoryId", query.categoryId);
-    if (query?.minRating !== undefined) params.append("minRating", query.minRating.toString());
+    if (query?.minRating !== undefined)
+      params.append("minRating", query.minRating.toString());
     if (query?.page) params.append("page", query.page.toString());
     if (query?.limit) params.append("limit", query.limit.toString());
     if (query?.lat !== undefined) params.append("lat", query.lat.toString());
     if (query?.lng !== undefined) params.append("lng", query.lng.toString());
-    if (query?.radius !== undefined) params.append("radius", query.radius.toString());
+    if (query?.radius !== undefined)
+      params.append("radius", query.radius.toString());
     const queryString = params.toString();
     return apiRequest<ProvidersResponse>(
-      `/providers${queryString ? `?${queryString}` : ""}`
+      `/providers${queryString ? `?${queryString}` : ""}`,
     );
   },
+
+  getProfile: (providerId: string) =>
+    apiRequest<PublicProviderProfile>(`/providers/${providerId}/profile`),
 };
 
 export interface LoginData {
@@ -297,7 +375,7 @@ export const requestsApi = {
     if (query?.limit) params.append("limit", query.limit.toString());
     const queryString = params.toString();
     return apiRequest<PaginatedResponse<ServiceRequest>>(
-      `/requests${queryString ? `?${queryString}` : ""}`
+      `/requests${queryString ? `?${queryString}` : ""}`,
     );
   },
 
@@ -309,8 +387,7 @@ export const requestsApi = {
     });
   },
 
-  getById: (id: string) =>
-    apiRequest<ServiceRequest>(`/requests/${id}`),
+  getById: (id: string) => apiRequest<ServiceRequest>(`/requests/${id}`),
 
   update: (id: string, data: UpdateRequestData, token: string) =>
     apiRequest<ServiceRequest>(`/requests/${id}`, {
@@ -448,6 +525,23 @@ export interface ProviderProfile {
     phone: string | null;
     profileImage: string | null;
   };
+  profile?: {
+    id: string;
+    providerId: string;
+    slug: string;
+    headline: string | null;
+    bio: string | null;
+    addressLine1: string | null;
+    city: string | null;
+    postalCode: string | null;
+    website: string | null;
+    coverImage: string | null;
+    phoneVisible: boolean;
+    galleryImages: string[];
+    highlights: string[];
+    languages: string[];
+    openingHours: ProviderOpeningHour[] | null;
+  };
   services: {
     id: string;
     categoryId: string;
@@ -477,6 +571,29 @@ export interface CreateProviderProfileData {
   priceMax?: number;
 }
 
+export interface UpdateProviderProfileData {
+  companyName?: string;
+  description?: string;
+  experienceYears?: number;
+  serviceAreaRadius?: number;
+  serviceAreaLat?: number;
+  serviceAreaLng?: number;
+  priceMin?: number;
+  priceMax?: number;
+  headline?: string;
+  bio?: string;
+  addressLine1?: string;
+  city?: string;
+  postalCode?: string;
+  website?: string;
+  coverImage?: string;
+  phoneVisible?: boolean;
+  galleryImages?: string[];
+  highlights?: string[];
+  languages?: string[];
+  openingHours?: ProviderOpeningHour[];
+}
+
 export const providerApi = {
   createProfile: (token: string, data: CreateProviderProfileData) =>
     apiRequest<ProviderProfile>("/providers", {
@@ -491,7 +608,17 @@ export const providerApi = {
   getProfile: (token: string) =>
     apiRequest<ProviderProfile>("/providers/me", { token }),
 
-  getRequests: (token: string, query?: { category?: string; page?: number; limit?: number }) => {
+  updateProfile: (token: string, data: UpdateProviderProfileData) =>
+    apiRequest<ProviderProfile>("/providers/me/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  getRequests: (
+    token: string,
+    query?: { category?: string; page?: number; limit?: number },
+  ) => {
     const params = new URLSearchParams();
     if (query?.category) params.append("category", query.category);
     if (query?.page) params.append("page", query.page.toString());
@@ -499,11 +626,14 @@ export const providerApi = {
     const queryString = params.toString();
     return apiRequest<ProviderRequestsResponse>(
       `/providers/me/requests${queryString ? `?${queryString}` : ""}`,
-      { token }
+      { token },
     );
   },
 
-  getBookings: (token: string, query?: { month?: number; year?: number; status?: string }) => {
+  getBookings: (
+    token: string,
+    query?: { month?: number; year?: number; status?: string },
+  ) => {
     const params = new URLSearchParams();
     if (query?.month) params.append("month", query.month.toString());
     if (query?.year) params.append("year", query.year.toString());
@@ -511,7 +641,7 @@ export const providerApi = {
     const queryString = params.toString();
     return apiRequest<ProviderBooking[]>(
       `/providers/me/bookings${queryString ? `?${queryString}` : ""}`,
-      { token }
+      { token },
     );
   },
 
@@ -522,7 +652,7 @@ export const providerApi = {
     const queryString = params.toString();
     return apiRequest<ProviderReviewsResponse>(
       `/providers/me/reviews${queryString ? `?${queryString}` : ""}`,
-      { token }
+      { token },
     );
   },
 
@@ -685,7 +815,7 @@ export interface MessagesPageResponse {
 export const messagesApi = {
   createConversation: (
     token: string,
-    data: { participantId: string; requestId?: string }
+    data: { participantId: string; requestId?: string },
   ) =>
     apiRequest<ConversationItem>("/messages/conversations", {
       method: "POST",
@@ -704,12 +834,12 @@ export const messagesApi = {
   getMessages: (token: string, conversationId: string, page = 1, limit = 50) =>
     apiRequest<MessagesPageResponse>(
       `/messages/conversations/${conversationId}/messages?page=${page}&limit=${limit}`,
-      { token }
+      { token },
     ),
 
   sendMessage: (
     token: string,
-    data: { conversationId: string; content: string; attachments?: string[] }
+    data: { conversationId: string; content: string; attachments?: string[] },
   ) =>
     apiRequest<MessageItem>("/messages/send", {
       method: "POST",
@@ -775,7 +905,7 @@ export const uploadsApi = {
 
   getPresignedUploadUrl: (
     token: string,
-    data: { folder: UploadFolder; filename: string; contentType: string }
+    data: { folder: UploadFolder; filename: string; contentType: string },
   ) =>
     apiRequest<{ uploadUrl: string; key: string; publicUrl: string }>(
       "/uploads/presigned",
@@ -783,7 +913,7 @@ export const uploadsApi = {
         method: "POST",
         body: JSON.stringify(data),
         token,
-      }
+      },
     ),
 
   deleteFile: (token: string, key: string) =>

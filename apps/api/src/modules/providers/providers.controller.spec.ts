@@ -5,6 +5,8 @@ describe("ProvidersController", () => {
     create: jest.fn(),
     findAll: jest.fn(),
     findByUserId: jest.fn(),
+    updateMyProfile: jest.fn(),
+    getPublicProfile: jest.fn(),
     getStats: jest.fn(),
     getDashboard: jest.fn(),
     getRequests: jest.fn(),
@@ -95,12 +97,12 @@ describe("ProvidersController", () => {
     const req = { user: { id: "u1" } };
     providersService.replyToReview.mockResolvedValue({ success: true });
     await expect(
-      controller.replyToReview(req, "rev1", { reply: "Thanks!" } as any)
+      controller.replyToReview(req, "rev1", { reply: "Thanks!" } as any),
     ).resolves.toEqual({ success: true });
     expect(providersService.replyToReview).toHaveBeenCalledWith(
       "u1",
       "rev1",
-      "Thanks!"
+      "Thanks!",
     );
   });
 
@@ -108,6 +110,18 @@ describe("ProvidersController", () => {
     providersService.findOne.mockResolvedValue({ id: "p1" });
     await expect(controller.findOne("p1")).resolves.toEqual({ id: "p1" });
     expect(providersService.findOne).toHaveBeenCalledWith("p1");
+  });
+
+  it("gets public provider profile", async () => {
+    providersService.getPublicProfile.mockResolvedValue({
+      id: "p1",
+      profile: {},
+    });
+    await expect(controller.getPublicProfile("p1")).resolves.toEqual({
+      id: "p1",
+      profile: {},
+    });
+    expect(providersService.getPublicProfile).toHaveBeenCalledWith("p1");
   });
 
   it("updates provider by id", async () => {
@@ -121,10 +135,25 @@ describe("ProvidersController", () => {
     expect(providersService.update).toHaveBeenCalledWith("p1", "u1", dto);
   });
 
+  it("updates own provider profile", async () => {
+    const req = { user: { id: "u1" } };
+    const dto: any = { headline: "Top rated" };
+    providersService.updateMyProfile.mockResolvedValue({
+      id: "p1",
+      profile: dto,
+    });
+
+    await expect(controller.updateMyProfile(req, dto)).resolves.toEqual({
+      id: "p1",
+      profile: dto,
+    });
+    expect(providersService.updateMyProfile).toHaveBeenCalledWith("u1", dto);
+  });
+
   it("approves provider", async () => {
     providersService.approve.mockResolvedValue({ id: "p1", isApproved: true });
     await expect(
-      controller.approve("p1", { isApproved: true } as any)
+      controller.approve("p1", { isApproved: true } as any),
     ).resolves.toEqual({
       id: "p1",
       isApproved: true,

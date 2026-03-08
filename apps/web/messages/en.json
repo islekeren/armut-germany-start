@@ -22,18 +22,51 @@
   },
   "categories": {
     "title": "Categories",
-    "cleaning": { "name": "Cleaning", "description": "Home and office cleaning services." },
+    "cleaning": {
+      "name": "Cleaning",
+      "description": "Home and office cleaning services."
+    },
     "moving": { "name": "Moving", "description": "Move-in and move-out help." },
-    "renovation": { "name": "Renovation", "description": "Renovation and remodeling experts." },
-    "garden": { "name": "Garden", "description": "Garden care and landscaping." },
-    "electrician": { "name": "Electrician", "description": "Electrical installation and repairs." },
-    "plumber": { "name": "Plumber", "description": "Plumbing and heating services." },
-    "painter": { "name": "Painter", "description": "Interior and exterior painting." },
-    "locksmith": { "name": "Locksmith", "description": "Lock changes and emergency access." },
-    "tutoring": { "name": "Tutoring", "description": "Private lessons and tutoring." },
-    "photography": { "name": "Photography", "description": "Event and portrait photography." },
-    "computerHelp": { "name": "Computer Help", "description": "IT support and device setup." },
-    "petCare": { "name": "Pet Care", "description": "Pet sitting and care services." }
+    "renovation": {
+      "name": "Renovation",
+      "description": "Renovation and remodeling experts."
+    },
+    "garden": {
+      "name": "Garden",
+      "description": "Garden care and landscaping."
+    },
+    "electrician": {
+      "name": "Electrician",
+      "description": "Electrical installation and repairs."
+    },
+    "plumber": {
+      "name": "Plumber",
+      "description": "Plumbing and heating services."
+    },
+    "painter": {
+      "name": "Painter",
+      "description": "Interior and exterior painting."
+    },
+    "locksmith": {
+      "name": "Locksmith",
+      "description": "Lock changes and emergency access."
+    },
+    "tutoring": {
+      "name": "Tutoring",
+      "description": "Private lessons and tutoring."
+    },
+    "photography": {
+      "name": "Photography",
+      "description": "Event and portrait photography."
+    },
+    "computerHelp": {
+      "name": "Computer Help",
+      "description": "IT support and device setup."
+    },
+    "petCare": {
+      "name": "Pet Care",
+      "description": "Pet sitting and care services."
+    }
   },
   "categoriesPage": {
     "title": "Service Categories",
@@ -83,12 +116,57 @@
     "previous": "Previous",
     "next": "Next"
   },
+  "providerPublicProfile": {
+    "requestQuote": "Request quote",
+    "visitWebsite": "Visit website",
+    "about": "About",
+    "highlights": "Highlights",
+    "languages": "Languages",
+    "services": "Services",
+    "reviews": "Reviews",
+    "contact": "Contact",
+    "location": "Location",
+    "serviceArea": "Service area",
+    "businessHours": "Business hours",
+    "closed": "Closed",
+    "unknownHours": "Opening hours are not available.",
+    "quickFacts": "Quick facts",
+    "experience": "Experience",
+    "completedJobs": "Completed jobs",
+    "acceptanceRate": "Quote acceptance",
+    "memberSince": "Member since",
+    "years": "{count, plural, one {# year} other {# years}}",
+    "km": "{count} km",
+    "reviewsCount": "{count, plural, one {# review} other {# reviews}}",
+    "ratedOn": "Reviewed on",
+    "providerReply": "Provider reply",
+    "noComment": "No written comment.",
+    "noReviews": "No reviews yet.",
+    "call": "Phone",
+    "priceQuote": "Request a quote",
+    "priceFrom": "From {value}",
+    "priceUpTo": "Up to {value}",
+    "priceRange": "{min}-{max}",
+    "priceHourlyFrom": "From {value}/hr",
+    "priceHourlyUpTo": "Up to {value}/hr",
+    "priceHourlyRange": "From {min}-{max}/hr",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
+  },
   "createRequest": {
     "step1": "Category",
     "step2": "Details",
     "step3": "Review",
     "whatDoYouNeed": "What do you need?",
     "selectCategory": "Select a category for your service request.",
+    "loadingCategories": "Loading categories...",
     "describeYourNeed": "Describe your need",
     "moreDetailsBetterOffers": "The more details you provide, the better offers you'll receive.",
     "requestTitle": "Title",

@@ -5,11 +5,81 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { CreateProviderDto, UpdateProviderDto, ProviderQueryDto } from "./dto/provider.dto";
+import {
+  CreateProviderDto,
+  UpdateProviderDto,
+  UpdateOwnProviderProfileDto,
+  ProviderOpeningHourDto,
+  ProviderQueryDto,
+} from "./dto/provider.dto";
 
 @Injectable()
 export class ProvidersService {
   constructor(private prisma: PrismaService) {}
+
+  private getDefaultOpeningHours() {
+    return [
+      { day: "monday", closed: false, open: "08:00", close: "18:00" },
+      { day: "tuesday", closed: false, open: "08:00", close: "18:00" },
+      { day: "wednesday", closed: false, open: "08:00", close: "18:00" },
+      { day: "thursday", closed: false, open: "08:00", close: "18:00" },
+      { day: "friday", closed: false, open: "08:00", close: "18:00" },
+      { day: "saturday", closed: true },
+      { day: "sunday", closed: true },
+    ];
+  }
+
+  private sanitizeStringArray(values?: string[]) {
+    if (!values?.length) return [];
+
+    return values
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+
+  private normalizeOpeningHours(openingHours?: ProviderOpeningHourDto[]) {
+    if (!openingHours?.length) {
+      return this.getDefaultOpeningHours();
+    }
+
+    return openingHours.map((entry) => ({
+      day: entry.day,
+      closed: !!entry.closed,
+      open: entry.closed ? null : entry.open || null,
+      close: entry.closed ? null : entry.close || null,
+    }));
+  }
+
+  private normalizeProfileSlug(value: string) {
+    return value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  private async generateUniqueProfileSlug(label: string, providerId?: string) {
+    const base = this.normalizeProfileSlug(label) || "provider";
+    let slug = base;
+    let suffix = 1;
+
+    while (true) {
+      const existing = await this.prisma.providerProfile.findUnique({
+        where: { slug },
+        select: { providerId: true },
+      });
+
+      if (!existing || existing.providerId === providerId) {
+        return slug;
+      }
+
+      slug = `${base}-${suffix}`;
+      suffix += 1;
+    }
+  }
 
   async create(userId: string, createProviderDto: CreateProviderDto) {
     // Check if user already has a provider profile
@@ -30,7 +100,22 @@ export class ProvidersService {
       throw new ForbiddenException("User must be registered as a provider");
     }
 
-    const { categories, priceMin, priceMax, ...providerData } = createProviderDto;
+    const {
+      categories,
+      priceMin,
+      priceMax,
+      headline,
+      bio,
+      addressLine1,
+      city,
+      postalCode,
+      website,
+      galleryImages,
+      highlights,
+      languages,
+      openingHours,
+      ...providerData
+    } = createProviderDto;
 
     const hasPriceRange = priceMin !== undefined || priceMax !== undefined;
     let servicesData: Array<{
@@ -59,10 +144,31 @@ export class ProvidersService {
       }));
     }
 
+    const slugLabel =
+      providerData.companyName ||
+      `${user.firstName} ${user.lastName}` ||
+      user.email;
+    const profileSlug = await this.generateUniqueProfileSlug(slugLabel);
+
     return this.prisma.provider.create({
       data: {
         userId,
         ...providerData,
+        profile: {
+          create: {
+            slug: profileSlug,
+            headline: headline || null,
+            bio: bio || providerData.description,
+            addressLine1: addressLine1 || null,
+            city: city || null,
+            postalCode: postalCode || null,
+            website: website || null,
+            galleryImages: this.sanitizeStringArray(galleryImages),
+            highlights: this.sanitizeStringArray(highlights),
+            languages: this.sanitizeStringArray(languages),
+            openingHours: this.normalizeOpeningHours(openingHours),
+          },
+        },
         services: servicesData.length ? { create: servicesData } : undefined,
       },
       include: {
@@ -76,13 +182,26 @@ export class ProvidersService {
             profileImage: true,
           },
         },
-        services: true,
+        profile: true,
+        services: {
+          include: {
+            category: true,
+          },
+        },
       },
     });
   }
 
   async findAll(query: ProviderQueryDto) {
-    const { lat, lng, radius, categoryId, minRating, page = 1, limit = 10 } = query;
+    const {
+      lat,
+      lng,
+      radius,
+      categoryId,
+      minRating,
+      page = 1,
+      limit = 10,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -116,6 +235,13 @@ export class ProvidersService {
             profileImage: true,
           },
         },
+        profile: {
+          select: {
+            slug: true,
+            headline: true,
+            city: true,
+          },
+        },
         services: {
           where: { isActive: true },
           include: {
@@ -133,7 +259,7 @@ export class ProvidersService {
           lat,
           lng,
           provider.serviceAreaLat,
-          provider.serviceAreaLng
+          provider.serviceAreaLng,
         );
         return distance <= radius;
       });
@@ -166,6 +292,7 @@ export class ProvidersService {
             profileImage: true,
           },
         },
+        profile: true,
         services: {
           where: { isActive: true },
           include: {
@@ -204,6 +331,7 @@ export class ProvidersService {
             profileImage: true,
           },
         },
+        profile: true,
         services: {
           include: {
             category: true,
@@ -216,10 +344,33 @@ export class ProvidersService {
       throw new NotFoundException("Provider profile not found");
     }
 
+    if (!provider.profile) {
+      const slugLabel =
+        provider.companyName ||
+        `${provider.user.firstName} ${provider.user.lastName}`.trim() ||
+        provider.user.email;
+      const slug = await this.generateUniqueProfileSlug(slugLabel, provider.id);
+
+      await this.prisma.providerProfile.create({
+        data: {
+          providerId: provider.id,
+          slug,
+          bio: provider.description,
+          openingHours: this.getDefaultOpeningHours(),
+        },
+      });
+
+      return this.findByUserId(userId);
+    }
+
     return provider;
   }
 
-  async update(id: string, userId: string, updateProviderDto: UpdateProviderDto) {
+  async update(
+    id: string,
+    userId: string,
+    updateProviderDto: UpdateProviderDto,
+  ) {
     const provider = await this.prisma.provider.findUnique({
       where: { id },
     });
@@ -246,9 +397,319 @@ export class ProvidersService {
             profileImage: true,
           },
         },
-        services: true,
+        profile: true,
+        services: {
+          include: {
+            category: true,
+          },
+        },
       },
     });
+  }
+
+  async updateMyProfile(
+    userId: string,
+    updateDto: UpdateOwnProviderProfileDto,
+  ) {
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        profile: true,
+      },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const {
+      priceMin,
+      priceMax,
+      headline,
+      bio,
+      addressLine1,
+      city,
+      postalCode,
+      website,
+      coverImage,
+      phoneVisible,
+      galleryImages,
+      highlights,
+      languages,
+      openingHours,
+      ...providerData
+    } = updateDto;
+
+    const normalizeOptionalText = (value?: string) => {
+      if (value === undefined) return undefined;
+      const normalized = value.trim();
+      return normalized.length ? normalized : null;
+    };
+
+    const profileUpdateData: any = {};
+    const normalizedHeadline = normalizeOptionalText(headline);
+    const normalizedBio = normalizeOptionalText(bio);
+    const normalizedAddress = normalizeOptionalText(addressLine1);
+    const normalizedCity = normalizeOptionalText(city);
+    const normalizedPostalCode = normalizeOptionalText(postalCode);
+    const normalizedWebsite = normalizeOptionalText(website);
+    const normalizedCoverImage = normalizeOptionalText(coverImage);
+
+    if (normalizedHeadline !== undefined)
+      profileUpdateData.headline = normalizedHeadline;
+    if (normalizedBio !== undefined) profileUpdateData.bio = normalizedBio;
+    if (normalizedAddress !== undefined)
+      profileUpdateData.addressLine1 = normalizedAddress;
+    if (normalizedCity !== undefined) profileUpdateData.city = normalizedCity;
+    if (normalizedPostalCode !== undefined)
+      profileUpdateData.postalCode = normalizedPostalCode;
+    if (normalizedWebsite !== undefined)
+      profileUpdateData.website = normalizedWebsite;
+    if (normalizedCoverImage !== undefined)
+      profileUpdateData.coverImage = normalizedCoverImage;
+    if (phoneVisible !== undefined)
+      profileUpdateData.phoneVisible = phoneVisible;
+    if (galleryImages !== undefined) {
+      profileUpdateData.galleryImages = this.sanitizeStringArray(galleryImages);
+    }
+    if (highlights !== undefined) {
+      profileUpdateData.highlights = this.sanitizeStringArray(highlights);
+    }
+    if (languages !== undefined) {
+      profileUpdateData.languages = this.sanitizeStringArray(languages);
+    }
+    if (openingHours !== undefined) {
+      profileUpdateData.openingHours = this.normalizeOpeningHours(openingHours);
+    }
+
+    const servicePriceData: any = {};
+    if (priceMin !== undefined) servicePriceData.priceMin = priceMin;
+    if (priceMax !== undefined) servicePriceData.priceMax = priceMax;
+
+    const shouldMutateProfile =
+      !provider.profile || Object.keys(profileUpdateData).length > 0;
+
+    let profileMutation: any;
+    if (shouldMutateProfile) {
+      const slugLabel =
+        provider.companyName ||
+        `${provider.user.firstName} ${provider.user.lastName}`.trim() ||
+        provider.user.email;
+      const slug = await this.generateUniqueProfileSlug(slugLabel, provider.id);
+
+      profileMutation = {
+        upsert: {
+          create: {
+            slug,
+            headline: normalizedHeadline ?? null,
+            bio: normalizedBio ?? provider.description,
+            addressLine1: normalizedAddress ?? null,
+            city: normalizedCity ?? null,
+            postalCode: normalizedPostalCode ?? null,
+            website: normalizedWebsite ?? null,
+            coverImage: normalizedCoverImage ?? null,
+            phoneVisible: phoneVisible ?? true,
+            galleryImages: this.sanitizeStringArray(galleryImages),
+            highlights: this.sanitizeStringArray(highlights),
+            languages: this.sanitizeStringArray(languages),
+            openingHours: this.normalizeOpeningHours(openingHours),
+          },
+          update: profileUpdateData,
+        },
+      };
+    }
+
+    return this.prisma.provider.update({
+      where: { id: provider.id },
+      data: {
+        ...providerData,
+        profile: profileMutation,
+        services: Object.keys(servicePriceData).length
+          ? {
+              updateMany: {
+                where: { isActive: true },
+                data: servicePriceData,
+              },
+            }
+          : undefined,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            profileImage: true,
+          },
+        },
+        profile: true,
+        services: {
+          include: {
+            category: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getPublicProfile(providerId: string) {
+    const provider = await this.prisma.provider.findFirst({
+      where: {
+        id: providerId,
+        isApproved: true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            profileImage: true,
+          },
+        },
+        profile: true,
+        services: {
+          where: { isActive: true },
+          include: {
+            category: true,
+          },
+        },
+      },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const where = { revieweeId: provider.userId };
+    const [
+      reviews,
+      ratingBreakdown,
+      completedJobs,
+      totalQuotes,
+      acceptedQuotes,
+    ] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        take: 12,
+        orderBy: { createdAt: "desc" },
+        include: {
+          reviewer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              profileImage: true,
+            },
+          },
+          booking: {
+            include: {
+              quote: {
+                include: {
+                  request: {
+                    select: {
+                      title: true,
+                      category: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.review.groupBy({
+        by: ["rating"],
+        where,
+        _count: { rating: true },
+      }),
+      this.prisma.booking.count({
+        where: { providerId: provider.id, status: "completed" },
+      }),
+      this.prisma.quote.count({
+        where: { providerId: provider.id },
+      }),
+      this.prisma.quote.count({
+        where: { providerId: provider.id, status: "accepted" },
+      }),
+    ]);
+
+    const breakdown: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    ratingBreakdown.forEach((item) => {
+      breakdown[item.rating] = item._count.rating;
+    });
+
+    const acceptanceRate =
+      totalQuotes > 0
+        ? Number(((acceptedQuotes / totalQuotes) * 100).toFixed(1))
+        : 0;
+
+    return {
+      id: provider.id,
+      userId: provider.userId,
+      companyName: provider.companyName,
+      description: provider.description,
+      experienceYears: provider.experienceYears,
+      serviceAreaRadius: provider.serviceAreaRadius,
+      serviceAreaLat: provider.serviceAreaLat,
+      serviceAreaLng: provider.serviceAreaLng,
+      ratingAvg: provider.ratingAvg,
+      totalReviews: provider.totalReviews,
+      completedJobs,
+      acceptanceRate,
+      memberSince: provider.createdAt,
+      user: {
+        id: provider.user.id,
+        firstName: provider.user.firstName,
+        lastName: provider.user.lastName,
+        phone: provider.profile?.phoneVisible ? provider.user.phone : null,
+        profileImage: provider.user.profileImage,
+      },
+      profile: {
+        slug: provider.profile?.slug || null,
+        headline: provider.profile?.headline || null,
+        bio: provider.profile?.bio || provider.description,
+        addressLine1: provider.profile?.addressLine1 || null,
+        city: provider.profile?.city || null,
+        postalCode: provider.profile?.postalCode || null,
+        website: provider.profile?.website || null,
+        coverImage: provider.profile?.coverImage || null,
+        phoneVisible: provider.profile?.phoneVisible ?? true,
+        galleryImages: provider.profile?.galleryImages || [],
+        highlights: provider.profile?.highlights || [],
+        languages: provider.profile?.languages || [],
+        openingHours:
+          provider.profile?.openingHours || this.getDefaultOpeningHours(),
+      },
+      services: provider.services,
+      reviews: {
+        breakdown,
+        items: reviews.map((review) => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          providerReply: review.providerReply,
+          createdAt: review.createdAt,
+          reviewer: {
+            name: `${review.reviewer.firstName} ${review.reviewer.lastName}`.trim(),
+            profileImage: review.reviewer.profileImage,
+          },
+          service: {
+            title: review.booking.quote.request.title,
+            category: review.booking.quote.request.category,
+          },
+        })),
+      },
+    };
   }
 
   async approve(id: string, isApproved: boolean) {
@@ -308,7 +769,8 @@ export class ProvidersService {
     return {
       totalQuotes,
       acceptedQuotes,
-      conversionRate: totalQuotes > 0 ? (acceptedQuotes / totalQuotes) * 100 : 0,
+      conversionRate:
+        totalQuotes > 0 ? (acceptedQuotes / totalQuotes) * 100 : 0,
       activeBookings,
       completedBookings,
       totalEarnings: totalEarnings._sum.totalPrice || 0,
@@ -416,7 +878,10 @@ export class ProvidersService {
         category: req.category.nameEn, // Or nameDe based on locale, but using EN for now
         location: `${req.postalCode} ${req.city}`,
         date: req.createdAt,
-        budget: req.budgetMin && req.budgetMax ? `${req.budgetMin}-${req.budgetMax}€` : "Custom",
+        budget:
+          req.budgetMin && req.budgetMax
+            ? `${req.budgetMin}-${req.budgetMax}€`
+            : "Custom",
       })),
       activeBookings: activeBookings.map((booking) => ({
         id: booking.id,
@@ -433,7 +898,7 @@ export class ProvidersService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371; // Earth's radius in km
     const dLat = this.toRad(lat2 - lat1);
@@ -452,7 +917,10 @@ export class ProvidersService {
     return deg * (Math.PI / 180);
   }
 
-  async getRequests(userId: string, query: { category?: string; page?: number; limit?: number }) {
+  async getRequests(
+    userId: string,
+    query: { category?: string; page?: number; limit?: number },
+  ) {
     const { category, page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
@@ -471,10 +939,12 @@ export class ProvidersService {
     }
 
     let categoryIds = provider.services.map((s) => s.categoryId);
-    
+
     // Filter by specific category if provided
     if (category) {
-      const cat = await this.prisma.category.findUnique({ where: { slug: category } });
+      const cat = await this.prisma.category.findUnique({
+        where: { slug: category },
+      });
       if (cat && categoryIds.includes(cat.id)) {
         categoryIds = [cat.id];
       }
@@ -519,13 +989,18 @@ export class ProvidersService {
         location: `${req.postalCode} ${req.city}`,
         address: req.address,
         preferredDate: req.preferredDate,
-        budget: req.budgetMin && req.budgetMax ? `${req.budgetMin}-${req.budgetMax}€` : null,
+        budget:
+          req.budgetMin && req.budgetMax
+            ? `${req.budgetMin}-${req.budgetMax}€`
+            : null,
         budgetMin: req.budgetMin,
         budgetMax: req.budgetMax,
         createdAt: req.createdAt,
         customer: {
           name: `${req.customer.firstName} ${req.customer.lastName.charAt(0)}.`,
-          memberSince: new Date(req.customer.createdAt).getFullYear().toString(),
+          memberSince: new Date(req.customer.createdAt)
+            .getFullYear()
+            .toString(),
         },
       })),
       meta: {
@@ -537,7 +1012,10 @@ export class ProvidersService {
     };
   }
 
-  async getBookings(userId: string, query: { month?: number; year?: number; status?: string }) {
+  async getBookings(
+    userId: string,
+    query: { month?: number; year?: number; status?: string },
+  ) {
     const { month, year, status } = query;
 
     const provider = await this.prisma.provider.findUnique({
