@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:web": "npm run build --workspace=web",
+    "build:api": "npm run build --workspace=api",
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=web",
     "dev:api": "turbo run dev --filter=api",
@@ -10,9 +12,11 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
+    "start:api": "npm run start:prod --workspace=api",
     "db:generate": "turbo run db:generate --filter=api",
     "db:push": "turbo run db:push --filter=api",
     "db:migrate": "turbo run db:migrate --filter=api",
+    "db:migrate:deploy:api": "npm run db:migrate:deploy --workspace=api",
     "db:studio": "turbo run db:studio --filter=api"
   },
   "devDependencies": {
@@ -21,7 +25,7 @@
     "typescript": "5.9.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.9.0"
   },
   "packageManager": "npm@10.9.2",
   "workspaces": [

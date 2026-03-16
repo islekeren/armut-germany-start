@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: armut-germany-api
+    runtime: node
+    rootDir: .
+    buildCommand: npm ci && npm run db:generate --workspace=api && npm run build --workspace=api
+    preDeployCommand: npm run db:migrate:deploy --workspace=api
+    startCommand: npm run start:prod --workspace=api
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false

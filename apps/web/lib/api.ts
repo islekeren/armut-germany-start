@@ -1,14 +1,27 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const DEFAULT_API_ORIGIN = "http://localhost:4000";
 
 interface ApiOptions extends RequestInit {
   token?: string;
+  direct?: boolean;
+}
+
+function getApiBaseUrl(direct = false) {
+  if (typeof window === "undefined") {
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_ORIGIN;
+  }
+
+  if (direct) {
+    return process.env.NEXT_PUBLIC_API_URL || "";
+  }
+
+  return "";
 }
 
 export async function apiRequest<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
-  const { token, ...fetchOptions } = options;
+  const { token, direct = false, cache, ...fetchOptions } = options;
   const headers = new Headers(fetchOptions.headers || undefined);
 
   if (token) {
@@ -24,11 +37,12 @@ export async function apiRequest<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  // The NestJS API has a global prefix of /api
-  const url = `${API_URL}/api${endpoint}`;
+  const baseUrl = getApiBaseUrl(direct);
+  const url = `${baseUrl}/api${endpoint}`;
 
   const response = await fetch(url, {
     ...fetchOptions,
+    cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
     headers,
   });
 
@@ -885,6 +899,7 @@ export const uploadsApi = {
     return apiRequest<UploadResult>("/uploads/profile", {
       method: "POST",
       body: formData,
+      direct: true,
       token,
     });
   },
@@ -893,6 +908,7 @@ export const uploadsApi = {
     apiRequest<UploadResult[]>("/uploads/request", {
       method: "POST",
       body: buildFilesFormData(files),
+      direct: true,
       token,
     }),
 
@@ -900,6 +916,7 @@ export const uploadsApi = {
     apiRequest<UploadResult[]>("/uploads/message", {
       method: "POST",
       body: buildFilesFormData(files),
+      direct: true,
       token,
     }),
 

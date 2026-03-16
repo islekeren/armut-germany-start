@@ -1,6 +1,8 @@
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin();
+const apiOrigin =
+  process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -9,7 +11,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/:path*`,
+        destination: `${apiOrigin}/api/:path*`,
       },
     ];
   },
