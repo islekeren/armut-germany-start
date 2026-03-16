@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  AlertBanner,
   FormInput,
   FormLabel,
   FormSelect,
@@ -12,7 +13,12 @@ import {
 } from "@/components";
 import { useAuth } from "@/contexts";
 import { useTranslations, useLocale } from "next-intl";
-import { getCategories, providerApi, type Category } from "@/lib/api";
+import {
+  getCategories,
+  isApiUnavailableError,
+  providerApi,
+  type Category,
+} from "@/lib/api";
 
 type ProviderOnboardingData = {
   categories: string[];
@@ -67,6 +73,7 @@ export default function ProviderOnboardingPage() {
   });
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
 
   const steps = [
     { id: "category", title: t("steps.category") },
@@ -83,12 +90,17 @@ export default function ProviderOnboardingPage() {
         setCategories(data);
       } catch (err) {
         console.error("Failed to fetch categories:", err);
+        setCategoriesError(
+          isApiUnavailableError(err)
+            ? t("errors.categoriesUnavailable")
+            : t("errors.generic"),
+        );
       } finally {
         setLoadingCategories(false);
       }
     }
     fetchCategories();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && !isSubmitting) {
@@ -115,6 +127,10 @@ export default function ProviderOnboardingPage() {
 
   const validateStep = () => {
     setError("");
+    if (currentStep === 0 && categoriesError) {
+      setError(categoriesError);
+      return false;
+    }
     if (currentStep === 0 && formData.categories.length === 0) {
       setError(t("errors.selectCategory"));
       return false;
@@ -262,9 +278,9 @@ export default function ProviderOnboardingPage() {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-lg bg-error/10 p-3 text-sm text-error">
+            <AlertBanner variant="error" className="mb-4">
               {error}
-            </div>
+            </AlertBanner>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -274,6 +290,8 @@ export default function ProviderOnboardingPage() {
                   <FormLabel className="text-foreground">{t("labels.serviceCategories")}</FormLabel>
                   {loadingCategories ? (
                     <div className="text-sm text-muted">Loading categories...</div>
+                  ) : categoriesError ? (
+                    <AlertBanner>{categoriesError}</AlertBanner>
                   ) : (
                     <div className="grid gap-2 sm:grid-cols-2">
                       {categories.map((category) => (
@@ -573,4 +591,3 @@ export default function ProviderOnboardingPage() {
     </div>
   );
 }
-

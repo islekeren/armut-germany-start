@@ -1,13 +1,30 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
-import { Header, Footer } from "@/components";
-import { getCategories } from "@/lib/api";
+import { AlertBanner, Header, Footer } from "@/components";
+import { getCategories, isApiUnavailableError, type Category } from "@/lib/api";
+
+type CategoryWithServiceCount = Category & {
+  _count?: {
+    services?: number;
+  };
+};
 
 export default async function CategoriesPage() {
   const t = await getTranslations("categoriesPage");
   const locale = await getLocale();
   const isGerman = locale.startsWith("de");
-  const categories = await getCategories();
+  let categories: Category[] = [];
+  let categoriesUnavailable = false;
+
+  try {
+    categories = await getCategories();
+  } catch (error) {
+    if (isApiUnavailableError(error)) {
+      categoriesUnavailable = true;
+    } else {
+      throw error;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,8 +43,11 @@ export default async function CategoriesPage() {
       {/* Categories Grid */}
       <section className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {categoriesUnavailable ? (
+            <AlertBanner className="mb-6">{t("categoriesUnavailable")}</AlertBanner>
+          ) : null}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {categories.map((category, index) => {
+            {categories.map((category) => {
               const displayName = isGerman ? category.nameDe : category.nameEn;
               return (
                 <Link
@@ -43,7 +63,9 @@ export default async function CategoriesPage() {
                     {t("cardDescription", { name: displayName })}
                   </p>
                   <div className="mt-4 text-sm text-primary">
-                    {t("providersCount", { count: (category as any)._count?.services ?? 0 })}
+                    {t("providersCount", {
+                      count: (category as CategoryWithServiceCount)._count?.services ?? 0,
+                    })}
                   </div>
                 </Link>
               );

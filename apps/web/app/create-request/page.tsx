@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
+  AlertBanner,
   FormInput,
   FormLabel,
   FormSelect,
@@ -18,6 +19,7 @@ import {
   type CreateRequestData,
   uploadsApi,
   getCategories,
+  isApiUnavailableError,
   type Category,
 } from "@/lib/api";
 
@@ -31,6 +33,7 @@ export default function CreateRequestPage() {
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     category: initialCategory,
     title: "",
@@ -54,12 +57,17 @@ export default function CreateRequestPage() {
         setCategories(data);
       } catch (err) {
         console.error("Failed to load categories:", err);
+        setCategoriesError(
+          isApiUnavailableError(err)
+            ? t("createRequest.categoriesUnavailable")
+            : t("createRequest.errorCreating"),
+        );
       } finally {
         setCategoriesLoading(false);
       }
     };
     loadCategories();
-  }, []);
+  }, [t]);
 
   const getCategoryLabel = (categoryId: string) => {
     const selected = categories.find((cat) => cat.id === categoryId || cat.slug === categoryId);
@@ -193,6 +201,8 @@ export default function CreateRequestPage() {
                   <div className="mb-4 text-4xl">⏳</div>
                   <p className="text-muted">{t("createRequest.loadingCategories")}</p>
                 </div>
+              ) : categoriesError ? (
+                <AlertBanner>{categoriesError}</AlertBanner>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {categories.map((cat) => (
@@ -523,4 +533,3 @@ export default function CreateRequestPage() {
     </div>
   );
 }
-

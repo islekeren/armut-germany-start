@@ -72,10 +72,12 @@
     "title": "Dienstleistungskategorien",
     "subtitle": "Finden Sie geprüfte Anbieter für beliebte Dienstleistungen rund ums Zuhause.",
     "cardDescription": "Finden Sie geprüfte Anbieter für {name}.",
-    "providersCount": "{count, plural, one {# Anbieter} other {# Anbieter}}"
+    "providersCount": "{count, plural, one {# Anbieter} other {# Anbieter}}",
+    "categoriesUnavailable": "Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
   },
   "homePage": {
-    "categoryCardDescription": "Finden Sie geprüfte Anbieter für {name}."
+    "categoryCardDescription": "Finden Sie geprüfte Anbieter für {name}.",
+    "categoriesUnavailable": "Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
   },
   "categoryPage": {
     "heroSubtitle": "Finden Sie geprüfte Anbieter für {name}.",
@@ -102,6 +104,7 @@
     "sortMostReviews": "Meiste Bewertungen",
     "sortLowestPrice": "Niedrigster Preis",
     "noProviders": "Noch keine Anbieter in dieser Kategorie. Schauen Sie bald wieder vorbei.",
+    "providersUnavailable": "Anbieter für diese Kategorie sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut.",
     "priceQuote": "Preis auf Anfrage",
     "priceFrom": "Ab {value}",
     "priceUpTo": "Bis {value}",
@@ -142,6 +145,7 @@
     "providerReply": "Antwort des Anbieters",
     "noComment": "Kein Textkommentar.",
     "noReviews": "Noch keine Bewertungen vorhanden.",
+    "profileUnavailable": "Dieses Anbieterprofil ist vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut.",
     "call": "Telefon",
     "priceQuote": "Preis auf Anfrage",
     "priceFrom": "Ab {value}",
@@ -165,7 +169,10 @@
     "step2": "Details",
     "step3": "Überprüfen",
     "whatDoYouNeed": "Was brauchen Sie?",
-    "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",    "loadingCategories": "Kategorien werden geladen...",    "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
+    "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",
+    "loadingCategories": "Kategorien werden geladen...",
+    "categoriesUnavailable": "Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut.",
+    "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
     "moreDetailsBetterOffers": "Je mehr Details Sie angeben, desto bessere Angebote erhalten Sie.",
     "requestTitle": "Titel",
     "requestTitlePlaceholder": "z.B. Grundreinigung für 3-Zimmer-Wohnung",
@@ -725,6 +732,7 @@
     },
     "errors": {
       "selectCategory": "Bitte wählen Sie mindestens eine Service-Kategorie.",
+      "categoriesUnavailable": "Service-Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut.",
       "enterName": "Bitte geben Sie Ihren Vor- und Nachnamen ein.",
       "enterAddress": "Bitte geben Sie Ihre vollständige Adresse ein.",
       "enterContact": "Bitte geben Sie Ihre Telefonnummer und E-Mail-Adresse ein.",

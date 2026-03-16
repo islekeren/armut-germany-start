@@ -72,10 +72,12 @@
     "title": "Service Categories",
     "subtitle": "Find trusted professionals across the most popular home and local services.",
     "cardDescription": "Browse trusted professionals for {name} services.",
-    "providersCount": "{count, plural, one {# provider} other {# providers}}"
+    "providersCount": "{count, plural, one {# provider} other {# providers}}",
+    "categoriesUnavailable": "Categories are temporarily unavailable. Please try again shortly."
   },
   "homePage": {
-    "categoryCardDescription": "Find trusted professionals for {name}."
+    "categoryCardDescription": "Find trusted professionals for {name}.",
+    "categoriesUnavailable": "Categories are temporarily unavailable. Please try again shortly."
   },
   "categoryPage": {
     "heroSubtitle": "Browse trusted professionals for {name} services.",
@@ -102,6 +104,7 @@
     "sortMostReviews": "Most reviews",
     "sortLowestPrice": "Lowest price",
     "noProviders": "No providers found for this category yet. Check back soon.",
+    "providersUnavailable": "Providers for this category are temporarily unavailable. Please try again shortly.",
     "priceQuote": "Request a quote",
     "priceFrom": "From {value}",
     "priceUpTo": "Up to {value}",
@@ -142,6 +145,7 @@
     "providerReply": "Provider reply",
     "noComment": "No written comment.",
     "noReviews": "No reviews yet.",
+    "profileUnavailable": "This provider profile is temporarily unavailable. Please try again shortly.",
     "call": "Phone",
     "priceQuote": "Request a quote",
     "priceFrom": "From {value}",
@@ -167,6 +171,7 @@
     "whatDoYouNeed": "What do you need?",
     "selectCategory": "Select a category for your service request.",
     "loadingCategories": "Loading categories...",
+    "categoriesUnavailable": "Categories are temporarily unavailable. Please try again shortly.",
     "describeYourNeed": "Describe your need",
     "moreDetailsBetterOffers": "The more details you provide, the better offers you'll receive.",
     "requestTitle": "Title",
@@ -727,6 +732,7 @@
     },
     "errors": {
       "selectCategory": "Please select at least one service category.",
+      "categoriesUnavailable": "Service categories are temporarily unavailable. Please try again shortly.",
       "enterName": "Please enter your first and last name.",
       "enterAddress": "Please provide your full address.",
       "enterContact": "Please provide your phone number and email.",

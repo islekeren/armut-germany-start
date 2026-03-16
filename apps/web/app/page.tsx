@@ -1,13 +1,24 @@
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
-import { Header, Footer } from "@/components";
-import { getCategories } from "@/lib/api";
+import { AlertBanner, Header } from "@/components";
+import { getCategories, isApiUnavailableError, type Category } from "@/lib/api";
 
 export default async function Home() {
   const t = await getTranslations();
   const locale = await getLocale();
   const isGerman = locale.startsWith("de");
-  const categories = (await getCategories()).slice(0, 6);
+  let categories: Category[] = [];
+  let categoriesUnavailable = false;
+
+  try {
+    categories = (await getCategories()).slice(0, 6);
+  } catch (error) {
+    if (isApiUnavailableError(error)) {
+      categoriesUnavailable = true;
+    } else {
+      throw error;
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -49,6 +60,9 @@ export default async function Home() {
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 className="mb-8 text-center text-3xl font-bold">{t("categories.title")}</h2>
+          {categoriesUnavailable ? (
+            <AlertBanner className="mb-6">{t("homePage.categoriesUnavailable")}</AlertBanner>
+          ) : null}
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => {
               const displayName = isGerman ? category.nameDe : category.nameEn;
