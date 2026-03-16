@@ -23,6 +23,7 @@ import {
   ReplyToReviewDto,
 } from "./dto/provider.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../admin/admin.guard";
 
 @Controller("providers")
 export class ProvidersController {
@@ -119,9 +120,8 @@ export class ProvidersController {
   }
 
   @Patch(":id/approve")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   approve(@Param("id") id: string, @Body() approveDto: ApproveProviderDto) {
-    // TODO: Add admin guard
     return this.providersService.approve(id, approveDto.isApproved);
   }
 }

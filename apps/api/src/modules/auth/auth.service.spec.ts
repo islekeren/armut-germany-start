@@ -38,7 +38,9 @@ describe("AuthService", () => {
   beforeEach(async () => {
     usersService = {
       findByEmail: jest.fn(),
+      findByEmailWithPassword: jest.fn(),
       findById: jest.fn(),
+      findByIdWithPassword: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
@@ -113,7 +115,7 @@ describe("AuthService", () => {
 
   describe("login", () => {
     it("should login successfully with valid credentials", async () => {
-      usersService.findByEmail.mockResolvedValue(mockUser);
+      usersService.findByEmailWithPassword.mockResolvedValue(mockUser);
       jwtService.signAsync.mockResolvedValue("mock-token");
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
@@ -125,10 +127,11 @@ describe("AuthService", () => {
       expect(result).toHaveProperty("accessToken");
       expect(result).toHaveProperty("refreshToken");
       expect(result.user.email).toBe(mockUser.email);
+      expect(result.user).not.toHaveProperty("password");
     });
 
     it("should throw UnauthorizedException for invalid email", async () => {
-      usersService.findByEmail.mockResolvedValue(null);
+      usersService.findByEmailWithPassword.mockResolvedValue(null);
 
       await expect(
         service.login({
@@ -139,7 +142,7 @@ describe("AuthService", () => {
     });
 
     it("should throw UnauthorizedException for invalid password", async () => {
-      usersService.findByEmail.mockResolvedValue(mockUser);
+      usersService.findByEmailWithPassword.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
@@ -185,7 +188,7 @@ describe("AuthService", () => {
 
   describe("changePassword", () => {
     it("should throw UnauthorizedException when user is missing", async () => {
-      usersService.findById.mockResolvedValue(null);
+      usersService.findByIdWithPassword.mockResolvedValue(null);
 
       await expect(
         service.changePassword("missing-user", {
@@ -196,7 +199,7 @@ describe("AuthService", () => {
     });
 
     it("should throw BadRequestException when current password is wrong", async () => {
-      usersService.findById.mockResolvedValue(mockUser);
+      usersService.findByIdWithPassword.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
@@ -208,7 +211,7 @@ describe("AuthService", () => {
     });
 
     it("should update password when current password is valid", async () => {
-      usersService.findById.mockResolvedValue(mockUser);
+      usersService.findByIdWithPassword.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       (bcrypt.hash as jest.Mock).mockResolvedValue("next-hash");
 

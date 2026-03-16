@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { sanitizeUserResponse } from "../../common/security";
 
 @Injectable()
 export class AdminService {
@@ -152,21 +153,25 @@ export class AdminService {
       throw new NotFoundException("User not found");
     }
 
-    return user;
+    return sanitizeUserResponse(user);
   }
 
   async updateUser(id: string, data: { isVerified?: boolean }) {
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data,
     });
+
+    return sanitizeUserResponse(user);
   }
 
   async deleteUser(id: string) {
     // Soft delete or hard delete based on requirements
-    return this.prisma.user.delete({
+    const user = await this.prisma.user.delete({
       where: { id },
     });
+
+    return sanitizeUserResponse(user);
   }
 
   // ==================== Provider Management ====================

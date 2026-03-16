@@ -203,6 +203,8 @@ export class ProvidersService {
       limit = 10,
     } = query;
     const skip = (page - 1) * limit;
+    const hasDistanceFilter =
+      lat !== undefined && lng !== undefined && radius !== undefined;
 
     const where: any = {
       isApproved: true,
@@ -221,40 +223,50 @@ export class ProvidersService {
       };
     }
 
-    const providers = await this.prisma.provider.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { ratingAvg: "desc" },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profileImage: true,
-          },
-        },
-        profile: {
-          select: {
-            slug: true,
-            headline: true,
-            city: true,
-          },
-        },
-        services: {
-          where: { isActive: true },
-          include: {
-            category: true,
-          },
+    const providerInclude = {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          profileImage: true,
         },
       },
-    });
+      profile: {
+        select: {
+          slug: true,
+          headline: true,
+          city: true,
+        },
+      },
+      services: {
+        where: { isActive: true },
+        include: {
+          category: true,
+        },
+      },
+    };
 
-    // Filter by distance if lat/lng provided
-    let filteredProviders = providers;
-    if (lat && lng && radius) {
-      filteredProviders = providers.filter((provider) => {
+    if (hasDistanceFilter) {
+      const boundingBox = this.getBoundingBox(lat, lng, radius);
+
+      const providers = await this.prisma.provider.findMany({
+        where: {
+          ...where,
+          serviceAreaLat: {
+            gte: boundingBox.minLat,
+            lte: boundingBox.maxLat,
+          },
+          serviceAreaLng: {
+            gte: boundingBox.minLng,
+            lte: boundingBox.maxLng,
+          },
+        },
+        orderBy: { ratingAvg: "desc" },
+        include: providerInclude,
+      });
+
+      const filteredProviders = providers.filter((provider) => {
         const distance = this.calculateDistance(
           lat,
           lng,
@@ -263,18 +275,53 @@ export class ProvidersService {
         );
         return distance <= radius;
       });
+
+      const paginatedProviders = filteredProviders.slice(skip, skip + limit);
+      const total = filteredProviders.length;
+
+      return {
+        data: paginatedProviders,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     }
 
-    const total = await this.prisma.provider.count({ where });
+    const [providers, total] = await Promise.all([
+      this.prisma.provider.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { ratingAvg: "desc" },
+        include: providerInclude,
+      }),
+      this.prisma.provider.count({ where }),
+    ]);
 
     return {
-      data: filteredProviders,
+      data: providers,
       meta: {
         total,
         page,
         limit,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  private getBoundingBox(lat: number, lng: number, radiusKm: number) {
+    const latDelta = radiusKm / 111;
+    const lngDelta =
+      radiusKm / (111 * Math.max(Math.cos(this.toRad(lat)), 0.01));
+
+    return {
+      minLat: lat - latDelta,
+      maxLat: lat + latDelta,
+      minLng: lng - lngDelta,
+      maxLng: lng + lngDelta,
     };
   }
 

@@ -131,6 +131,66 @@ describe("ProvidersService", () => {
         }),
       );
     });
+
+    it("should paginate after distance filtering and return accurate meta", async () => {
+      const secondNearbyProvider = {
+        ...mockProvider,
+        id: "provider-3",
+        userId: "user-3",
+        ratingAvg: 4.1,
+        serviceAreaLat: 52.4,
+        serviceAreaLng: 13.3,
+        user: {
+          ...mockProvider.user,
+          id: "user-3",
+          email: "nearby@example.com",
+        },
+      };
+      const farProvider = {
+        ...mockProvider,
+        id: "provider-2",
+        userId: "user-2",
+        ratingAvg: 4.3,
+        serviceAreaLat: 53.5511,
+        serviceAreaLng: 9.9937,
+        user: {
+          ...mockProvider.user,
+          id: "user-2",
+          email: "far@example.com",
+        },
+      };
+      prisma.provider.findMany.mockResolvedValue([
+        mockProvider,
+        farProvider,
+        secondNearbyProvider,
+      ]);
+
+      const result = await service.findAll({
+        lat: 52.52,
+        lng: 13.405,
+        radius: 50,
+        page: 2,
+        limit: 1,
+      });
+
+      expect(prisma.provider.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            serviceAreaLat: expect.any(Object),
+            serviceAreaLng: expect.any(Object),
+          }),
+          orderBy: { ratingAvg: "desc" },
+        }),
+      );
+      expect(prisma.provider.count).not.toHaveBeenCalled();
+      expect(result.data).toEqual([secondNearbyProvider]);
+      expect(result.meta).toEqual({
+        total: 2,
+        page: 2,
+        limit: 1,
+        totalPages: 2,
+      });
+    });
   });
 
   describe("findOne", () => {

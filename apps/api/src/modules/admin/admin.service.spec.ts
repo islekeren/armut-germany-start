@@ -91,14 +91,20 @@ describe("AdminService", () => {
   });
 
   it("gets user details and throws if not found", async () => {
-    prisma.user.findUnique.mockResolvedValueOnce({ id: "u1" }).mockResolvedValueOnce(null);
+    prisma.user.findUnique
+      .mockResolvedValueOnce({ id: "u1", password: "hash" })
+      .mockResolvedValueOnce(null);
     await expect(service.getUser("u1")).resolves.toEqual({ id: "u1" });
     await expect(service.getUser("missing")).rejects.toThrow(NotFoundException);
   });
 
   it("updates and deletes user", async () => {
-    prisma.user.update.mockResolvedValue({ id: "u1", isVerified: true });
-    prisma.user.delete.mockResolvedValue({ id: "u1" });
+    prisma.user.update.mockResolvedValue({
+      id: "u1",
+      isVerified: true,
+      password: "hash",
+    });
+    prisma.user.delete.mockResolvedValue({ id: "u1", password: "hash" });
 
     await expect(service.updateUser("u1", { isVerified: true })).resolves.toEqual({
       id: "u1",

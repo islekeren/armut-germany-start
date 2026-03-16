@@ -10,6 +10,7 @@ import * as bcrypt from "bcrypt";
 import { UsersService } from "../users/users.service";
 import { RegisterDto, LoginDto, ChangePasswordDto } from "./dto/auth.dto";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { sanitizeUserResponse } from "../../common/security";
 
 @Injectable()
 export class AuthService {
@@ -36,13 +37,13 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id);
 
     return {
-      user: this.sanitizeUser(user),
+      user: sanitizeUserResponse(user),
       ...tokens,
     };
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.usersService.findByEmailWithPassword(loginDto.email);
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -58,7 +59,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id);
 
     return {
-      user: this.sanitizeUser(user),
+      user: sanitizeUserResponse(user),
       ...tokens,
     };
   }
@@ -77,7 +78,7 @@ export class AuthService {
       const tokens = await this.generateTokens(user.id);
 
       return {
-        user: this.sanitizeUser(user),
+        user: sanitizeUserResponse(user),
         ...tokens,
       };
     } catch {
@@ -86,7 +87,7 @@ export class AuthService {
   }
 
   async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findByIdWithPassword(userId);
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
@@ -120,7 +121,7 @@ export class AuthService {
     if (!user) {
       return null;
     }
-    return this.sanitizeUser(user);
+    return sanitizeUserResponse(user);
   }
 
   private async generateTokens(userId: string) {
@@ -145,10 +146,5 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
-  }
-
-  private sanitizeUser(user: any) {
-    const { password, ...sanitized } = user;
-    return sanitized;
   }
 }

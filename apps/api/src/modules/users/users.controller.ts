@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Req,
+  ForbiddenException,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -33,7 +34,11 @@ export class UsersController {
   }
 
   @Get(":id")
-  async getUser(@Param("id") id: string) {
+  async getUser(@Param("id") id: string, @Req() req: any) {
+    if (req.user.userType !== "admin" && req.user.id !== id) {
+      throw new ForbiddenException("Not authorized to view this user");
+    }
+
     return this.usersService.findById(id);
   }
 }

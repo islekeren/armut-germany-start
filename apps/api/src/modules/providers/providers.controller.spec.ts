@@ -1,4 +1,7 @@
+import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { ProvidersController } from "./providers.controller";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AdminGuard } from "../admin/admin.guard";
 
 describe("ProvidersController", () => {
   const providersService = {
@@ -159,5 +162,16 @@ describe("ProvidersController", () => {
       isApproved: true,
     });
     expect(providersService.approve).toHaveBeenCalledWith("p1", true);
+  });
+
+  it("protects approval with jwt and admin guards", () => {
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      ProvidersController.prototype.approve,
+    );
+
+    expect(guards).toEqual(
+      expect.arrayContaining([JwtAuthGuard, AdminGuard]),
+    );
   });
 });
