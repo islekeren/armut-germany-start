@@ -8,7 +8,13 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { authApi, type User, type LoginData, type RegisterData } from "@/lib/api";
+import {
+  authApi,
+  isApiUnavailableError,
+  type User,
+  type LoginData,
+  type RegisterData,
+} from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +47,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   };
 
+  const getStoredUser = () => {
+    if (typeof window === "undefined") return null;
+
+    const value = localStorage.getItem(USER_KEY);
+    if (!value) return null;
+
+    try {
+      return JSON.parse(value) as User;
+    } catch {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+  };
+
   // Store auth data
   const storeAuthData = (accessToken: string, refreshToken: string, userData: User) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -61,22 +81,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializeAuth = useCallback(async () => {
     setIsLoading(true);
     try {
-      const storedUser = localStorage.getItem(USER_KEY);
+      const storedUser = getStoredUser();
       const accessToken = getAccessToken();
       const refreshToken = getRefreshToken();
 
       if (storedUser && accessToken) {
+        setUser(storedUser);
+
         // Try to verify the token by fetching user data
         try {
           const userData = await authApi.getMe(accessToken);
+          localStorage.setItem(USER_KEY, JSON.stringify(userData));
           setUser(userData);
-        } catch {
+        } catch (error) {
+          if (isApiUnavailableError(error)) {
+            return;
+          }
+
           // Token might be expired, try to refresh
           if (refreshToken) {
             try {
               const response = await authApi.refreshToken(refreshToken);
               storeAuthData(response.accessToken, response.refreshToken, response.user);
-            } catch {
+            } catch (refreshError) {
+              if (isApiUnavailableError(refreshError)) {
+                return;
+              }
+
               // Refresh token also expired, clear everything
               clearAuthData();
             }
@@ -84,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             clearAuthData();
           }
         }
+      } else if (storedUser || accessToken || refreshToken) {
+        clearAuthData();
       }
     } catch (error) {
       console.error("Auth initialization error:", error);

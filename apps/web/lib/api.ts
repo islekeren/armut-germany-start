@@ -1,7 +1,65 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const DEFAULT_API_ORIGIN = "http://localhost:4000";
+const API_UNAVAILABLE_MESSAGE =
+  "The service is temporarily unavailable. Please try again shortly.";
 
 interface ApiOptions extends RequestInit {
   token?: string;
+  direct?: boolean;
+}
+
+type ApiErrorCode = "http" | "unavailable";
+
+export class ApiError extends Error {
+  status?: number;
+  code: ApiErrorCode;
+
+  constructor(message: string, options: { status?: number; code: ApiErrorCode }) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status;
+    this.code = options.code;
+  }
+}
+
+export function isApiUnavailableError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "unavailable";
+}
+
+export function isApiNotFoundError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 404;
+}
+
+async function getErrorMessage(response: Response) {
+  const contentType = response.headers.get("Content-Type") || "";
+
+  if (contentType.includes("application/json")) {
+    const payload = await response
+      .json()
+      .catch(() => null as { message?: unknown } | null);
+
+    if (typeof payload?.message === "string" && payload.message.trim()) {
+      return payload.message;
+    }
+  }
+
+  const text = await response.text().catch(() => "");
+  if (text && !text.includes("<html")) {
+    return text;
+  }
+
+  return `API Error: ${response.status}`;
+}
+
+function getApiBaseUrl(direct = false) {
+  if (typeof window === "undefined") {
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_ORIGIN;
+  }
+
+  if (direct) {
+    return process.env.NEXT_PUBLIC_API_URL || "";
+  }
+
+  return "";
 }
 
 export async function apiRequest<T>(
@@ -27,14 +85,27 @@ export async function apiRequest<T>(
   // The NestJS API has a global prefix of /api
   const url = `${API_URL}/api${endpoint}`;
 
-  const response = await fetch(url, {
-    ...fetchOptions,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...fetchOptions,
+      cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
+      headers,
+    });
+  } catch {
+    throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `API Error: ${response.status}`);
+    if (response.status >= 500) {
+      throw new ApiError(API_UNAVAILABLE_MESSAGE, {
+        status: response.status,
+        code: "unavailable",
+      });
+    }
+
+    const message = await getErrorMessage(response);
+    throw new ApiError(message, { status: response.status, code: "http" });
   }
 
   if (response.status === 204) {

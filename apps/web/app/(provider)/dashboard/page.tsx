@@ -60,7 +60,7 @@ export default function ProviderDashboard() {
     };
 
     fetchDashboard();
-  }, []);
+  }, [locale]);
 
   const stats = [
     { labelKey: "newRequests", value: data.stats.newRequests, icon: "📬", color: "bg-blue-500" },

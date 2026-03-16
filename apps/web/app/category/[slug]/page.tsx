@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
-import { Header, Footer } from "@/components";
+import { AlertBanner, Header, Footer } from "@/components";
 import {
   getCategoryBySlug,
+  isApiNotFoundError,
+  isApiUnavailableError,
   providersApi,
+  type Category,
   type ProviderService,
   type PublicProvider,
+  type ProvidersResponse,
 } from "@/lib/api";
 
 function getServiceForCategory(provider: PublicProvider, categoryId: string) {
@@ -31,13 +35,43 @@ export default async function CategoryPage({
   const resolvedSearchParams = await searchParams;
   const currentPage = Math.max(1, Number(resolvedSearchParams?.page) || 1);
   const limit = 10;
+  let category: Category | null = null;
+  let providers: PublicProvider[] = [];
+  let meta: ProvidersResponse["meta"] = {
+    total: 0,
+    page: currentPage,
+    limit,
+    totalPages: 1,
+  };
+  let categoryUnavailable = false;
+  let providersUnavailable = false;
 
-  const category = await getCategoryBySlug(slug);
-  if (!category) {
+  try {
+    category = await getCategoryBySlug(slug);
+  } catch (error) {
+    if (isApiNotFoundError(error)) {
+      notFound();
+    }
+    if (isApiUnavailableError(error)) {
+      categoryUnavailable = true;
+    } else {
+      throw error;
+    }
+  }
+
+  if (!category && !categoryUnavailable) {
     notFound();
   }
 
-  const displayName = isGerman ? category.nameDe : category.nameEn;
+  const fallbackDisplayName = slug
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+  const displayName = category
+    ? isGerman
+      ? category.nameDe
+      : category.nameEn
+    : fallbackDisplayName;
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
@@ -83,13 +117,23 @@ export default async function CategoryPage({
     return t("priceQuote");
   };
 
-  const providersResponse = await providersApi.getAll({
-    categoryId: category.id,
-    page: currentPage,
-    limit,
-  });
-
-  const { data: providers, meta } = providersResponse;
+  if (category) {
+    try {
+      const providersResponse = await providersApi.getAll({
+        categoryId: category.id,
+        page: currentPage,
+        limit,
+      });
+      providers = providersResponse.data;
+      meta = providersResponse.meta;
+    } catch (error) {
+      if (isApiUnavailableError(error)) {
+        providersUnavailable = true;
+      } else {
+        throw error;
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,7 +143,7 @@ export default async function CategoryPage({
       <section className="bg-primary py-12 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
-            <span className="text-5xl">{category.icon}</span>
+            <span className="text-5xl">{category?.icon ?? "•"}</span>
             <div>
               <nav className="mb-2 text-sm text-white/70">
                 <Link href="/" className="hover:text-white">
@@ -142,6 +186,11 @@ export default async function CategoryPage({
       {/* Filters & Providers */}
       <section className="py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {categoryUnavailable || providersUnavailable ? (
+            <AlertBanner className="mb-6">
+              {t("providersUnavailable")}
+            </AlertBanner>
+          ) : null}
           <div className="flex flex-col gap-8 lg:flex-row">
             {/* Filters */}
             <aside className="w-full lg:w-64">
@@ -203,7 +252,9 @@ export default async function CategoryPage({
 
               {providers.length === 0 ? (
                 <div className="rounded-xl bg-white p-8 text-center text-muted shadow-sm">
-                  {t("noProviders")}
+                  {categoryUnavailable || providersUnavailable
+                    ? t("providersUnavailable")
+                    : t("noProviders")}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -212,10 +263,9 @@ export default async function CategoryPage({
                       `${provider.user.firstName} ${provider.user.lastName}`.trim();
                     const companyName = provider.companyName || providerName;
                     const showPerson = companyName !== providerName;
-                    const service = getServiceForCategory(
-                      provider,
-                      category.id,
-                    );
+                    const service = category
+                      ? getServiceForCategory(provider, category.id)
+                      : provider.services[0];
 
                     return (
                       <div

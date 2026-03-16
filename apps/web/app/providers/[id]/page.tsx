@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import {
+  AlertBanner,
   Footer,
   Header,
   PageContainer,
@@ -10,7 +11,12 @@ import {
   ProviderRatingStars,
   ProviderReviewCard,
 } from "@/components";
-import { providersApi, type ProviderService } from "@/lib/api";
+import {
+  isApiNotFoundError,
+  isApiUnavailableError,
+  providersApi,
+  type ProviderService,
+} from "@/lib/api";
 
 export default async function ProviderProfilePage({
   params,
@@ -22,11 +28,30 @@ export default async function ProviderProfilePage({
   const tNav = await getTranslations("nav");
   const { id } = await params;
 
-  let profile: Awaited<ReturnType<typeof providersApi.getProfile>>;
+  let profile: Awaited<ReturnType<typeof providersApi.getProfile>> | null = null;
   try {
     profile = await providersApi.getProfile(id);
-  } catch {
-    notFound();
+  } catch (error) {
+    if (isApiNotFoundError(error)) {
+      notFound();
+    }
+    if (isApiUnavailableError(error)) {
+      profile = null;
+    } else {
+      throw error;
+    }
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <PageContainer className="py-10">
+          <AlertBanner>{t("profileUnavailable")}</AlertBanner>
+        </PageContainer>
+        <Footer />
+      </div>
+    );
   }
 
   const companyName =
