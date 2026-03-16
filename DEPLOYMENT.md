@@ -28,13 +28,14 @@
 ### Project settings
 
 - Deploy from GitHub repo
-- Service path/config: [`apps/api/railway.json`](/Users/eren/Desktop/ARMUT/armut-germany-start/apps/api/railway.json#L1)
+- Root Directory: `/`
+- Config as Code path: [`/railway.json`](/Users/eren/Desktop/ARMUT/armut-germany-start/railway.json#L1)
 - Build Command: `npm run db:generate --workspace=api && npm run build --workspace=api`
 - Pre-Deploy Command: `npm run db:migrate:deploy --workspace=api`
 - Start Command: `npm run start:prod --workspace=api`
 - Health Check Path: `/api/health`
 
-For this repo, keep the service source at the repository root. This is a shared npm workspaces monorepo, so the API service should build from the root and use workspace-specific commands.
+For this repo, keep the service source at the repository root. This is a shared npm workspaces monorepo, so the API service must build from the root and use workspace-specific commands. Do not set the Railway root directory to `apps/api`.
 
 ### Required environment variables
 
