@@ -322,6 +322,7 @@ export interface RegisterData {
   lastName: string;
   email: string;
   password: string;
+  phone?: string;
   userType: "customer" | "provider";
   gdprConsent: boolean;
 }
@@ -637,12 +638,20 @@ export interface CreateProviderProfileData {
   serviceAreaRadius: number;
   serviceAreaLat: number;
   serviceAreaLng: number;
+  addressLine1?: string;
+  city?: string;
+  postalCode?: string;
+  website?: string;
   categories?: string[];
   priceMin?: number;
   priceMax?: number;
 }
 
 export interface UpdateProviderProfileData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
   companyName?: string;
   description?: string;
   experienceYears?: number;

@@ -194,6 +194,7 @@ export default function ProviderOnboardingPage() {
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
+        phone: formData.phone || undefined,
         userType: "provider",
         gdprConsent: formData.gdprConsent,
       });
@@ -214,6 +215,10 @@ export default function ProviderOnboardingPage() {
           : 25,
         serviceAreaLat: 0, // Would normally come from geocoding
         serviceAreaLng: 0, // Would normally come from geocoding
+        addressLine1: formData.streetAddress || undefined,
+        postalCode: formData.postalCode || undefined,
+        city: formData.city || undefined,
+        website: formData.website || undefined,
         categories: formData.categories,
         priceMin: formData.priceMin ? parseFloat(formData.priceMin) : undefined,
         priceMax: formData.priceMax ? parseFloat(formData.priceMax) : undefined,

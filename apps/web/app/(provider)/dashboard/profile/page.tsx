@@ -11,28 +11,73 @@ import {
   PanelCard,
   ProviderSubpageShell,
 } from "@/components";
-import { providerApi } from "@/lib/api";
+import { useAuth } from "@/contexts";
+import { providerApi, type ProviderProfile } from "@/lib/api";
+
+const EMPTY_FORM_DATA = {
+  companyName: "",
+  contactName: "",
+  email: "",
+  phone: "",
+  description: "",
+  categories: [] as string[],
+  streetAddress: "",
+  postalCode: "",
+  city: "",
+  serviceRadius: "25",
+  priceMin: "",
+  priceMax: "",
+  experienceYears: "",
+  website: "",
+};
+
+function mapProfileToFormData(profile: ProviderProfile) {
+  const categoryList = Array.from(
+    new Set(profile.services.map((service) => service.category.slug)),
+  );
+  const firstService = profile.services[0];
+
+  return {
+    companyName: profile.companyName || "",
+    contactName:
+      `${profile.user.firstName} ${profile.user.lastName}`.trim() ||
+      profile.user.firstName,
+    email: profile.user.email,
+    phone: profile.user.phone || "",
+    description: profile.description,
+    categories: categoryList,
+    streetAddress: profile.profile?.addressLine1 || "",
+    postalCode: profile.profile?.postalCode || "",
+    city: profile.profile?.city || "",
+    serviceRadius: profile.serviceAreaRadius.toString(),
+    priceMin: firstService?.priceMin?.toString() || "",
+    priceMax: firstService?.priceMax?.toString() || "",
+    experienceYears: profile.experienceYears.toString(),
+    website: profile.profile?.website || "",
+  };
+}
+
+function splitContactName(contactName: string) {
+  const trimmed = contactName.trim();
+  if (!trimmed) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const [firstName, ...lastNameParts] = trimmed.split(/\s+/);
+  return {
+    firstName,
+    lastName: lastNameParts.join(" "),
+  };
+}
 
 export default function ProviderProfilePage() {
   const t = useTranslations("provider.profile");
   const tNav = useTranslations("provider.dashboard.navigation");
   const tCat = useTranslations("categories");
+  const tOnboardingLabels = useTranslations("providerOnboarding.labels");
+  const { refreshAuth } = useAuth();
 
-  const [formData, setFormData] = useState({
-    companyName: "",
-    contactName: "",
-    email: "",
-    phone: "",
-    description: "",
-    categories: [] as string[],
-    postalCode: "",
-    city: "",
-    serviceRadius: "25",
-    priceMin: "",
-    priceMax: "",
-    experienceYears: "",
-    website: "",
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM_DATA);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -46,30 +91,7 @@ export default function ProviderProfilePage() {
         const token = localStorage.getItem("armut_access_token");
         if (token) {
           const profile = await providerApi.getProfile(token);
-
-          // Map services to category keys
-          const categoryList = Array.from(
-            new Set(profile.services.map((s) => s.category.slug)),
-          );
-
-          // Get price range from first service
-          const firstService = profile.services[0];
-
-          setFormData({
-            companyName: profile.companyName || "",
-            contactName: `${profile.user.firstName} ${profile.user.lastName}`,
-            email: profile.user.email,
-            phone: profile.user.phone || "",
-            description: profile.description,
-            categories: categoryList,
-            postalCode: profile.profile?.postalCode || "",
-            city: profile.profile?.city || "",
-            serviceRadius: profile.serviceAreaRadius.toString(),
-            priceMin: firstService?.priceMin?.toString() || "",
-            priceMax: firstService?.priceMax?.toString() || "",
-            experienceYears: profile.experienceYears.toString(),
-            website: profile.profile?.website || "",
-          });
+          setFormData(mapProfileToFormData(profile));
           setProfileImage(profile.user.profileImage);
         }
       } catch (error) {
@@ -94,18 +116,31 @@ export default function ProviderProfilePage() {
         return;
       }
 
-      await providerApi.updateProfile(token, {
+      const { firstName, lastName } = splitContactName(formData.contactName);
+      const updatedProfile = await providerApi.updateProfile(token, {
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
         companyName: formData.companyName || undefined,
         description: formData.description,
         experienceYears: Number(formData.experienceYears) || 0,
         serviceAreaRadius: Number(formData.serviceRadius) || 25,
         priceMin: formData.priceMin ? Number(formData.priceMin) : undefined,
         priceMax: formData.priceMax ? Number(formData.priceMax) : undefined,
+        addressLine1: formData.streetAddress || undefined,
         city: formData.city || undefined,
         postalCode: formData.postalCode || undefined,
         website: formData.website || undefined,
       });
 
+      setFormData(mapProfileToFormData(updatedProfile));
+      setProfileImage(updatedProfile.user.profileImage);
+      try {
+        await refreshAuth();
+      } catch (refreshError) {
+        console.error("Failed to refresh auth context", refreshError);
+      }
       setSaveStatus("success");
     } catch (error) {
       console.error("Failed to update provider profile", error);
@@ -270,49 +305,65 @@ export default function ProviderProfilePage() {
           {/* Location */}
           <PanelCard>
             <h2 className="mb-4 text-lg font-semibold">{t("serviceArea")}</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-4">
               <div>
                 <FormLabel>
-                  {t("postalCode")} {t("required")}
+                  {tOnboardingLabels("streetAddress")} {t("required")}
                 </FormLabel>
                 <FormInput
                   type="text"
-                  value={formData.postalCode}
+                  value={formData.streetAddress}
                   onChange={(e) =>
-                    setFormData({ ...formData, postalCode: e.target.value })
+                    setFormData({ ...formData, streetAddress: e.target.value })
                   }
                   accent="primary"
                   required
                 />
               </div>
-              <div>
-                <FormLabel>
-                  {t("city")} {t("required")}
-                </FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  accent="primary"
-                  required
-                />
-              </div>
-              <div>
-                <FormLabel>{t("serviceRadius")}</FormLabel>
-                <FormSelect
-                  value={formData.serviceRadius}
-                  onChange={(e) =>
-                    setFormData({ ...formData, serviceRadius: e.target.value })
-                  }
-                  accent="primary"
-                >
-                  <option value="10">10 km</option>
-                  <option value="25">25 km</option>
-                  <option value="50">50 km</option>
-                  <option value="100">100 km</option>
-                </FormSelect>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <FormLabel>
+                    {t("postalCode")} {t("required")}
+                  </FormLabel>
+                  <FormInput
+                    type="text"
+                    value={formData.postalCode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, postalCode: e.target.value })
+                    }
+                    accent="primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <FormLabel>
+                    {t("city")} {t("required")}
+                  </FormLabel>
+                  <FormInput
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city: e.target.value })
+                    }
+                    accent="primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("serviceRadius")}</FormLabel>
+                  <FormSelect
+                    value={formData.serviceRadius}
+                    onChange={(e) =>
+                      setFormData({ ...formData, serviceRadius: e.target.value })
+                    }
+                    accent="primary"
+                  >
+                    <option value="10">10 km</option>
+                    <option value="25">25 km</option>
+                    <option value="50">50 km</option>
+                    <option value="100">100 km</option>
+                  </FormSelect>
+                </div>
               </div>
             </div>
           </PanelCard>

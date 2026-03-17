@@ -57,7 +57,7 @@
 - [x] Complete quote -> accepted -> booking flow in customer UI.
 - [x] Add customer booking pages using existing bookings endpoints.
 - [ ] Persist all provider onboarding/profile fields (address, phone, website, etc.).
-- [ ] Replace hardcoded create-request categories with API-driven categories.
+- [x] Replace hardcoded create-request categories with API-driven categories.
 - [ ] Replace request mock fallback strategy with explicit empty/error states.
 
 ### P2 (Feature Depth)

@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
 import {
+  IsEmail,
   IsString,
   IsNumber,
   IsOptional,
@@ -176,6 +177,22 @@ export class UpdateProviderDto {
 }
 
 export class UpdateOwnProviderProfileDto extends UpdateProviderDto {
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
   @IsOptional()
   @IsNumber()
   @Min(0)
