@@ -6,10 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components";
 import {
+  bookingsApi,
   getStoredAccessToken,
   messagesApi,
   quotesApi,
   requestsApi,
+  type CustomerBooking,
   type Quote,
   type ServiceRequest,
 } from "@/lib/api";
@@ -81,6 +83,7 @@ export default function RequestDetailPage() {
 
   const [request, setRequest] = useState<RequestViewModel | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [requestBooking, setRequestBooking] = useState<CustomerBooking | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [isLoading, setIsLoading] = useState(true);
@@ -104,10 +107,17 @@ export default function RequestDetailPage() {
 
       const token = getStoredAccessToken();
       if (token) {
-        const quoteData = await quotesApi.getByRequest(token, requestId);
+        const [quoteData, bookingData] = await Promise.all([
+          quotesApi.getByRequest(token, requestId),
+          bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
+        ]);
         setQuotes(quoteData);
+        setRequestBooking(
+          bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
+        );
       } else {
         setQuotes([]);
+        setRequestBooking(null);
       }
     } catch (err) {
       console.error("Failed to load request details:", err);
@@ -151,15 +161,22 @@ export default function RequestDetailPage() {
 
     try {
       await quotesApi.respond(token, quoteId, "accepted");
-      await loadData();
-      setSuccessMessage(t("acceptSuccess"));
-      setSelectedQuote(quoteId);
+      router.push(`/bookings/new?quote=${quoteId}&accepted=1`);
     } catch (err) {
       console.error("Failed to accept quote:", err);
       setError(err instanceof Error ? err.message : t("acceptError"));
     } finally {
       setIsAcceptingQuoteId(null);
     }
+  };
+
+  const handleBookingAction = (quoteId: string) => {
+    if (requestBooking) {
+      router.push(`/bookings/${requestBooking.id}`);
+      return;
+    }
+
+    router.push(`/bookings/new?quote=${quoteId}`);
   };
 
   const handleSendMessage = async (quote: Quote) => {
@@ -239,6 +256,8 @@ export default function RequestDetailPage() {
     );
   }
 
+  const acceptedQuote = quotes.find((quote) => quote.status === "accepted");
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -252,6 +271,20 @@ export default function RequestDetailPage() {
         {successMessage && (
           <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
             {successMessage}
+          </div>
+        )}
+        {acceptedQuote && (
+          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-blue-800">{t("bookingReadyTitle")}</div>
+              <p className="text-sm text-blue-700">{t("bookingReadyText")}</p>
+            </div>
+            <button
+              onClick={() => handleBookingAction(acceptedQuote.id)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+            >
+              {requestBooking ? t("viewBooking") : t("completeBooking")}
+            </button>
           </div>
         )}
 
@@ -295,17 +328,19 @@ export default function RequestDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-2">
-                <button className="flex-1 rounded-lg border border-border py-2 text-sm font-medium hover:bg-background">
-                  {t("edit")}
-                </button>
-                <button
-                  onClick={() => setShowCloseConfirm(true)}
-                  className="flex-1 rounded-lg border border-error py-2 text-sm font-medium text-error hover:bg-error/5"
-                >
-                  {t("close")}
-                </button>
-              </div>
+              {request.status === "active" && (
+                <div className="mt-6 flex gap-2">
+                  <button className="flex-1 rounded-lg border border-border py-2 text-sm font-medium hover:bg-background">
+                    {t("edit")}
+                  </button>
+                  <button
+                    onClick={() => setShowCloseConfirm(true)}
+                    className="flex-1 rounded-lg border border-error py-2 text-sm font-medium text-error hover:bg-error/5"
+                  >
+                    {t("close")}
+                  </button>
+                </div>
+              )}
 
               {showCloseConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -373,6 +408,7 @@ export default function RequestDetailPage() {
                 const createdAt = new Date(quote.createdAt).toLocaleString();
                 const validUntil = new Date(quote.validUntil).toLocaleDateString();
                 const canAccept = quote.status === "pending";
+                const canBook = quote.status === "accepted";
 
                 return (
                   <div
@@ -427,15 +463,27 @@ export default function RequestDetailPage() {
                           {t("sendMessage")}
                         </button>
                         <button
-                          onClick={() => handleAcceptQuote(quote.id)}
-                          disabled={!canAccept || isAcceptingQuoteId === quote.id}
+                          onClick={() =>
+                            canAccept
+                              ? handleAcceptQuote(quote.id)
+                              : canBook
+                                ? handleBookingAction(quote.id)
+                                : undefined
+                          }
+                          disabled={
+                            isAcceptingQuoteId === quote.id || (!canAccept && !canBook)
+                          }
                           className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isAcceptingQuoteId === quote.id
                             ? t("acceptingQuote")
                             : canAccept
                               ? t("acceptQuote")
-                              : quote.status}
+                              : canBook
+                                ? requestBooking
+                                  ? t("viewBooking")
+                                  : t("completeBooking")
+                                : t(`quoteStatus.${quote.status}`)}
                         </button>
                       </div>
                     </div>
