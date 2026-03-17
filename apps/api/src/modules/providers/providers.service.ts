@@ -466,6 +466,7 @@ export class ProvidersService {
             email: true,
             firstName: true,
             lastName: true,
+            phone: true,
           },
         },
         profile: true,
@@ -477,6 +478,10 @@ export class ProvidersService {
     }
 
     const {
+      firstName,
+      lastName,
+      email,
+      phone,
       priceMin,
       priceMax,
       headline,
@@ -499,8 +504,17 @@ export class ProvidersService {
       const normalized = value.trim();
       return normalized.length ? normalized : null;
     };
+    const normalizeUserText = (value?: string) => {
+      if (value === undefined) return undefined;
+      const normalized = value.trim();
+      return normalized.length ? normalized : undefined;
+    };
 
     const profileUpdateData: any = {};
+    const normalizedFirstName = normalizeUserText(firstName);
+    const normalizedLastName = normalizeUserText(lastName);
+    const normalizedEmail = normalizeUserText(email)?.toLowerCase();
+    const normalizedPhone = normalizeUserText(phone);
     const normalizedHeadline = normalizeOptionalText(headline);
     const normalizedBio = normalizeOptionalText(bio);
     const normalizedAddress = normalizeOptionalText(addressLine1);
@@ -536,6 +550,31 @@ export class ProvidersService {
       profileUpdateData.openingHours = this.normalizeOpeningHours(openingHours);
     }
 
+    if (normalizedEmail && normalizedEmail !== provider.user.email) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        throw new ConflictException("Email already registered");
+      }
+    }
+
+    const userUpdateData: any = {};
+    if (normalizedFirstName !== undefined) {
+      userUpdateData.firstName = normalizedFirstName;
+    }
+    if (normalizedLastName !== undefined) {
+      userUpdateData.lastName = normalizedLastName;
+    }
+    if (normalizedEmail !== undefined) {
+      userUpdateData.email = normalizedEmail;
+    }
+    if (normalizedPhone !== undefined) {
+      userUpdateData.phone = normalizedPhone;
+    }
+
     const servicePriceData: any = {};
     if (priceMin !== undefined) servicePriceData.priceMin = priceMin;
     if (priceMax !== undefined) servicePriceData.priceMax = priceMax;
@@ -546,8 +585,12 @@ export class ProvidersService {
     let profileMutation: any;
     if (shouldMutateProfile) {
       const slugLabel =
+        providerData.companyName ||
         provider.companyName ||
-        `${provider.user.firstName} ${provider.user.lastName}`.trim() ||
+        `${normalizedFirstName ?? provider.user.firstName} ${
+          normalizedLastName ?? provider.user.lastName
+        }`.trim() ||
+        normalizedEmail ||
         provider.user.email;
       const slug = await this.generateUniqueProfileSlug(slugLabel, provider.id);
 
@@ -577,6 +620,11 @@ export class ProvidersService {
       where: { id: provider.id },
       data: {
         ...providerData,
+        user: Object.keys(userUpdateData).length
+          ? {
+              update: userUpdateData,
+            }
+          : undefined,
         profile: profileMutation,
         services: Object.keys(servicePriceData).length
           ? {

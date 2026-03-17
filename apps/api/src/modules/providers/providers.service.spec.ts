@@ -61,6 +61,12 @@ describe("ProvidersService", () => {
         findUnique: jest.fn(),
         create: jest.fn(),
       },
+      user: {
+        findUnique: jest.fn(),
+      },
+      category: {
+        findMany: jest.fn(),
+      },
       quote: {
         count: jest.fn(),
       },
@@ -308,6 +314,7 @@ describe("ProvidersService", () => {
   describe("updateMyProfile", () => {
     it("updates provider profile and service pricing", async () => {
       prisma.provider.findUnique.mockResolvedValue(mockProvider);
+      prisma.user.findUnique.mockResolvedValue(null);
       prisma.provider.update.mockResolvedValue({
         ...mockProvider,
         profile: {
@@ -327,6 +334,59 @@ describe("ProvidersService", () => {
           where: { id: "provider-1" },
           data: expect.objectContaining({
             services: expect.any(Object),
+          }),
+        }),
+      );
+    });
+
+    it("updates related user fields alongside provider profile data", async () => {
+      prisma.provider.findUnique.mockResolvedValue(mockProvider);
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.provider.update.mockResolvedValue({
+        ...mockProvider,
+        user: {
+          ...mockProvider.user,
+          firstName: "Erika",
+          lastName: "Mustermann",
+          email: "erika@example.com",
+          phone: "+49111222333",
+        },
+        profile: {
+          ...mockProvider.profile,
+          addressLine1: "Torstrasse 1",
+          city: "Berlin",
+          postalCode: "10115",
+          website: "https://example.com",
+        },
+      });
+
+      await service.updateMyProfile("user-1", {
+        firstName: "Erika",
+        lastName: "Mustermann",
+        email: "erika@example.com",
+        phone: "+49111222333",
+        addressLine1: "Torstrasse 1",
+        city: "Berlin",
+        postalCode: "10115",
+        website: "https://example.com",
+      });
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: "erika@example.com" },
+        select: { id: true },
+      });
+      expect(prisma.provider.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user: {
+              update: {
+                firstName: "Erika",
+                lastName: "Mustermann",
+                email: "erika@example.com",
+                phone: "+49111222333",
+              },
+            },
+            profile: expect.any(Object),
           }),
         }),
       );
