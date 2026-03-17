@@ -5,7 +5,16 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components";
 import { useAuth } from "@/contexts";
-import { getStoredAccessToken, requestsApi, type ServiceRequest } from "@/lib/api";
+import {
+  bookingsApi,
+  getStoredAccessToken,
+  quotesApi,
+  requestsApi,
+  type CustomerBooking,
+  type Quote,
+  type ServiceRequest,
+} from "@/lib/api";
+import { getProviderDisplayName } from "@/lib/bookings";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 
@@ -19,6 +28,9 @@ interface RequestCard {
   quotes: number;
   description: string;
   bookedProvider?: string;
+  bookingId?: string;
+  acceptedQuoteId?: string;
+  hasReview?: boolean;
   completedAt?: string;
 }
 
@@ -39,27 +51,51 @@ const mapApiStatus = (status: string): DisplayRequestStatus => {
 };
 
 // Transform API request to display format
-const transformRequest = (request: ServiceRequest): RequestCard => ({
-  id: request.id,
-  title: request.title,
-  category: request.category?.nameEn || request.category?.slug || request.categoryId,
-  status: mapApiStatus(request.status),
-  createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }),
-  location: `${request.postalCode} ${request.city}`,
-  quotes: request._count?.quotes ?? request.quotes?.length ?? 0,
-  description: request.description,
-  bookedProvider: undefined as string | undefined,
-  completedAt: undefined as string | undefined,
-});
+const transformRequest = (
+  request: ServiceRequest,
+  context: {
+    bookingsByRequestId: Map<string, CustomerBooking>;
+    acceptedQuotesByRequestId: Map<string, Quote>;
+  },
+): RequestCard => {
+  const booking = context.bookingsByRequestId.get(request.id);
+  const acceptedQuote = context.acceptedQuotesByRequestId.get(request.id);
+
+  return {
+    id: request.id,
+    title: request.title,
+    category: request.category?.nameEn || request.category?.slug || request.categoryId,
+    status: mapApiStatus(request.status),
+    createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+    location: `${request.postalCode} ${request.city}`,
+    quotes: request._count?.quotes ?? request.quotes?.length ?? 0,
+    description: request.description,
+    bookedProvider: booking
+      ? getProviderDisplayName(booking.provider)
+      : acceptedQuote
+        ? getProviderDisplayName(acceptedQuote.provider)
+        : undefined,
+    bookingId: booking?.id,
+    acceptedQuoteId: acceptedQuote?.id,
+    hasReview: Boolean(booking?.review),
+    completedAt: booking?.completedAt
+      ? new Date(booking.completedAt).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : undefined,
+  };
+};
 
 export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
   const { isAuthenticated } = useAuth();
-  const [filter, setFilter] = useState("alle");
+  const [filter, setFilter] = useState("all");
   const [requests, setRequests] = useState<RequestCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +110,35 @@ export default function MyRequestsPage() {
       }
 
       try {
-        const apiRequests = await requestsApi.getMyRequests(token);
-        const transformedRequests = (apiRequests || []).map(transformRequest);
+        const [apiRequests, bookingsResponse, customerQuotes] = await Promise.all([
+          requestsApi.getMyRequests(token),
+          bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
+          quotesApi.getMyQuotes(token),
+        ]);
+
+        const bookingsByRequestId = new Map<string, CustomerBooking>();
+        bookingsResponse.data.forEach((booking) => {
+          const requestId = booking.quote?.request?.id;
+          if (requestId) {
+            bookingsByRequestId.set(requestId, booking);
+          }
+        });
+
+        const acceptedQuotesByRequestId = new Map<string, Quote>();
+        customerQuotes
+          .filter((quote) => quote.status === "accepted" && quote.request?.id)
+          .forEach((quote) => {
+            if (quote.request?.id) {
+              acceptedQuotesByRequestId.set(quote.request.id, quote);
+            }
+          });
+
+        const transformedRequests = (apiRequests || []).map((request) =>
+          transformRequest(request, {
+            bookingsByRequestId,
+            acceptedQuotesByRequestId,
+          }),
+        );
         setRequests(transformedRequests);
       } catch (err) {
         console.error("Failed to fetch requests:", err);
@@ -96,7 +159,7 @@ export default function MyRequestsPage() {
   };
 
   const filteredRequests =
-    filter === "alle"
+    filter === "all"
       ? requests
       : requests.filter((r) => r.status === filter);
 
@@ -145,7 +208,7 @@ export default function MyRequestsPage() {
         {/* Filters */}
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
           {[
-            { id: "alle", label: t("filters.all") },
+            { id: "all", label: t("filters.all") },
             { id: "active", label: t("filters.active") },
             { id: "booked", label: t("filters.booked") },
             { id: "completed", label: t("filters.completed") },
@@ -215,14 +278,24 @@ export default function MyRequestsPage() {
                       <div className="text-right text-sm">
                         <div className="text-muted">{t("bookedWith")}</div>
                         <div className="font-medium">
-                          {request.bookedProvider}
+                          {request.bookedProvider || t("bookingPending")}
                         </div>
                       </div>
                       <Link
-                        href={`/my-requests/${request.id}`}
+                        href={
+                          request.bookingId
+                            ? `/bookings/${request.bookingId}`
+                            : request.acceptedQuoteId
+                              ? `/bookings/new?quote=${request.acceptedQuoteId}`
+                              : `/my-requests/${request.id}`
+                        }
                         className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background"
                       >
-                        {t("viewDetails")}
+                        {request.bookingId
+                          ? t("manageBooking")
+                          : request.acceptedQuoteId
+                            ? t("completeBooking")
+                            : t("viewDetails")}
                       </Link>
                     </>
                   )}
@@ -232,9 +305,12 @@ export default function MyRequestsPage() {
                         <div className="text-muted">{t("completedOn")}</div>
                         <div className="font-medium">{request.completedAt}</div>
                       </div>
-                      <button className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90">
-                        {t("rate")}
-                      </button>
+                      <Link
+                        href={request.bookingId ? `/bookings/${request.bookingId}` : `/my-requests/${request.id}`}
+                        className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90"
+                      >
+                        {request.hasReview ? t("viewBooking") : t("rate")}
+                      </Link>
                     </>
                   )}
                 </div>

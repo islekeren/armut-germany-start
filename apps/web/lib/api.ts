@@ -66,7 +66,7 @@ export async function apiRequest<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
-  const { token, ...fetchOptions } = options;
+  const { token, direct, cache, ...fetchOptions } = options;
   const headers = new Headers(fetchOptions.headers || undefined);
 
   if (token) {
@@ -83,7 +83,7 @@ export async function apiRequest<T>(
   }
 
   // The NestJS API has a global prefix of /api
-  const url = `${API_URL}/api${endpoint}`;
+  const url = `${getApiBaseUrl(direct)}/api${endpoint}`;
 
   let response: Response;
   try {
@@ -764,7 +764,17 @@ export interface Quote {
   request?: {
     id: string;
     title?: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    preferredDate?: string | null;
     category?: Category;
+    customer?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    };
   };
 }
 
@@ -818,6 +828,165 @@ export const quotesApi = {
   withdraw: (token: string, id: string) =>
     apiRequest(`/quotes/${id}`, {
       method: "DELETE",
+      token,
+    }),
+};
+
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+export type PaymentStatus = "pending" | "paid" | "refunded" | "failed";
+
+export interface BookingReview {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  providerReply?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface BookingPayment {
+  id: string;
+  bookingId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingProvider {
+  id: string;
+  companyName?: string | null;
+  ratingAvg?: number;
+  totalReviews?: number;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    phone?: string | null;
+    profileImage?: string | null;
+  };
+}
+
+export interface BookingCustomer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  profileImage?: string | null;
+}
+
+export interface BookingRequest {
+  id: string;
+  title: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  preferredDate?: string | null;
+  category?: Category;
+}
+
+export interface CustomerBooking {
+  id: string;
+  quoteId: string;
+  customerId: string;
+  providerId: string;
+  scheduledDate: string;
+  status: BookingStatus;
+  totalPrice: number;
+  paymentStatus: PaymentStatus;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  quote?: Quote & {
+    request?: BookingRequest;
+  };
+  provider?: BookingProvider;
+  customer?: BookingCustomer;
+  review?: BookingReview | null;
+  payment?: BookingPayment | null;
+}
+
+export interface BookingListResponse {
+  data: CustomerBooking[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface BookingsQuery {
+  status?: BookingStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateBookingData {
+  quoteId: string;
+  scheduledDate: string;
+}
+
+export interface CreateReviewData {
+  rating: number;
+  comment?: string;
+}
+
+export const bookingsApi = {
+  create: (token: string, data: CreateBookingData) =>
+    apiRequest<CustomerBooking>("/bookings", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  getCustomerBookings: (token: string, query?: BookingsQuery) => {
+    const params = new URLSearchParams();
+    if (query?.status) params.append("status", query.status);
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    const queryString = params.toString();
+
+    return apiRequest<BookingListResponse>(
+      `/bookings/customer${queryString ? `?${queryString}` : ""}`,
+      { token },
+    );
+  },
+
+  getUpcomingCustomer: (token: string) =>
+    apiRequest<CustomerBooking[]>("/bookings/upcoming/customer", { token }),
+
+  getById: (token: string, id: string) =>
+    apiRequest<CustomerBooking>(`/bookings/${id}`, { token }),
+
+  updateStatus: (token: string, id: string, status: BookingStatus) =>
+    apiRequest<CustomerBooking>(`/bookings/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+      token,
+    }),
+
+  reschedule: (token: string, id: string, scheduledDate: string) =>
+    apiRequest<CustomerBooking>(`/bookings/${id}/reschedule`, {
+      method: "PATCH",
+      body: JSON.stringify({ scheduledDate }),
+      token,
+    }),
+
+  createReview: (token: string, id: string, data: CreateReviewData) =>
+    apiRequest<BookingReview>(`/bookings/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify(data),
       token,
     }),
 };
