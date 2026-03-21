@@ -1,144 +1,117 @@
-# Workflow
+---
+tracker:
+  kind: linear
+  project_slug: "armut-germany-659bbb0d01aa"
+  api_key: $LINEAR_API_KEY
+
+workspace:
+  root: ~/symphony-workspaces
+
+hooks:
+  after_create: |
+    git clone https://github.com/islekeren/armut-germany-start.git .
+    npm install
+
+agent:
+  max_concurrent_agents: 1
+  max_turns: 20
+
+codex:
+  command: codex model_reasoning_effort=xhigh app-server
+  approval_policy: never
+---
+
+
+You are working on a Linear issue: `{{ issue.identifier }}`
+
+Issue context:
+Identifier: {{ issue.identifier }}
+Title: {{ issue.title }}
+State: {{ issue.state }}
+URL: {{ issue.url }}
+
+Description:
+{% if issue.description %}
+{{ issue.description }}
+{% else %}
+No description provided.
+{% endif %}
 
 ## Goal
 
-This workflow is designed for issue-driven work by coding agents in this repository.
+Resolve the issue with the smallest safe change, then create a branch, commit the work, push it, and open a pull request.
 
-It prioritizes:
+## Required workflow
 
-- minimal safe edits
-- repo-specific inspection before implementation
-- honest validation
-- explicit handling of incomplete information
+1. Read the issue carefully.
+2. Inspect the relevant code before editing.
+3. Read repository docs first:
+   - ARCHITECTURE.md
+   - TESTING.md
+   - AGENT_GUIDE.md
+4. Create a new branch before making changes.
 
-## Step 1: Interpret The Task
+Branch naming format:
+`linear/{{ issue.identifier }}-short-description`
 
-Classify the task first:
+5. Reproduce or identify the issue signal before changing code when possible.
+6. Make the smallest safe implementation that resolves the issue.
+7. Avoid unrelated refactors, renames, or cleanup.
+8. Run the smallest relevant validation for the changed surface area.
+9. If validation passes, commit the change.
 
-- frontend UI or route issue
-- backend API or business logic issue
-- auth or permissions issue
-- database/schema issue
-- docs or workflow issue
-- infra/deploy/config issue
+Commit message format:
+`{{ issue.identifier }}: short summary`
 
-Then identify:
+10. Push the branch to origin.
+11. Open a pull request.
 
-- which app is affected
-- whether the task changes behavior or only presentation
-- whether the task is likely to touch a danger zone
+PR title format:
+`{{ issue.identifier }}: short summary`
 
-## Step 2: Inspect Before Editing
+12. In the final response, report only:
+   - what changed
+   - files changed
+   - validation run
+   - whether push succeeded
+   - PR URL if created
+   - blockers if any
 
-Always read the nearest relevant files before planning.
+## Guardrails
 
-Typical inspection set:
+- Work only in the provided repository copy.
+- Do not modify unrelated parts of the codebase.
+- Do not change architecture unless required by the issue.
+- Do not merge directly to main.
+- Do not stop after coding if push and PR are possible.
+- If push or PR creation fails, report the exact command failure and reason.
+- If repository baseline checks are already failing, distinguish baseline failures from issue-specific failures.
 
-- route/page file
-- controller
-- service
-- DTO
-- Prisma schema if persistence is involved
-- API client wrapper if frontend/backend coupling is involved
-- translation files if user-facing text changes
+## Repository-specific notes
 
-Also read the relevant root docs:
-
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [TESTING.md](./TESTING.md)
-- [AGENT_GUIDE.md](./AGENT_GUIDE.md)
-
-## Step 3: Form A Minimal Plan
-
-A good plan in this repository is usually 2-4 steps.
-
-Example structure:
-
-1. inspect the affected flow
-2. edit the smallest files needed
-3. run targeted validation
-4. summarize results and residual risks
-
-Avoid speculative plans like:
-
-- "clean up related code while here"
-- "migrate to a new shared abstraction"
-- "fix all warnings in touched files"
-
-unless the issue explicitly asks for that.
-
-## Step 4: Implement Conservatively
-
-While editing:
-
-- preserve existing architecture unless the task requires a redesign
-- avoid touching unrelated files
-- keep API contract changes explicit
-- keep translations in sync
-- keep docs in sync when workflow or runtime behavior changes
-
-Repo-specific rule:
-
-- If you touch `apps/web/lib/api.ts`, re-check the downstream impact carefully because it is a central coupling point.
-
-## Step 5: Validate By Surface Area
-
-Pick the smallest relevant validations first.
-
-Examples:
-
-- API service change: `cd apps/api && npm run check-types && npm run build`
-- API logic change: add `npm run test -- --watchman=false`
-- frontend view change: `cd apps/web && npm run lint`
-- frontend data-layer change: add `npm run check-types` and `npm run build`
-- schema change: Prisma generate plus API validation plus manual QA
-
-Use [TESTING.md](./TESTING.md) to distinguish baseline failures from new regressions.
-
-## Step 6: Handle Incomplete Information
-
-When information is missing:
-
-- prefer observed facts from code
-- label inferences explicitly
-- document unknowns instead of inventing certainty
-
-Stop and ask for clarification when:
-
-- business rules are unclear
-- deployment behavior must change
-- auth or payment semantics would change
-- a schema migration requires guessing data behavior
-
-## Step 7: Summarize Precisely
-
-Final reporting should include:
-
-- files changed
-- behavioral outcome
-- validation run
-- pre-existing failures still present
-- follow-up risks or unknowns
-
-Do not claim "all checks pass" unless they actually pass.
-
-## Repository-Specific Constraints
-
+- If you touch `apps/web/lib/api.ts`, re-check downstream impact carefully because it is a central coupling point.
 - Root lint and root type-check are not fully green on baseline.
-- Web build is currently broken by a real TypeScript issue in `apps/web/lib/api.ts`.
+- Web build currently has a known TypeScript issue in `apps/web/lib/api.ts`.
 - API e2e tests are stale.
-- CI contains aspirational steps that do not fully match the checked-in repo state.
+- Separate pre-existing repository failures from new regressions introduced by this task.
 
-Implication:
+## Validation guidance
 
-- A good workflow summary must separate repository baseline problems from the task-specific result.
+Use the smallest relevant validation:
 
-## Safe Completion Criteria
+- API service change:
+  `cd apps/api && npm run check-types && npm run build`
 
-Work can be considered safely complete when:
+- API logic change:
+  `cd apps/api && npm run test -- --watchman=false`
 
-- the requested behavior or documentation change is implemented
-- affected files were inspected before edit
-- the smallest relevant validations were run
-- no unrelated refactor was introduced
-- remaining failures and unknowns are clearly reported
+- frontend view change:
+  `cd apps/web && npm run lint`
+
+- frontend data-layer change:
+  `cd apps/web && npm run check-types`
+
+- schema change:
+  Prisma generate plus API validation
+
+Do not claim success unless the relevant validation actually passed.
