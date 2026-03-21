@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Web App
 
-## Getting Started
+## Purpose
 
-First, run the development server:
+`apps/web` is the Next.js frontend for the marketplace.
+
+Observed responsibilities:
+
+- public landing and category discovery pages
+- customer auth and request creation
+- customer request management and messaging
+- provider dashboard, profile management, reviews, calendar, and messages
+- locale-aware UI using German and English message files
+
+## Run Locally
+
+From this directory:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Default local URL:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `http://localhost:3000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+## Important Files
 
-## Learn More
+- `app/`: App Router routes
+- `components/`: app-local reusable UI components
+- `contexts/AuthContext.tsx`: auth state and token persistence
+- `lib/api.ts`: frontend API client and typed request helpers
+- `messages/en.json`, `messages/de.json`: translation dictionaries
+- `next.config.js`: API rewrite and `next-intl` setup
 
-To learn more about Next.js, take a look at the following resources:
+## Key Route Groups
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `(auth)`: login, register, provider onboarding
+- `(customer)`: customer messages and request pages
+- `(provider)`: provider dashboard pages
+- public routes: homepage, categories, category detail, provider public profiles, create-request
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Validate
 
-## Deploy on Vercel
+```bash
+npm run lint
+npm run check-types
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Important baseline status:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- lint currently fails on an unused helper warning
+- type-check currently fails because `.next/types/cache-life.d.ts` is missing
+- production build currently fails because `lib/api.ts` references an undefined `API_URL` variable
+
+See `../../TESTING.md` for details.
+
+## Safe Change Notes
+
+- Keep API access centralized in `lib/api.ts`.
+- Keep auth behavior inside `contexts/AuthContext.tsx`.
+- Update both locale files when adding or changing user-visible text.
+- Respect server/client component boundaries when moving code.
+
+## Known Gaps
+
+- No frontend unit tests found
+- No Playwright tests found
+- Messaging UI is REST-based even though the backend exposes a websocket gateway
+- Several provider dashboard links point to pages that are not implemented

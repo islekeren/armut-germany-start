@@ -86,10 +86,10 @@
 ## TODO List (Updated)
 
 ### P0 (Do First)
-- [ ] Tighten user response payloads so every user-facing endpoint returns only the minimum necessary fields.
+- [x] Remove sensitive fields from all user responses and lock down `/users/:id` access.
 - [x] Add admin authorization guard to provider approval endpoint.
-- [ ] Fix all broken/dead route links and add the missing referenced pages.
-- [x] Align provider list pagination/meta with distance filtering logic.
+- [ ] Fix all broken/dead route links and typos in frontend navigation.
+- [ ] Align provider list pagination/meta with distance filtering logic.
 
 ### P1 (Core Product Completion)
 - [x] Complete quote -> accepted -> booking flow in customer UI.
@@ -124,7 +124,39 @@
 - Impact: this is a test expectation mismatch, not evidence that the categories feature is broken in production code.
 
 ## Suggested Delivery Order
-- Sprint 1: dead links and missing static/legal/help pages, plus user response payload tightening.
-- Sprint 2: geolocation completion, homepage search, and category filters/sorting.
-- Sprint 3: provider media uploads, calendar action flows, and realtime messaging integration.
-- Sprint 4: payments, cleanup of placeholder modules, frontend tests, and documentation refresh.
+- Sprint 1: P0 security + broken links.
+- Sprint 2: P1 booking lifecycle + onboarding/profile persistence.
+- Sprint 3: P2 search/filters + realtime messaging + uploads polish.
+- Sprint 4: P2 payments + P3 cleanup/testing/docs.
+
+
+
+1) Frontend mock/hardcoded data still present DONE
+
+- Customer requests still fallback to hardcoded mock cards (mockRequests) when token is missing or API fails in my-requests/page.tsx:25, my-requests/page.tsx:116, my-requests/page.tsx:129.
+- Create-request categories are hardcoded in UI instead of loaded from API in create-request/page.tsx:22.
+- Provider dashboard message badge is hardcoded 3 in dashboard/page.tsx:88.
+- Root README still documents “Customer Mock Data” in README.md:15.
+
+2) Missing or incomplete functionality
+
+- Route/link integrity is incomplete: app links to routes that do not exist under apps/web/app, e.g. /dashboard/orders, /dashboard/finances, /dashboard/settings, /dashboard/services in dashboard/page.tsx:132, dashboard/page.tsx:164, dashboard/page.tsx:180, dashboard/page.tsx:333, 
+plus /dashboard/profil typo in Header.tsx:89(Done), /passwort-vergessen in login/page.tsx:100(done but missing forgot password route), /anmelden in register/page.tsx:244(done), /hilfe /preise /erfolgsgeschichten in app/page.tsx:142, app/page.tsx:149, app/page.tsx:150(done but not implemented).
+
+
+
+- Quote acceptance does not create a booking lifecycle step: frontend accepts quote in request-detail/page.tsx:153, backend only updates quote/request status in quotes.service.ts:304, while full booking endpoints exist in bookings.controller.ts:27.
+- Provider onboarding/profile data loss: onboarding collects address/phone etc in provider-onboarding/page.tsx:17 but submit payload omits most of it in provider-onboarding/page.tsx:190; profile form edits contact/email/phone in provider-profile/page.tsx:21 but save payload in provider-profile/page.tsx:97 does not persist those user fields.
+- Geo/location flow is unfinished: request creation sends lat/lng = 0 in create-request/page.tsx:102, create-request/page.tsx:103.
+Provider profile image/gallery UI is placeholder (“Change image” button no upload action) in provider-profile/page.tsx:340.
+Category page filters/sorting UI is present but not wired to query state in category/[slug]/page.tsx:155, category/[slug]/page.tsx:185, category/[slug]/page.tsx:197.
+- Homepage search UI has no search behavior attached in app/page.tsx:30.
+- Calendar and request detail contain placeholder actions (no handlers): calendar/page.tsx:122, calendar/page.tsx:251, calendar/page.tsx:268, request-detail/page.tsx:299.
+- Realtime messaging exists in backend websocket gateway messages.gateway.ts:19, but frontend uses REST polling only customer-messages/page.tsx:70, and composer is text-only (no attachments) in MessagesWorkspace.tsx:178.
+- ServicesModule and ReviewsModule are empty placeholders in services.module.ts:3, reviews.module.ts:3.
+- Payments are modeled in DB (schema.prisma:270) but there is no payments module/controller in app.module.ts:20.
+
+3) Important backend risks DONE
+Sensitive user exposure risk: findById returns full user record in users.service.ts:8, and controller exposes it from /users/profile and /users/:id in users.controller.ts:20, users.controller.ts:35.
+Provider approval endpoint lacks admin guard in providers.controller.ts:121.
+Provider listing pagination/meta accuracy issue: distance filtering happens after DB pagination in providers.service.ts:224 and providers.service.ts:254, but total is counted pre-distance in providers.service.ts:268.

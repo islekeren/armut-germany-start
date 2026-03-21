@@ -1,89 +1,88 @@
-# Deployment Guide
+# Deployment
 
-## Runtime
+## What Is Actually Present
 
-- Node.js: `20.9.0` or newer
-- Web: Vercel
-- API: Railway
-- Database: PostgreSQL (Railway Postgres, Neon, Supabase, or equivalent)
+Observed deployment-related assets in the repository:
 
-## Web on Vercel
+- `.github/workflows/ci.yml`
+- `docker-compose.yml`
 
-### Project settings
+Observed missing assets as of 2026-03-21:
 
-- Framework Preset: `Next.js`
-- Root Directory: `apps/web`
-- Install Command: leave default if Vercel detects the monorepo correctly, otherwise use `npm ci`
-- Build Command: `npm run build`
+- no `railway.json`
+- no `vercel.json`
+- no `Dockerfile`
+- no Terraform, Pulumi, or Kubernetes manifests
 
-### Required environment variables
+## CI Pipeline
 
-- `API_URL=https://your-api-service.up.railway.app`
-- `NEXT_PUBLIC_API_URL=https://your-api-service.up.railway.app`
+Observed in `.github/workflows/ci.yml`:
 
-`API_URL` is used for server-side rendering and the Vercel rewrite. `NEXT_PUBLIC_API_URL` is still needed for direct browser upload requests so large files do not have to pass through the Vercel proxy.
+1. lint
+2. API tests
+3. web build
+4. API build
+5. e2e tests
+6. deploy staging placeholder
+7. deploy production placeholder
 
-## API on Railway
+Observed deploy jobs:
 
-### Project settings
+- staging and production jobs only run `echo` placeholders
+- no real deployment command is checked in
 
-- Deploy from GitHub repo
-- Root Directory: `/`
-- Config as Code path: [`/railway.json`](/Users/eren/Desktop/ARMUT/armut-germany-start/railway.json#L1)
-- Build Command: `npm run db:generate --workspace=api && npm run build --workspace=api`
-- Pre-Deploy Command: `npm run db:migrate:deploy --workspace=api`
-- Start Command: `npm run start:prod --workspace=api`
-- Health Check Path: `/api/health`
+Practical meaning:
 
-For this repo, keep the service source at the repository root. This is a shared npm workspaces monorepo, so the API service must build from the root and use workspace-specific commands. Do not set the Railway root directory to `apps/api`.
+- CI exists
+- actual deployment automation does not
 
-### Required environment variables
+## Runtime Assumptions Visible In Code
 
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `JWT_REFRESH_SECRET`
-- `CORS_ORIGINS=https://your-web-domain.vercel.app`
+Observed:
 
-`DATABASE_URL` stays the same in every environment. The only difference is the value:
+- API expects PostgreSQL
+- API can expose Swagger docs
+- uploads expect S3-compatible storage
+- web expects an API origin via env vars
 
-- Local development: your Docker Postgres URL, for example `postgresql://armut:armut123@localhost:5432/armut_db?schema=public`
-- Production: your managed Postgres URL from Railway Postgres, Neon, Supabase, Render Postgres, etc.
+Unknown:
 
-Production should not run Postgres in Docker for this app. The API already reads Prisma config from `DATABASE_URL`, so no code change or separate Prisma setup is required beyond setting the hosted connection string.
+- production hosting provider for the web app
+- production hosting provider for the API
+- where secrets are managed
+- how migrations are applied in production
+- whether Redis is required in production or only planned
 
-If you create a Railway PostgreSQL service in the same project, set:
+## Deployment Risks
 
-- `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+- The web build is not currently green on repository baseline.
+- API e2e tests are stale.
+- Some env variables are documented without active code paths.
+- Upload env names in code and env example do not match.
 
-`Postgres` is the default service namespace if the database service is named `Postgres`. If you rename the database service, update the namespace accordingly.
+These are blockers for trustworthy deployment automation.
 
-### Common optional environment variables
+## Safe Agent Behavior
 
-- `S3_ENDPOINT`
-- `S3_BUCKET`
-- `S3_REGION`
-- `S3_ACCESS_KEY_ID`
-- `S3_SECRET_ACCESS_KEY`
-- `S3_PUBLIC_URL`
-- `REDIS_URL`
-- `MEILISEARCH_HOST`
-- `MEILISEARCH_API_KEY`
-- `GOOGLE_MAPS_API_KEY`
+Do not invent deployment configuration casually.
 
-If you want Vercel preview deployments to call the API directly for uploads, `CORS_ORIGINS` also accepts `*` wildcards, for example `https://your-preview-domain-*.vercel.app`.
+If a task asks for deployment work:
 
-## Deployment order
+1. inspect the current workflow file
+2. inspect actual hosting manifests in the repo
+3. if no manifest exists, report that explicitly
+4. ask for target platform confirmation before creating or changing deployment files
 
-1. Create the Railway PostgreSQL service in the same Railway project.
-2. Set `DATABASE_URL=${{Postgres.DATABASE_URL}}` and the other API env vars on the Railway API service.
-3. Deploy the API to Railway and confirm `https://your-api-service.up.railway.app/api/health` returns `{"status":"ok",...}`.
-4. Set both web env vars in Vercel to the Railway API origin.
-5. Deploy the web app to Vercel.
-6. Update the API `CORS_ORIGINS` value with your final Vercel production domain and redeploy the API if needed.
+## What Needs Human Confirmation
 
-## Notes
+- target hosting platform
+- deployment topology for web and API
+- migration strategy
+- secret management strategy
+- whether Playwright and deploy placeholders are roadmap items or stale remnants
 
-- The Next.js app now fetches API data dynamically on the server, so Vercel builds do not depend on the API being live.
-- Browser uploads are sent directly to the API origin when `NEXT_PUBLIC_API_URL` is set.
-- The API now trusts the proxy and binds to `0.0.0.0`, which is the expected setup on Railway.
-- `docker-compose.yml` is for local development only. Production uses external services with the same env variable names.
+## Practical Recommendation
+
+Treat deployment work in this repository as a high-clarity task that requires explicit human confirmation before execution.
+
+Until that confirmation exists, focus on local runtime correctness and CI accuracy instead of guessing production infrastructure.
