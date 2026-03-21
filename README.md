@@ -138,7 +138,7 @@ Observed:
 - Root `README.md` and `apps/web/README.md` were previously too weak to support safe agent work and have been rewritten.
 - Root `dev:mobile` script points at a non-existent `mobile` workspace.
 - Root `tsconfig.json` still extends `expo/tsconfig.base`, but there is no mobile app in this repository.
-- CI includes placeholder deployment jobs and Playwright steps even though no frontend test suite or Playwright config is present.
+- actual hosted deployment uses the `deployment` branch, Vercel for the frontend, and Railway for the backend, while `.github/workflows/ci.yml` still contains placeholder deploy jobs for `main` and `develop`.
 
 These are documented in more detail in:
 
