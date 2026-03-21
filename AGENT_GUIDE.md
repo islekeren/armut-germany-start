@@ -145,7 +145,7 @@ Stop and ask when:
 - the task implies changing public API contracts used by multiple pages
 - a schema change requires guessing business rules
 - the checked-in code and docs disagree and both interpretations seem plausible
-- deployment behavior needs to change, but the target platform is still unknown
+- deployment behavior needs to change, especially if it affects the `deployment` branch flow, Vercel frontend setup, or Railway backend setup
 
 ## When To Avoid Cleanup
 

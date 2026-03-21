@@ -308,7 +308,6 @@ Observed:
 
 Unknown:
 
-- Intended production deployment target
 - Intended search architecture
 - Intended payments implementation
 - Intended email provider integration
