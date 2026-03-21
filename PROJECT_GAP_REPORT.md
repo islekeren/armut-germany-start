@@ -48,8 +48,8 @@
 ## TODO List (Prioritized)
 
 ### P0 (Do First)
-- [ ] Remove sensitive fields from all user responses and lock down `/users/:id` access.
-- [ ] Add admin authorization guard to provider approval endpoint.
+- [x] Remove sensitive fields from all user responses and lock down `/users/:id` access.
+- [x] Add admin authorization guard to provider approval endpoint.
 - [ ] Fix all broken/dead route links and typos in frontend navigation.
 - [ ] Align provider list pagination/meta with distance filtering logic.
 
@@ -106,7 +106,7 @@ Category page filters/sorting UI is present but not wired to query state in cate
 - ServicesModule and ReviewsModule are empty placeholders in services.module.ts:3, reviews.module.ts:3.
 - Payments are modeled in DB (schema.prisma:270) but there is no payments module/controller in app.module.ts:20.
 
-3) Important backend risks
+3) Important backend risks DONE
 Sensitive user exposure risk: findById returns full user record in users.service.ts:8, and controller exposes it from /users/profile and /users/:id in users.controller.ts:20, users.controller.ts:35.
 Provider approval endpoint lacks admin guard in providers.controller.ts:121.
 Provider listing pagination/meta accuracy issue: distance filtering happens after DB pagination in providers.service.ts:224 and providers.service.ts:254, but total is counted pre-distance in providers.service.ts:268.
