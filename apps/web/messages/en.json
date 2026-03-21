@@ -11,6 +11,10 @@
     "allRightsReserved": "All rights reserved.",
     "learnMore": "Learn More"
   },
+  "comingSoon": {
+    "badge": "Coming soon",
+    "description": "{page} is not available yet. We're still building this page."
+  },
   "nav": {
     "home": "Home",
     "categories": "Categories",
