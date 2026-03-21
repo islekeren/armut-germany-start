@@ -11,6 +11,10 @@
     "allRightsReserved": "Alle Rechte vorbehalten.",
     "learnMore": "Mehr erfahren"
   },
+  "comingSoon": {
+    "badge": "Demnächst",
+    "description": "{page} ist noch nicht verfügbar. Wir arbeiten noch an dieser Seite."
+  },
   "nav": {
     "home": "Startseite",
     "categories": "Kategorien",
