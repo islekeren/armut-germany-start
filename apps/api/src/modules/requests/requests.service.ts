@@ -16,7 +16,15 @@ export class RequestsService {
     return uuidRegex.test(str);
   }
 
-  async create(customerId: string, createRequestDto: CreateRequestDto) {
+  async create(
+    customerId: string,
+    createRequestDto: CreateRequestDto,
+    userType: "customer" | "provider" | "admin" = "customer"
+  ) {
+    if (userType !== "customer") {
+      throw new ForbiddenException("Only customers can create service requests");
+    }
+
     // Look up category by ID or slug
     let category;
     if (this.isUUID(createRequestDto.categoryId)) {

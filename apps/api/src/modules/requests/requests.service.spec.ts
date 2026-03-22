@@ -26,6 +26,23 @@ describe("RequestsService", () => {
   });
 
   describe("create", () => {
+    it("rejects non-customer users", async () => {
+      await expect(
+        service.create(
+          "provider-user-1",
+          {
+            categoryId: "cleaning",
+            title: "Need cleaning",
+            description: "flat",
+          } as any,
+          "provider"
+        )
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.category.findUnique).not.toHaveBeenCalled();
+      expect(prisma.serviceRequest.create).not.toHaveBeenCalled();
+    });
+
     it("creates request when category id is uuid", async () => {
       const categoryId = "550e8400-e29b-41d4-a716-446655440000";
       prisma.category.findUnique.mockResolvedValue({ id: "cat-1" });

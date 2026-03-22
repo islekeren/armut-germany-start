@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Req,
+  ForbiddenException,
 } from "@nestjs/common";
 import { RequestsService } from "./requests.service";
 import { CreateRequestDto, UpdateRequestDto, RequestQueryDto } from "./dto/request.dto";
@@ -21,7 +22,15 @@ export class RequestsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@Req() req: any, @Body() createRequestDto: CreateRequestDto) {
-    return this.requestsService.create(req.user.id, createRequestDto);
+    if (req.user.userType !== "customer") {
+      throw new ForbiddenException("Only customers can create service requests");
+    }
+
+    return this.requestsService.create(
+      req.user.id,
+      createRequestDto,
+      req.user.userType
+    );
   }
 
   @Get()

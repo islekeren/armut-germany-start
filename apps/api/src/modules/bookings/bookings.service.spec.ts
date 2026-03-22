@@ -121,13 +121,77 @@ describe("BookingsService", () => {
     });
   });
 
-  it("gets one booking and throws when missing", async () => {
+  it("gets one booking and enforces detail access rules", async () => {
     prisma.booking.findUnique
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: "b1" });
+      .mockResolvedValueOnce({
+        id: "b1",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+      })
+      .mockResolvedValueOnce({
+        id: "b1",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+      })
+      .mockResolvedValueOnce({
+        id: "b1",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+      })
+      .mockResolvedValueOnce({
+        id: "b1",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+      });
 
-    await expect(service.findOne("missing")).rejects.toThrow(NotFoundException);
-    await expect(service.findOne("b1")).resolves.toEqual({ id: "b1" });
+    await expect(
+      service.findOne("missing", { id: "customer-1", userType: "customer" })
+    ).rejects.toThrow(NotFoundException);
+    await expect(
+      service.findOne("b1", { id: "other-user", userType: "customer" })
+    ).rejects.toThrow(ForbiddenException);
+    await expect(
+      service.findOne("b1", { id: "customer-1", userType: "customer" })
+    ).resolves.toEqual({
+      id: "b1",
+      customerId: "customer-1",
+      provider: { userId: "provider-user" },
+    });
+    await expect(
+      service.findOne("b1", { id: "provider-user", userType: "provider" })
+    ).resolves.toEqual({
+      id: "b1",
+      customerId: "customer-1",
+      provider: { userId: "provider-user" },
+    });
+    await expect(
+      service.findOne("b1", { id: "admin-1", userType: "admin" })
+    ).resolves.toEqual({
+      id: "b1",
+      customerId: "customer-1",
+      provider: { userId: "provider-user" },
+    });
+
+    const bookingDetailQuery = prisma.booking.findUnique.mock.calls[0][0];
+    expect(bookingDetailQuery.select.provider.select.user.select).toEqual({
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      profileImage: true,
+    });
+    expect(bookingDetailQuery.select.provider.select.user.select).not.toHaveProperty(
+      "email"
+    );
+    expect(bookingDetailQuery.select.customer.select).toEqual({
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      profileImage: true,
+    });
+    expect(bookingDetailQuery.select.customer.select).not.toHaveProperty("email");
   });
 
   describe("updateStatus", () => {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   AlertBanner,
   FormInput,
@@ -25,9 +25,10 @@ import {
 
 export default function CreateRequestPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const initialCategory = searchParams.get("category") || searchParams.get("kategorie") || "";
 
   const [step, setStep] = useState(1);
@@ -49,6 +50,8 @@ export default function CreateRequestPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isProviderUser =
+    !authLoading && isAuthenticated && user?.userType === "provider";
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -69,10 +72,20 @@ export default function CreateRequestPage() {
     loadCategories();
   }, [t]);
 
+  const getCategoryDisplayName = (category: Category) => {
+    const localizedApiName = locale === "de" ? category.nameDe : category.nameEn;
+    const alternateApiName = locale === "de" ? category.nameEn : category.nameDe;
+
+    if (localizedApiName?.trim()) return localizedApiName;
+    if (alternateApiName?.trim()) return alternateApiName;
+
+    return t(`categories.${category.slug}.name`);
+  };
+
   const getCategoryLabel = (categoryId: string) => {
     const selected = categories.find((cat) => cat.id === categoryId || cat.slug === categoryId);
     if (!selected) return categoryId;
-    return t(`categories.${selected.slug}.name`);
+    return getCategoryDisplayName(selected);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,6 +95,11 @@ export default function CreateRequestPage() {
     // Check if user is authenticated
     if (!isAuthenticated) {
       router.push(`/login?redirect=/create-request?category=${formData.category}`);
+      return;
+    }
+
+    if (isProviderUser) {
+      setError(t("createRequest.providerBlockedDescription"));
       return;
     }
 
@@ -134,6 +152,34 @@ export default function CreateRequestPage() {
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
+
+  if (isProviderUser) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-white shadow-sm">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <Link href="/" className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-primary">Armut</span>
+                <span className="text-sm text-muted">Germany</span>
+              </Link>
+              <LanguageToggle />
+            </div>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <AlertBanner variant="warning">
+            <p className="font-semibold">{t("createRequest.providerBlockedTitle")}</p>
+            <p>{t("createRequest.providerBlockedDescription")}</p>
+            <Link href="/dashboard" className="mt-3 inline-block font-medium underline">
+              {t("createRequest.providerBlockedAction")}
+            </Link>
+          </AlertBanner>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -220,7 +266,7 @@ export default function CreateRequestPage() {
                       }`}
                     >
                       <span className="text-2xl">{cat.icon}</span>
-                      <span className="font-medium">{t(`categories.${cat.slug}.name`)}</span>
+                      <span className="font-medium">{getCategoryDisplayName(cat)}</span>
                     </button>
                   ))}
                 </div>

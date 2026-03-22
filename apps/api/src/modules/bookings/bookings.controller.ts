@@ -56,8 +56,8 @@ export class BookingsController {
 
   @Get(":id")
   @UseGuards(JwtAuthGuard)
-  findOne(@Param("id") id: string) {
-    return this.bookingsService.findOne(id);
+  findOne(@Param("id") id: string, @Req() req: any) {
+    return this.bookingsService.findOne(id, req.user);
   }
 
   @Patch(":id/status")
