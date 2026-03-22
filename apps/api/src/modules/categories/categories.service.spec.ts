@@ -21,6 +21,11 @@ describe("CategoriesService", () => {
     expect(prisma.category.findMany).toHaveBeenCalledWith({
       where: { isActive: true },
       orderBy: { nameDe: "asc" },
+      include: {
+        _count: {
+          select: { services: true },
+        },
+      },
     });
   });
 
