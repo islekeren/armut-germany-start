@@ -11,6 +11,10 @@
     "allRightsReserved": "All rights reserved.",
     "learnMore": "Learn More"
   },
+  "comingSoon": {
+    "badge": "Coming soon",
+    "description": "{page} is not available yet. We're still building this page."
+  },
   "nav": {
     "home": "Home",
     "categories": "Categories",
@@ -211,6 +215,9 @@
     "submitting": "Submitting...",
     "submitRequest": "Submit Request",
     "loginRequired": "You need to be logged in to submit a request. You will be redirected to login.",
+    "providerBlockedTitle": "Request creation is for customers",
+    "providerBlockedDescription": "Provider accounts cannot create service requests. Use your provider dashboard to discover and quote customer requests.",
+    "providerBlockedAction": "Go to provider dashboard",
     "errorCreating": "Failed to create request. Please try again.",
     "errorNoToken": "No authentication token found."
   },

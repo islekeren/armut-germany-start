@@ -86,17 +86,13 @@
 ## TODO List (Updated)
 
 ### P0 (Do First)
-- [x] Remove sensitive fields from all user responses and lock down `/users/:id` access.
-- [x] Add admin authorization guard to provider approval endpoint.
 - [ ] Fix all broken/dead route links and typos in frontend navigation.
 - [ ] Align provider list pagination/meta with distance filtering logic.
 
 ### P1 (Core Product Completion)
-- [x] Complete quote -> accepted -> booking flow in customer UI.
-- [x] Add customer booking pages using existing bookings endpoints.
-- [ ] Finish the remaining provider profile/onboarding gaps, especially media uploads and any non-core profile fields still not surfaced in the UI.
-- [x] Replace hardcoded create-request categories with API-driven categories.
-- [ ] Finish replacing old mock-era fallback behavior with polished empty/error states across customer request flows.
+- [ ] Persist all provider onboarding/profile fields (address, phone, website, etc.).
+- [ ] Replace hardcoded create-request categories with API-driven categories.
+- [ ] Replace request mock fallback strategy with explicit empty/error states.
 
 ### P2 (Feature Depth)
 - [ ] Implement homepage search behavior and category page real filters/sorting.
