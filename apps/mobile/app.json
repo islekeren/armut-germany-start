@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Armut Germany Mobile",
+    "slug": "armut-germany-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "armutgermany",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f5f5f5"
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.armut.germany.mobile"
+    },
+    "android": {
+      "package": "com.armut.germany.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#f5f5f5"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
