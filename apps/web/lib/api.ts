@@ -1,6 +1,10 @@
 const DEFAULT_API_ORIGIN = "http://localhost:4000";
 const API_UNAVAILABLE_MESSAGE =
   "The service is temporarily unavailable. Please try again shortly.";
+const DEFAULT_SERVER_API_TIMEOUT_MS =
+  process.env.NODE_ENV === "development" ? 1500 : 5000;
+const DEFAULT_CLIENT_API_TIMEOUT_MS =
+  process.env.NODE_ENV === "development" ? 1500 : 8000;
 
 interface ApiOptions extends RequestInit {
   token?: string;
@@ -62,12 +66,35 @@ function getApiBaseUrl(direct = false) {
   return "";
 }
 
+function getApiTimeoutMs() {
+  const rawValue =
+    typeof window === "undefined"
+      ? process.env.API_TIMEOUT_MS || process.env.NEXT_PUBLIC_API_TIMEOUT_MS
+      : process.env.NEXT_PUBLIC_API_TIMEOUT_MS;
+
+  const parsedValue = Number(rawValue);
+  if (Number.isFinite(parsedValue) && parsedValue > 0) {
+    return parsedValue;
+  }
+
+  return typeof window === "undefined"
+    ? DEFAULT_SERVER_API_TIMEOUT_MS
+    : DEFAULT_CLIENT_API_TIMEOUT_MS;
+}
+
 export async function apiRequest<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
-  const { token, direct, cache, ...fetchOptions } = options;
+  const { token, direct, cache, signal, ...fetchOptions } = options;
   const headers = new Headers(fetchOptions.headers || undefined);
+  const timeoutMs = getApiTimeoutMs();
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(signal?.reason);
+  const timeoutId = setTimeout(
+    () => controller.abort(new DOMException("API request timed out", "TimeoutError")),
+    timeoutMs,
+  );
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -85,15 +112,27 @@ export async function apiRequest<T>(
   // The NestJS API has a global prefix of /api
   const url = `${getApiBaseUrl(direct)}/api${endpoint}`;
 
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+    } else {
+      signal.addEventListener("abort", abortFromCaller, { once: true });
+    }
+  }
+
   let response: Response;
   try {
     response = await fetch(url, {
       ...fetchOptions,
       cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
       headers,
+      signal: controller.signal,
     });
   } catch {
     throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", abortFromCaller);
   }
 
   if (!response.ok) {
