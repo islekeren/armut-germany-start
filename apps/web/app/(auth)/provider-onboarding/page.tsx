@@ -251,7 +251,9 @@ export default function ProviderOnboardingPage() {
   const filteredBranches = useMemo(() => {
     if (!normalizedSearch) return branchesForSelectedSector;
     return branchesForSelectedSector.filter((branch) =>
-      getBranchLabel(branch).toLowerCase().includes(normalizedSearch),
+      (locale === "de" ? branch.labelDe : branch.labelEn)
+        .toLowerCase()
+        .includes(normalizedSearch),
     );
   }, [branchesForSelectedSector, normalizedSearch, locale]);
 

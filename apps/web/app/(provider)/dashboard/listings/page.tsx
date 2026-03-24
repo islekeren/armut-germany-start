@@ -101,24 +101,6 @@ export default function ListingsPage() {
     return "now";
   };
 
-  const matchesDateFilter = (request: ProviderRequest) => {
-    if (dateFilter === "all") return true;
-    const createdAt = new Date(request.createdAt);
-    const now = new Date();
-
-    if (dateFilter === "today")
-      return createdAt.toDateString() === now.toDateString();
-    if (dateFilter === "last7") {
-      const threshold = new Date();
-      threshold.setDate(now.getDate() - 7);
-      return createdAt >= threshold;
-    }
-    return (
-      createdAt.getMonth() === now.getMonth() &&
-      createdAt.getFullYear() === now.getFullYear()
-    );
-  };
-
   const filteredRequests = useMemo(() => {
     const min = minBudget ? Number(minBudget) : null;
     const max = maxBudget ? Number(maxBudget) : null;
@@ -126,7 +108,34 @@ export default function ListingsPage() {
 
     const filtered = allRequests.filter((request) => {
       if (category !== "all" && request.category !== category) return false;
-      if (!matchesDateFilter(request)) return false;
+
+      if (dateFilter !== "all") {
+        const createdAt = new Date(request.createdAt);
+        const now = new Date();
+
+        if (
+          dateFilter === "today" &&
+          createdAt.toDateString() !== now.toDateString()
+        ) {
+          return false;
+        }
+
+        if (dateFilter === "last7") {
+          const threshold = new Date();
+          threshold.setDate(now.getDate() - 7);
+          if (createdAt < threshold) {
+            return false;
+          }
+        }
+
+        if (
+          dateFilter === "thisMonth" &&
+          (createdAt.getMonth() !== now.getMonth() ||
+            createdAt.getFullYear() !== now.getFullYear())
+        ) {
+          return false;
+        }
+      }
 
       const budgetValue = getBudgetValue(request);
       if (min !== null && budgetValue !== null && budgetValue < min)

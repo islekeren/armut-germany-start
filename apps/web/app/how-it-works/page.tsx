@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Header, Footer, RequestCtaLink } from "@/components";
 

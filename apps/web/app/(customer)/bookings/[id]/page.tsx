@@ -586,6 +586,7 @@ export default function BookingDetailPage() {
                         rel="noreferrer"
                         className="block overflow-hidden rounded-lg border border-border"
                       >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={imageUrl}
                           alt="review"
@@ -616,6 +617,7 @@ export default function BookingDetailPage() {
                                 rel="noreferrer"
                                 className="block overflow-hidden rounded-lg border border-border"
                               >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={imageUrl}
                                   alt="provider-reply"

@@ -11,6 +11,7 @@ import {
   FormSelect,
   FormTextarea,
   Header,
+  LanguageToggle,
 } from "@/components";
 import { useAuth } from "@/contexts";
 import {
@@ -142,10 +143,6 @@ export default function CreateRequestPage() {
       router.replace("/dashboard");
     }
   }, [isProviderUser, router]);
-
-  if (authLoading || isProviderUser) {
-    return null;
-  }
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -291,6 +288,10 @@ export default function CreateRequestPage() {
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
+
+  if (authLoading) {
+    return null;
+  }
 
   if (isProviderUser) {
     return (
