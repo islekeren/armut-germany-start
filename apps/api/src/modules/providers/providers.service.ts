@@ -847,7 +847,9 @@ export class ProvidersService {
       this.prisma.booking.count({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress", "completion_pending"] },
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
         },
       }),
       this.prisma.booking.count({
@@ -914,7 +916,9 @@ export class ProvidersService {
       this.prisma.booking.count({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress"] },
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
         },
       }),
       // Completed Orders
@@ -943,7 +947,9 @@ export class ProvidersService {
       this.prisma.booking.findMany({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress", "completion_pending"] },
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
         },
         orderBy: { scheduledDate: "asc" },
         take: 3,
@@ -1023,24 +1029,56 @@ export class ProvidersService {
 
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: { categoryId: true },
+        },
+      },
     });
 
     if (!provider) {
       throw new NotFoundException("Provider not found");
     }
 
+    const categoryIds = provider.services.map((service) => service.categoryId);
+    if (categoryIds.length === 0) {
+      return {
+        data: [],
+        meta: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        },
+      };
+    }
+
     const where: any = {
       status: "open",
+      categoryId: { in: categoryIds },
       quotes: {
         none: { providerId: provider.id },
       },
     };
 
-    // Optional category filter (independent from provider service categories)
+    // Optional category filter, constrained to the provider's active service categories.
     if (category) {
       const cat = await this.prisma.category.findUnique({
         where: { slug: category },
       });
+      if (!cat || !categoryIds.includes(cat.id)) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+        };
+      }
+
       if (cat) {
         where.categoryId = cat.id;
       }
@@ -1229,17 +1267,17 @@ export class ProvidersService {
     });
 
     return {
-        data: reviews.map((review) => ({
-          id: review.id,
-          customer: `${review.reviewer.firstName} ${review.reviewer.lastName}`,
-          rating: review.rating,
-          date: review.createdAt,
-          service: review.booking.quote.request.title,
-          comment: review.comment,
-          reply: review.providerReply,
-          images: review.images,
-          replyImages: review.providerReplyImages,
-        })),
+      data: reviews.map((review) => ({
+        id: review.id,
+        customer: `${review.reviewer.firstName} ${review.reviewer.lastName}`,
+        rating: review.rating,
+        date: review.createdAt,
+        service: review.booking.quote.request.title,
+        comment: review.comment,
+        reply: review.providerReply,
+        images: review.images,
+        replyImages: review.providerReplyImages,
+      })),
       stats: {
         average: provider.ratingAvg,
         total,

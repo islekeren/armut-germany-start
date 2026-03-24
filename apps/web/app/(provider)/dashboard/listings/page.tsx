@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
 import {
   getStoredAccessToken,
+  providerApi,
   quotesApi,
-  requestsApi,
   type ProviderRequest,
 } from "@/lib/api";
 
@@ -48,36 +48,23 @@ export default function ListingsPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await requestsApi.getAll({ status: "open", limit: 100 });
-        const mapped: ProviderRequest[] = response.data.map((request) => ({
-          id: request.id,
-          title: request.title,
-          category: request.category?.slug || "unknown",
-          categoryName: request.category?.nameEn || request.category?.nameDe || "Unknown",
-          description: request.description,
-          location: `${request.postalCode} ${request.city}`.trim(),
-          address: request.address,
-          preferredDate: request.preferredDate,
-          budget:
-            typeof request.budgetMin === "number" && typeof request.budgetMax === "number"
-              ? `${request.budgetMin}-${request.budgetMax}€`
-              : null,
-          budgetMin: request.budgetMin,
-          budgetMax: request.budgetMax,
-          createdAt: request.createdAt,
-          customer: {
-            name: request.customer
-              ? `${request.customer.firstName} ${request.customer.lastName.charAt(0)}.`
-              : "Customer",
-            memberSince: request.customer?.createdAt
-              ? new Date(request.customer.createdAt).getFullYear().toString()
-              : "N/A",
-          },
-        }));
-        setAllRequests(mapped);
+        const token = getStoredAccessToken();
+        if (!token) {
+          setAllRequests([]);
+          setError(t("authRequired"));
+          return;
+        }
+
+        const response = await providerApi.getRequests(token, {
+          page: 1,
+          limit: 100,
+        });
+        setAllRequests(response.data);
       } catch (fetchError) {
         console.error("Failed to fetch requests", fetchError);
-        setError(t("loadError"));
+        setError(
+          fetchError instanceof Error ? fetchError.message : t("loadError"),
+        );
       } finally {
         setLoading(false);
       }
@@ -119,13 +106,17 @@ export default function ListingsPage() {
     const createdAt = new Date(request.createdAt);
     const now = new Date();
 
-    if (dateFilter === "today") return createdAt.toDateString() === now.toDateString();
+    if (dateFilter === "today")
+      return createdAt.toDateString() === now.toDateString();
     if (dateFilter === "last7") {
       const threshold = new Date();
       threshold.setDate(now.getDate() - 7);
       return createdAt >= threshold;
     }
-    return createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear();
+    return (
+      createdAt.getMonth() === now.getMonth() &&
+      createdAt.getFullYear() === now.getFullYear()
+    );
   };
 
   const filteredRequests = useMemo(() => {
@@ -138,11 +129,14 @@ export default function ListingsPage() {
       if (!matchesDateFilter(request)) return false;
 
       const budgetValue = getBudgetValue(request);
-      if (min !== null && budgetValue !== null && budgetValue < min) return false;
-      if (max !== null && budgetValue !== null && budgetValue > max) return false;
+      if (min !== null && budgetValue !== null && budgetValue < min)
+        return false;
+      if (max !== null && budgetValue !== null && budgetValue > max)
+        return false;
 
       if (term) {
-        const haystack = `${request.title} ${request.description} ${request.location} ${request.categoryName}`.toLowerCase();
+        const haystack =
+          `${request.title} ${request.description} ${request.location} ${request.categoryName}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
       return true;
@@ -150,10 +144,15 @@ export default function ListingsPage() {
 
     filtered.sort((a, b) => {
       if (sortBy === "oldest") {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       }
       if (sortBy === "budgetAsc") {
-        return (getBudgetValue(a) ?? Number.MAX_SAFE_INTEGER) - (getBudgetValue(b) ?? Number.MAX_SAFE_INTEGER);
+        return (
+          (getBudgetValue(a) ?? Number.MAX_SAFE_INTEGER) -
+          (getBudgetValue(b) ?? Number.MAX_SAFE_INTEGER)
+        );
       }
       if (sortBy === "budgetDesc") {
         return (getBudgetValue(b) ?? -1) - (getBudgetValue(a) ?? -1);
@@ -165,7 +164,11 @@ export default function ListingsPage() {
   }, [allRequests, category, dateFilter, maxBudget, minBudget, search, sortBy]);
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">{t("loading")}</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        {t("loading")}
+      </div>
+    );
   }
 
   const handleSelectRequest = (request: ProviderRequest) => {
@@ -207,7 +210,8 @@ export default function ListingsPage() {
         requestId,
         price: Number(offerPrice),
         message: offerMessage.trim(),
-        validUntil: offerValidUntil || new Date(Date.now() + 7 * 86400000).toISOString(),
+        validUntil:
+          offerValidUntil || new Date(Date.now() + 7 * 86400000).toISOString(),
       });
 
       setAllRequests((prev) => prev.filter((req) => req.id !== requestId));
@@ -218,7 +222,9 @@ export default function ListingsPage() {
       setSuccessMessage(t("quoteSent"));
     } catch (sendError) {
       console.error("Failed to send offer", sendError);
-      setError(sendError instanceof Error ? sendError.message : t("quoteError"));
+      setError(
+        sendError instanceof Error ? sendError.message : t("quoteError"),
+      );
     } finally {
       setSendingOffer(false);
     }
@@ -232,13 +238,17 @@ export default function ListingsPage() {
         <div className="mb-8 space-y-4">
           <div>
             <h1 className="text-2xl font-bold">{t("title")}</h1>
-            <p className="text-muted">{t("subtitle", { count: filteredRequests.length })}</p>
+            <p className="text-muted">
+              {t("subtitle", { count: filteredRequests.length })}
+            </p>
           </div>
 
           <PanelCard className="p-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="lg:col-span-2">
-                <label className="mb-1 block text-sm text-muted">{t("filters.searchLabel")}</label>
+                <label className="mb-1 block text-sm text-muted">
+                  {t("filters.searchLabel")}
+                </label>
                 <input
                   type="text"
                   value={search}
@@ -248,10 +258,14 @@ export default function ListingsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-muted">{tFilters("date")}</label>
+                <label className="mb-1 block text-sm text-muted">
+                  {tFilters("date")}
+                </label>
                 <select
                   value={dateFilter}
-                  onChange={(event) => setDateFilter(event.target.value as DateFilter)}
+                  onChange={(event) =>
+                    setDateFilter(event.target.value as DateFilter)
+                  }
                   className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
                   <option value="all">{tFilters("dateAll")}</option>
@@ -261,7 +275,9 @@ export default function ListingsPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm text-muted">{tFilters("priceMin")}</label>
+                <label className="mb-1 block text-sm text-muted">
+                  {tFilters("priceMin")}
+                </label>
                 <input
                   type="number"
                   value={minBudget}
@@ -271,7 +287,9 @@ export default function ListingsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-muted">{tFilters("priceMax")}</label>
+                <label className="mb-1 block text-sm text-muted">
+                  {tFilters("priceMax")}
+                </label>
                 <input
                   type="number"
                   value={maxBudget}
@@ -301,16 +319,22 @@ export default function ListingsPage() {
                 </button>
               ))}
               <div className="ml-auto w-full md:w-56">
-                <label className="mb-1 block text-sm text-muted">{tFilters("sortBy")}</label>
+                <label className="mb-1 block text-sm text-muted">
+                  {tFilters("sortBy")}
+                </label>
                 <select
                   value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as SortFilter)}
+                  onChange={(event) =>
+                    setSortBy(event.target.value as SortFilter)
+                  }
                   className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
                   <option value="newest">{tFilters("sortNewest")}</option>
                   <option value="oldest">{tFilters("sortOldest")}</option>
                   <option value="budgetAsc">{tFilters("sortPriceAsc")}</option>
-                  <option value="budgetDesc">{tFilters("sortPriceDesc")}</option>
+                  <option value="budgetDesc">
+                    {tFilters("sortPriceDesc")}
+                  </option>
                 </select>
               </div>
             </div>
@@ -350,19 +374,34 @@ export default function ListingsPage() {
                     <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                       {getCategoryLabel(request.category, request.categoryName)}
                     </span>
-                    <h3 className="mt-2 text-lg font-semibold">{request.title}</h3>
+                    <h3 className="mt-2 text-lg font-semibold">
+                      {request.title}
+                    </h3>
                   </div>
-                  <span className="text-sm text-muted">{t("postedAt", { time: getTimeAgo(request.createdAt) })}</span>
+                  <span className="text-sm text-muted">
+                    {t("postedAt", { time: getTimeAgo(request.createdAt) })}
+                  </span>
                 </div>
 
-                <p className="mt-2 line-clamp-2 text-muted">{request.description}</p>
+                <p className="mt-2 line-clamp-2 text-muted">
+                  {request.description}
+                </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
-                  <span className="flex items-center gap-1 text-muted">📍 {request.location}</span>
                   <span className="flex items-center gap-1 text-muted">
-                    📅 {request.preferredDate ? new Date(request.preferredDate).toLocaleDateString() : t("flexible")}
+                    📍 {request.location}
                   </span>
-                  {request.budget ? <span className="font-semibold text-secondary">💰 {request.budget}</span> : null}
+                  <span className="flex items-center gap-1 text-muted">
+                    📅{" "}
+                    {request.preferredDate
+                      ? new Date(request.preferredDate).toLocaleDateString()
+                      : t("flexible")}
+                  </span>
+                  {request.budget ? (
+                    <span className="font-semibold text-secondary">
+                      💰 {request.budget}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
@@ -372,10 +411,16 @@ export default function ListingsPage() {
                     </div>
                     <div className="text-sm">
                       <div className="font-medium">{request.customer.name}</div>
-                      <div className="text-muted">{t("memberSince", { year: request.customer.memberSince })}</div>
+                      <div className="text-muted">
+                        {t("memberSince", {
+                          year: request.customer.memberSince,
+                        })}
+                      </div>
                     </div>
                   </div>
-                  <span className="text-sm text-muted">#{request.id.slice(0, 8)}</span>
+                  <span className="text-sm text-muted">
+                    #{request.id.slice(0, 8)}
+                  </span>
                 </div>
 
                 {selectedRequest === request.id ? (
@@ -385,30 +430,42 @@ export default function ListingsPage() {
                   >
                     <div className="grid gap-3 md:grid-cols-3">
                       <div>
-                        <label className="mb-1 block text-sm text-muted">{t("quotePrice")}</label>
+                        <label className="mb-1 block text-sm text-muted">
+                          {t("quotePrice")}
+                        </label>
                         <input
                           type="number"
                           value={offerPrice}
-                          onChange={(event) => setOfferPrice(event.target.value)}
+                          onChange={(event) =>
+                            setOfferPrice(event.target.value)
+                          }
                           className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
                           placeholder="100"
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="mb-1 block text-sm text-muted">{t("validUntil")}</label>
+                        <label className="mb-1 block text-sm text-muted">
+                          {t("validUntil")}
+                        </label>
                         <input
                           type="date"
                           value={offerValidUntil}
-                          onChange={(event) => setOfferValidUntil(event.target.value)}
+                          onChange={(event) =>
+                            setOfferValidUntil(event.target.value)
+                          }
                           className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm text-muted">{t("quoteMessage")}</label>
+                      <label className="mb-1 block text-sm text-muted">
+                        {t("quoteMessage")}
+                      </label>
                       <textarea
                         value={offerMessage}
-                        onChange={(event) => setOfferMessage(event.target.value)}
+                        onChange={(event) =>
+                          setOfferMessage(event.target.value)
+                        }
                         className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
                         rows={3}
                         placeholder={t("quoteMessagePlaceholder")}

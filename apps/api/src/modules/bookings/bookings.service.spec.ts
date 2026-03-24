@@ -42,7 +42,10 @@ describe("BookingsService", () => {
   });
 
   describe("create", () => {
-    const dto = { quoteId: "q1", scheduledDate: "2026-03-01T10:00:00.000Z" } as any;
+    const dto = {
+      quoteId: "q1",
+      scheduledDate: "2026-03-01T10:00:00.000Z",
+    } as any;
 
     it("validates quote state before creating", async () => {
       prisma.quote.findUnique
@@ -80,11 +83,21 @@ describe("BookingsService", () => {
         .mockResolvedValueOnce(null);
       prisma.booking.create.mockResolvedValue({ id: "b1" });
 
-      await expect(service.create("customer-1", dto)).rejects.toThrow(NotFoundException);
-      await expect(service.create("customer-1", dto)).rejects.toThrow(ForbiddenException);
-      await expect(service.create("customer-1", dto)).rejects.toThrow(BadRequestException);
-      await expect(service.create("customer-1", dto)).rejects.toThrow(BadRequestException);
-      await expect(service.create("customer-1", dto)).resolves.toEqual({ id: "b1" });
+      await expect(service.create("customer-1", dto)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.create("customer-1", dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.create("customer-1", dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.create("customer-1", dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.create("customer-1", dto)).resolves.toEqual({
+        id: "b1",
+      });
     });
   });
 
@@ -114,10 +127,10 @@ describe("BookingsService", () => {
     prisma.booking.count.mockResolvedValue(1);
 
     await expect(
-      service.findByProvider("provider-user", { page: 1, limit: 10 } as any)
+      service.findByProvider("provider-user", { page: 1, limit: 10 } as any),
     ).rejects.toThrow(NotFoundException);
     await expect(
-      service.findByProvider("provider-user", { page: 1, limit: 10 } as any)
+      service.findByProvider("provider-user", { page: 1, limit: 10 } as any),
     ).resolves.toEqual({
       data: [{ id: "b1" }],
       meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
@@ -228,25 +241,59 @@ describe("BookingsService", () => {
           customerId: "customer-1",
           provider: { userId: "provider-user" },
           quote: { requestId: "r1" },
+        })
+        .mockResolvedValueOnce({
+          id: "b1",
+          status: "completion_pending",
+          customerId: "customer-1",
+          provider: { userId: "provider-user" },
+          quote: { requestId: "r1" },
         });
-      prisma.booking.update.mockResolvedValue({ id: "b1", status: "completed" });
-      prisma.serviceRequest.update.mockResolvedValue({ id: "r1", status: "completed" });
+      prisma.booking.update.mockResolvedValue({
+        id: "b1",
+        status: "completed",
+        quote: {
+          requestId: "r1",
+          request: { id: "r1", title: "Test request" },
+        },
+        customer: {
+          id: "customer-1",
+          firstName: "Ada",
+          lastName: "Customer",
+        },
+        provider: {
+          user: {
+            id: "provider-user",
+            firstName: "Pat",
+            lastName: "Provider",
+          },
+        },
+      });
+      prisma.serviceRequest.update.mockResolvedValue({
+        id: "r1",
+        status: "completed",
+      });
 
-      await expect(service.updateStatus("b1", "x", "confirmed")).rejects.toThrow(
-        NotFoundException
-      );
-      await expect(service.updateStatus("b1", "x", "confirmed")).rejects.toThrow(
-        ForbiddenException
-      );
       await expect(
-        service.updateStatus("b1", "provider-user", "confirmed")
-      ).rejects.toThrow(BadRequestException);
+        service.updateStatus("b1", "x", "confirmed"),
+      ).rejects.toThrow(NotFoundException);
       await expect(
-        service.updateStatus("b1", "customer-1", "confirmed")
+        service.updateStatus("b1", "x", "confirmed"),
       ).rejects.toThrow(ForbiddenException);
       await expect(
-        service.updateStatus("b1", "provider-user", "completed")
-      ).resolves.toEqual({ id: "b1", status: "completed" });
+        service.updateStatus("b1", "provider-user", "confirmed"),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.updateStatus("b1", "customer-1", "confirmed"),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.updateStatus("b1", "provider-user", "completed"),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.updateStatus("b1", "customer-1", "completed"),
+      ).resolves.toEqual(
+        expect.objectContaining({ id: "b1", status: "completed" }),
+      );
       expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
         where: { id: "r1" },
         data: { status: "completed" },
@@ -258,7 +305,11 @@ describe("BookingsService", () => {
     it("enforces ownership and status rules", async () => {
       prisma.booking.findUnique
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: "b1", customerId: "other", status: "pending" })
+        .mockResolvedValueOnce({
+          id: "b1",
+          customerId: "other",
+          status: "pending",
+        })
         .mockResolvedValueOnce({
           id: "b1",
           customerId: "customer-1",
@@ -271,21 +322,21 @@ describe("BookingsService", () => {
         });
       prisma.booking.update.mockResolvedValue({ id: "b1", status: "pending" });
 
-      await expect(service.reschedule("b1", "customer-1", "2026-03-02")).rejects.toThrow(
-        NotFoundException
-      );
-      await expect(service.reschedule("b1", "customer-1", "2026-03-02")).rejects.toThrow(
-        ForbiddenException
-      );
-      await expect(service.reschedule("b1", "customer-1", "2026-03-02")).rejects.toThrow(
-        BadRequestException
-      );
-      await expect(service.reschedule("b1", "customer-1", "2026-03-02")).resolves.toEqual(
-        {
-          id: "b1",
-          status: "pending",
-        }
-      );
+      await expect(
+        service.reschedule("b1", "customer-1", "2026-03-02"),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.reschedule("b1", "customer-1", "2026-03-02"),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.reschedule("b1", "customer-1", "2026-03-02"),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.reschedule("b1", "customer-1", "2026-03-02"),
+      ).resolves.toEqual({
+        id: "b1",
+        status: "pending",
+      });
     });
   });
 
@@ -330,19 +381,34 @@ describe("BookingsService", () => {
       prisma.provider.update.mockResolvedValue({ id: "p1", ratingAvg: 4.5 });
 
       await expect(
-        service.createReview("b1", "customer-1", { rating: 5, comment: "Great" } as any)
+        service.createReview("b1", "customer-1", {
+          rating: 5,
+          comment: "Great",
+        } as any),
       ).rejects.toThrow(NotFoundException);
       await expect(
-        service.createReview("b1", "customer-1", { rating: 5, comment: "Great" } as any)
+        service.createReview("b1", "customer-1", {
+          rating: 5,
+          comment: "Great",
+        } as any),
       ).rejects.toThrow(ForbiddenException);
       await expect(
-        service.createReview("b1", "customer-1", { rating: 5, comment: "Great" } as any)
+        service.createReview("b1", "customer-1", {
+          rating: 5,
+          comment: "Great",
+        } as any),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.createReview("b1", "customer-1", { rating: 5, comment: "Great" } as any)
+        service.createReview("b1", "customer-1", {
+          rating: 5,
+          comment: "Great",
+        } as any),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.createReview("b1", "customer-1", { rating: 5, comment: "Great" } as any)
+        service.createReview("b1", "customer-1", {
+          rating: 5,
+          comment: "Great",
+        } as any),
       ).resolves.toEqual({ id: "r1", rating: 5 });
       expect(prisma.provider.update).toHaveBeenCalledWith({
         where: { id: "p1" },
@@ -370,29 +436,32 @@ describe("BookingsService", () => {
           provider: { userId: "provider-user" },
           review: { id: "r1" },
         });
-      prisma.review.update.mockResolvedValue({ id: "r1", providerReply: "Thanks" });
+      prisma.review.update.mockResolvedValue({
+        id: "r1",
+        providerReply: "Thanks",
+      });
 
-      await expect(service.addProviderReply("b1", "provider-user", "Thanks")).rejects.toThrow(
-        NotFoundException
-      );
-      await expect(service.addProviderReply("b1", "provider-user", "Thanks")).rejects.toThrow(
-        ForbiddenException
-      );
-      await expect(service.addProviderReply("b1", "provider-user", "Thanks")).rejects.toThrow(
-        BadRequestException
-      );
-      await expect(service.addProviderReply("b1", "provider-user", "Thanks")).resolves.toEqual(
-        { id: "r1", providerReply: "Thanks" }
-      );
+      await expect(
+        service.addProviderReply("b1", "provider-user", "Thanks"),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.addProviderReply("b1", "provider-user", "Thanks"),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.addProviderReply("b1", "provider-user", "Thanks"),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.addProviderReply("b1", "provider-user", "Thanks"),
+      ).resolves.toEqual({ id: "r1", providerReply: "Thanks" });
     });
   });
 
   describe("getUpcoming", () => {
     it("returns upcoming bookings for customer", async () => {
       prisma.booking.findMany.mockResolvedValue([{ id: "b1" }]);
-      await expect(service.getUpcoming("customer-1", "customer")).resolves.toEqual([
-        { id: "b1" },
-      ]);
+      await expect(
+        service.getUpcoming("customer-1", "customer"),
+      ).resolves.toEqual([{ id: "b1" }]);
     });
 
     it("returns upcoming bookings for provider and validates provider", async () => {
@@ -401,12 +470,12 @@ describe("BookingsService", () => {
         .mockResolvedValueOnce({ id: "p1" });
       prisma.booking.findMany.mockResolvedValue([{ id: "b2" }]);
 
-      await expect(service.getUpcoming("provider-user", "provider")).rejects.toThrow(
-        NotFoundException
-      );
-      await expect(service.getUpcoming("provider-user", "provider")).resolves.toEqual([
-        { id: "b2" },
-      ]);
+      await expect(
+        service.getUpcoming("provider-user", "provider"),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getUpcoming("provider-user", "provider"),
+      ).resolves.toEqual([{ id: "b2" }]);
     });
   });
 });

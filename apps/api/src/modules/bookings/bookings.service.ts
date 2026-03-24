@@ -22,7 +22,10 @@ export class BookingsService {
 
   private sanitizeImages(images?: string[]) {
     if (!images?.length) return [];
-    return images.map((image) => image.trim()).filter(Boolean).slice(0, 10);
+    return images
+      .map((image) => image.trim())
+      .filter(Boolean)
+      .slice(0, 10);
   }
 
   private async notifyCustomerCompletionRequested(booking: {
@@ -424,12 +427,15 @@ export class BookingsService {
 
     if (!allowedTransitions[booking.status]?.includes(status)) {
       throw new BadRequestException(
-        `Cannot transition from ${booking.status} to ${status}`
+        `Cannot transition from ${booking.status} to ${status}`,
       );
     }
 
     // Provider-driven states
-    if (["confirmed", "in_progress", "completion_pending"].includes(status) && !isProvider) {
+    if (
+      ["confirmed", "in_progress", "completion_pending"].includes(status) &&
+      !isProvider
+    ) {
       throw new ForbiddenException("Only provider can update to this status");
     }
 
@@ -493,8 +499,10 @@ export class BookingsService {
     });
 
     if (status === "completion_pending") {
-      const requestId = updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
-      const requestTitle = updatedBooking.quote?.request?.title ?? "service request";
+      const requestId =
+        updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
+      const requestTitle =
+        updatedBooking.quote?.request?.title ?? "service request";
       await this.notifyCustomerCompletionRequested(updatedBooking);
       if (updatedBooking.customer?.id) {
         await this.notificationsService.create(updatedBooking.customer.id, {
@@ -510,8 +518,10 @@ export class BookingsService {
     }
 
     if (status === "completed") {
-      const requestId = updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
-      const requestTitle = updatedBooking.quote?.request?.title ?? "service request";
+      const requestId =
+        updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
+      const requestTitle =
+        updatedBooking.quote?.request?.title ?? "service request";
       const customerUserId = updatedBooking.customer?.id;
       const providerUserId = updatedBooking.provider?.user?.id;
       const tasks: Promise<unknown>[] = [];
@@ -547,8 +557,10 @@ export class BookingsService {
     }
 
     if (status === "cancelled") {
-      const requestId = updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
-      const requestTitle = updatedBooking.quote?.request?.title ?? "service request";
+      const requestId =
+        updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
+      const requestTitle =
+        updatedBooking.quote?.request?.title ?? "service request";
       const customerUserId = updatedBooking.customer?.id;
       const providerUserId = updatedBooking.provider?.user?.id;
       const actorLabel = isProvider ? "provider" : "customer";
@@ -617,7 +629,7 @@ export class BookingsService {
   async createReview(
     bookingId: string,
     userId: string,
-    createReviewDto: CreateReviewDto
+    createReviewDto: CreateReviewDto,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -635,13 +647,8 @@ export class BookingsService {
       throw new ForbiddenException("Only customer can review");
     }
 
-    if (booking.status === "cancelled") {
-      throw new BadRequestException("Cannot review a cancelled booking");
-    }
-
-    const reviewAvailableAt = new Date(booking.scheduledDate);
-    if (new Date() < reviewAvailableAt) {
-      throw new BadRequestException("Review is available after the scheduled time");
+    if (booking.status !== "completed") {
+      throw new BadRequestException("Can only review completed bookings");
     }
 
     if (booking.review) {

@@ -66,6 +66,11 @@ describe("ProvidersService", () => {
       },
       category: {
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      serviceRequest: {
+        findMany: jest.fn(),
+        count: jest.fn(),
       },
       quote: {
         count: jest.fn(),
@@ -73,6 +78,7 @@ describe("ProvidersService", () => {
       booking: {
         count: jest.fn(),
         aggregate: jest.fn(),
+        findMany: jest.fn(),
       },
       review: {
         findMany: jest.fn(),
@@ -308,6 +314,80 @@ describe("ProvidersService", () => {
       await expect(service.getStats("other-user")).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe("getDashboard", () => {
+    it("counts completion_pending bookings as active orders", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.count.mockResolvedValue(2);
+      prisma.booking.count.mockResolvedValueOnce(3).mockResolvedValueOnce(7);
+      prisma.serviceRequest.findMany.mockResolvedValue([]);
+      prisma.booking.findMany.mockResolvedValue([]);
+
+      await service.getDashboard("user-1");
+
+      expect(prisma.booking.count).toHaveBeenCalledWith({
+        where: {
+          providerId: "provider-1",
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
+        },
+      });
+    });
+  });
+
+  describe("getRequests", () => {
+    it("limits provider requests to the provider's active service categories", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.findMany.mockResolvedValue([]);
+      prisma.serviceRequest.count.mockResolvedValue(0);
+
+      await service.getRequests("user-1", { page: 1, limit: 10 });
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            categoryId: { in: ["category-1"] },
+            status: "open",
+          }),
+        }),
+      );
+    });
+
+    it("returns an empty page when the requested category is outside the provider scope", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.category.findUnique.mockResolvedValue({
+        id: "category-2",
+        slug: "plumbing",
+      });
+
+      const result = await service.getRequests("user-1", {
+        category: "plumbing",
+        page: 2,
+        limit: 5,
+      });
+
+      expect(result).toEqual({
+        data: [],
+        meta: {
+          total: 0,
+          page: 2,
+          limit: 5,
+          totalPages: 0,
+        },
+      });
+      expect(prisma.serviceRequest.findMany).not.toHaveBeenCalled();
     });
   });
 
