@@ -30,12 +30,15 @@ describe("BookingsService", () => {
       update: jest.fn(),
     },
   };
+  const notificationsService = {
+    create: jest.fn(),
+  };
 
   let service: BookingsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new BookingsService(prisma as any);
+    service = new BookingsService(prisma as any, notificationsService as any);
   });
 
   describe("create", () => {

@@ -87,6 +87,7 @@ export class ProvidersController {
       req.user.id,
       reviewId,
       body.reply,
+      body.replyImages,
     );
   }
 

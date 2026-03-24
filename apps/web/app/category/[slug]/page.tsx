@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
-import { AlertBanner, Header, Footer } from "@/components";
+import { AlertBanner, Header, Footer, RequestCtaLink } from "@/components";
 import {
   getCategoryBySlug,
   isApiNotFoundError,
@@ -173,12 +173,12 @@ export default async function CategoryPage({
               <h2 className="text-lg font-semibold">{t("ctaTitle")}</h2>
               <p className="text-muted">{t("ctaSubtitle")}</p>
             </div>
-            <Link
+            <RequestCtaLink
               href={`/create-request?category=${slug}`}
               className="rounded-lg bg-secondary px-6 py-3 font-semibold text-white hover:bg-secondary/90"
             >
               {t("ctaButton")}
-            </Link>
+            </RequestCtaLink>
           </div>
         </div>
       </section>
@@ -307,12 +307,12 @@ export default async function CategoryPage({
                               {provider.description}
                             </p>
                             <div className="mt-4 flex gap-3">
-                              <Link
+                              <RequestCtaLink
                                 href={`/create-request?category=${slug}`}
                                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
                               >
                                 {t("requestQuote")}
-                              </Link>
+                              </RequestCtaLink>
                               <Link
                                 href={`/providers/${provider.id}`}
                                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background"

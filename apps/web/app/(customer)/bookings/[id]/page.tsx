@@ -9,6 +9,7 @@ import {
   bookingsApi,
   getStoredAccessToken,
   messagesApi,
+  uploadsApi,
   type CustomerBooking,
   type BookingReview,
 } from "@/lib/api";
@@ -25,6 +26,7 @@ const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
   confirmed: "bg-emerald-100 text-emerald-800",
   in_progress: "bg-blue-100 text-blue-800",
+  completion_pending: "bg-purple-100 text-purple-800",
   completed: "bg-slate-100 text-slate-700",
   cancelled: "bg-rose-100 text-rose-700",
 };
@@ -42,6 +44,7 @@ export default function BookingDetailPage() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [reviewFiles, setReviewFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -181,9 +184,16 @@ export default function BookingDetailPage() {
     setSuccessMessage(null);
 
     try {
+      let imageUrls: string[] = [];
+      if (reviewFiles.length > 0) {
+        const uploads = await uploadsApi.uploadRequestImages(token, reviewFiles);
+        imageUrls = uploads.map((upload) => upload.url);
+      }
+
       const review = await bookingsApi.createReview(token, booking.id, {
         rating: reviewRating,
         comment: reviewComment.trim() || undefined,
+        images: imageUrls,
       });
 
       setBooking((current) =>
@@ -195,11 +205,32 @@ export default function BookingDetailPage() {
           : current,
       );
       setSuccessMessage(tDetail("reviewSuccess"));
+      setReviewFiles([]);
     } catch (err) {
       console.error("Failed to submit review:", err);
       setError(err instanceof Error ? err.message : tDetail("reviewError"));
     } finally {
       setIsReviewing(false);
+    }
+  };
+
+  const handleConfirmCompletion = async () => {
+    const token = getStoredAccessToken();
+    if (!token || !booking) {
+      setError(t("loginRequired"));
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await bookingsApi.updateStatus(token, booking.id, "completed");
+      await loadBooking();
+      setSuccessMessage(tDetail("confirmCompletionSuccess"));
+    } catch (err) {
+      console.error("Failed to confirm completion:", err);
+      setError(err instanceof Error ? err.message : tDetail("confirmCompletionError"));
     }
   };
 
@@ -229,7 +260,13 @@ export default function BookingDetailPage() {
     ? `/my-requests/${booking.quote.request.id}`
     : "/my-requests";
   const canManageSchedule = ["pending", "confirmed"].includes(booking.status);
-  const canReview = booking.status === "completed" && !booking.review;
+  const reviewAvailableAt = new Date(booking.scheduledDate);
+  const isReviewTimeReached = new Date() >= reviewAvailableAt;
+  const canReview =
+    booking.status !== "cancelled" && !booking.review && isReviewTimeReached;
+  const reviewWaitNeeded =
+    booking.status !== "cancelled" && !booking.review && !isReviewTimeReached;
+  const canConfirmCompletion = booking.status === "completion_pending";
   const categoryLabel =
     locale === "de"
       ? booking.quote?.request?.category?.nameDe
@@ -423,6 +460,22 @@ export default function BookingDetailPage() {
                   className="mt-2 w-full rounded-lg border border-border px-4 py-3 outline-none transition focus:border-primary"
                 />
 
+                <label className="mt-5 block text-sm font-medium text-foreground">
+                  {tDetail("reviewImagesLabel")}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => setReviewFiles(Array.from(event.target.files || []))}
+                  className="mt-2 w-full rounded-lg border border-border px-4 py-3 text-sm"
+                />
+                {reviewFiles.length > 0 && (
+                  <p className="mt-2 text-xs text-muted">
+                    {tDetail("reviewImagesSelected", { count: reviewFiles.length })}
+                  </p>
+                )}
+
                 <button
                   onClick={handleReviewSubmit}
                   disabled={isReviewing}
@@ -430,6 +483,28 @@ export default function BookingDetailPage() {
                 >
                   {isReviewing ? tDetail("submittingReview") : tDetail("submitReview")}
                 </button>
+              </PanelCard>
+            )}
+
+            {canConfirmCompletion && (
+              <PanelCard>
+                <h2 className="text-lg font-semibold">{tDetail("confirmCompletionTitle")}</h2>
+                <p className="mt-2 text-sm text-muted">{tDetail("confirmCompletionHint")}</p>
+                <button
+                  onClick={handleConfirmCompletion}
+                  className="mt-5 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary-dark"
+                >
+                  {tDetail("confirmCompletion")}
+                </button>
+              </PanelCard>
+            )}
+
+            {reviewWaitNeeded && (
+              <PanelCard>
+                <h2 className="text-lg font-semibold">{tDetail("reviewTitle")}</h2>
+                <p className="mt-2 text-sm text-muted">
+                  {tDetail("reviewAvailableAt", { datetime: formatDateTime(reviewAvailableAt.toISOString()) })}
+                </p>
               </PanelCard>
             )}
 
@@ -447,6 +522,25 @@ export default function BookingDetailPage() {
                 <p className="mt-4 text-sm text-muted">
                   {booking.review.comment || tDetail("noReviewComment")}
                 </p>
+                {booking.review.images && booking.review.images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {booking.review.images.map((imageUrl) => (
+                      <a
+                        key={imageUrl}
+                        href={imageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block overflow-hidden rounded-lg border border-border"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt="review"
+                          className="h-24 w-full object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
 
                 {booking.review.providerReply && (
                   <div className="mt-5 rounded-lg bg-background p-4">
@@ -456,6 +550,26 @@ export default function BookingDetailPage() {
                     <p className="mt-2 text-sm text-muted">
                       {booking.review.providerReply}
                     </p>
+                    {booking.review.providerReplyImages &&
+                      booking.review.providerReplyImages.length > 0 && (
+                        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                          {booking.review.providerReplyImages.map((imageUrl) => (
+                            <a
+                              key={imageUrl}
+                              href={imageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block overflow-hidden rounded-lg border border-border"
+                            >
+                              <img
+                                src={imageUrl}
+                                alt="provider-reply"
+                                className="h-24 w-full object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 )}
               </PanelCard>

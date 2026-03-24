@@ -18,9 +18,16 @@ const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
   confirmed: "bg-emerald-100 text-emerald-800",
   in_progress: "bg-blue-100 text-blue-800",
+  completion_pending: "bg-purple-100 text-purple-800",
   completed: "bg-slate-100 text-slate-700",
   cancelled: "bg-rose-100 text-rose-700",
 };
+
+function canLeaveReview(booking: CustomerBooking) {
+  if (booking.status === "cancelled" || booking.review) return false;
+  const reviewUnlockAt = new Date(booking.scheduledDate);
+  return new Date() >= reviewUnlockAt;
+}
 
 export default function CustomerBookingsPage() {
   const t = useTranslations("customer.bookings");
@@ -68,7 +75,9 @@ export default function CustomerBookingsPage() {
 
     if (filter === "upcoming") {
       return bookings.filter((booking) =>
-        ["pending", "confirmed", "in_progress"].includes(booking.status),
+        ["pending", "confirmed", "in_progress", "completion_pending"].includes(
+          booking.status,
+        ),
       );
     }
 
@@ -175,7 +184,7 @@ export default function CustomerBookingsPage() {
           <div className="space-y-4">
             {filteredBookings.map((booking) => {
               const actionLabel =
-                booking.status === "completed" && !booking.review
+                canLeaveReview(booking)
                   ? t("actions.leaveReview")
                   : t("actions.viewDetails");
               const categoryLabel =

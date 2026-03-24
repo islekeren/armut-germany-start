@@ -17,6 +17,15 @@ import {
 export class ProvidersService {
   constructor(private prisma: PrismaService) {}
 
+  private sanitizeStringArray(values?: string[]) {
+    if (!values?.length) return [];
+
+    return values
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+
   private getDefaultOpeningHours() {
     return [
       { day: "monday", closed: false, open: "08:00", close: "18:00" },
@@ -27,15 +36,6 @@ export class ProvidersService {
       { day: "saturday", closed: true },
       { day: "sunday", closed: true },
     ];
-  }
-
-  private sanitizeStringArray(values?: string[]) {
-    if (!values?.length) return [];
-
-    return values
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .slice(0, 20);
   }
 
   private normalizeOpeningHours(openingHours?: ProviderOpeningHourDto[]) {
@@ -793,6 +793,8 @@ export class ProvidersService {
           rating: review.rating,
           comment: review.comment,
           providerReply: review.providerReply,
+          images: review.images,
+          providerReplyImages: review.providerReplyImages,
           createdAt: review.createdAt,
           reviewer: {
             name: `${review.reviewer.firstName} ${review.reviewer.lastName}`.trim(),
@@ -845,7 +847,7 @@ export class ProvidersService {
       this.prisma.booking.count({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress"] },
+          status: { in: ["pending", "confirmed", "in_progress", "completion_pending"] },
         },
       }),
       this.prisma.booking.count({
@@ -941,7 +943,7 @@ export class ProvidersService {
       this.prisma.booking.findMany({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress"] },
+          status: { in: ["pending", "confirmed", "in_progress", "completion_pending"] },
         },
         orderBy: { scheduledDate: "asc" },
         take: 3,
@@ -1021,37 +1023,28 @@ export class ProvidersService {
 
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
-      include: {
-        services: {
-          where: { isActive: true },
-          select: { categoryId: true },
-        },
-      },
     });
 
     if (!provider) {
       throw new NotFoundException("Provider not found");
     }
 
-    let categoryIds = provider.services.map((s) => s.categoryId);
-
-    // Filter by specific category if provided
-    if (category) {
-      const cat = await this.prisma.category.findUnique({
-        where: { slug: category },
-      });
-      if (cat && categoryIds.includes(cat.id)) {
-        categoryIds = [cat.id];
-      }
-    }
-
     const where: any = {
       status: "open",
-      categoryId: { in: categoryIds },
       quotes: {
         none: { providerId: provider.id },
       },
     };
+
+    // Optional category filter (independent from provider service categories)
+    if (category) {
+      const cat = await this.prisma.category.findUnique({
+        where: { slug: category },
+      });
+      if (cat) {
+        where.categoryId = cat.id;
+      }
+    }
 
     const [requests, total] = await Promise.all([
       this.prisma.serviceRequest.findMany({
@@ -1239,15 +1232,17 @@ export class ProvidersService {
     });
 
     return {
-      data: reviews.map((review) => ({
-        id: review.id,
-        customer: `${review.reviewer.firstName} ${review.reviewer.lastName}`,
-        rating: review.rating,
-        date: review.createdAt,
-        service: review.booking.quote.request.title,
-        comment: review.comment,
-        reply: review.providerReply,
-      })),
+        data: reviews.map((review) => ({
+          id: review.id,
+          customer: `${review.reviewer.firstName} ${review.reviewer.lastName}`,
+          rating: review.rating,
+          date: review.createdAt,
+          service: review.booking.quote.request.title,
+          comment: review.comment,
+          reply: review.providerReply,
+          images: review.images,
+          replyImages: review.providerReplyImages,
+        })),
       stats: {
         average: provider.ratingAvg,
         total,
@@ -1262,7 +1257,12 @@ export class ProvidersService {
     };
   }
 
-  async replyToReview(userId: string, reviewId: string, reply: string) {
+  async replyToReview(
+    userId: string,
+    reviewId: string,
+    reply: string,
+    replyImages?: string[],
+  ) {
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
     });
@@ -1285,7 +1285,10 @@ export class ProvidersService {
 
     return this.prisma.review.update({
       where: { id: reviewId },
-      data: { providerReply: reply },
+      data: {
+        providerReply: reply,
+        providerReplyImages: this.sanitizeStringArray(replyImages).slice(0, 10),
+      },
     });
   }
 }

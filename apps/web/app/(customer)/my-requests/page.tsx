@@ -95,10 +95,12 @@ const transformRequest = (
 export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
   const { isAuthenticated } = useAuth();
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("booked");
   const [requests, setRequests] = useState<RequestCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -151,6 +153,32 @@ export default function MyRequestsPage() {
     fetchRequests();
   }, [isAuthenticated]);
 
+  const handleDeleteRequest = async (requestId: string) => {
+    const confirmed = window.confirm(t("deleteConfirm"));
+    if (!confirmed) return;
+
+    const token = getStoredAccessToken();
+    if (!token) {
+      setError(t("deleteError"));
+      return;
+    }
+
+    setDeletingRequestId(requestId);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await requestsApi.cancel(requestId, token);
+      setRequests((prev) => prev.filter((req) => req.id !== requestId));
+      setSuccessMessage(t("deleteSuccess"));
+    } catch (err) {
+      console.error("Failed to delete request:", err);
+      setError(err instanceof Error ? err.message : t("deleteError"));
+    } finally {
+      setDeletingRequestId(null);
+    }
+  };
+
   const statusLabels: Record<string, { label: string; color: string }> = {
     active: { label: t("status.active"), color: "bg-green-100 text-green-700" },
     booked: { label: t("status.booked"), color: "bg-blue-100 text-blue-700" },
@@ -158,10 +186,7 @@ export default function MyRequestsPage() {
     cancelled: { label: t("status.cancelled"), color: "bg-red-100 text-red-700" },
   };
 
-  const filteredRequests =
-    filter === "all"
-      ? requests
-      : requests.filter((r) => r.status === filter);
+  const filteredRequests = requests.filter((r) => r.status === filter);
 
   if (isLoading) {
     return (
@@ -190,6 +215,13 @@ export default function MyRequestsPage() {
           </div>
         </div>
       )}
+      {successMessage && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+            {successMessage}
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -208,10 +240,10 @@ export default function MyRequestsPage() {
         {/* Filters */}
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
           {[
-            { id: "all", label: t("filters.all") },
             { id: "active", label: t("filters.active") },
             { id: "booked", label: t("filters.booked") },
             { id: "completed", label: t("filters.completed") },
+            { id: "cancelled", label: t("filters.cancelled") },
           ].map((f) => (
             <button
               key={f.id}
@@ -271,6 +303,14 @@ export default function MyRequestsPage() {
                       >
                         {t("viewQuotes")}
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRequest(request.id)}
+                        disabled={deletingRequestId === request.id}
+                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingRequestId === request.id ? t("deleting") : t("delete")}
+                      </button>
                     </>
                   )}
                   {request.status === "booked" && (

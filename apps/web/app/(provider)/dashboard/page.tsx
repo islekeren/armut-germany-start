@@ -87,11 +87,24 @@ export default function ProviderDashboard() {
               <LanguageToggle />
               <Link
                 href="/dashboard/messages"
-                className="relative text-muted hover:text-foreground"
+                className="relative inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10"
               >
-                <span className="text-xl">💬</span>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 8h10M7 12h6m-8 8 3.5-3H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2v3Z"
+                  />
+                </svg>
+                <span>{t("navigation.messages")}</span>
                 {unreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-xs text-white">
+                  <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-xs text-white">
                     {unreadCount}
                   </span>
                 )}
@@ -123,7 +136,7 @@ export default function ProviderDashboard() {
                 </li>
                 <li>
                   <Link
-                    href="/dashboard/requests"
+                    href="/dashboard/listings"
                     className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
                   >
                     <span>📬</span> {t("navigation.requests")}
@@ -132,6 +145,14 @@ export default function ProviderDashboard() {
                         {data.stats.newRequests}
                       </span>
                     )}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard/requests"
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                  >
+                    <span>💶</span> {t("navigation.offers")}
                   </Link>
                 </li>
                 <li>
@@ -234,7 +255,7 @@ export default function ProviderDashboard() {
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">{t("sections.newRequests")}</h2>
                   <Link
-                    href="/dashboard/requests"
+                    href="/dashboard/listings"
                     className="text-sm text-primary hover:underline"
                   >
                     {t("viewAll")}
@@ -262,9 +283,7 @@ export default function ProviderDashboard() {
                         <span className="text-sm font-medium text-secondary">
                           {request.budget}
                         </span>
-                        <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark">
-                          {t("sendOffer")}
-                        </button>
+                        <span className="text-xs text-muted">#{request.id.slice(0, 8)}</span>
                       </div>
                     </div>
                   ))

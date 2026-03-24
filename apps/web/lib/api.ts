@@ -1,6 +1,9 @@
 const DEFAULT_API_ORIGIN = "http://localhost:4000";
 const API_UNAVAILABLE_MESSAGE =
   "The service is temporarily unavailable. Please try again shortly.";
+const ACCESS_TOKEN_KEY = "armut_access_token";
+const REFRESH_TOKEN_KEY = "armut_refresh_token";
+const USER_KEY = "armut_user";
 
 interface ApiOptions extends RequestInit {
   token?: string;
@@ -94,6 +97,59 @@ export async function apiRequest<T>(
     });
   } catch {
     throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+  }
+
+  // On client-side, try refreshing once when access token is expired.
+  if (
+    response.status === 401 &&
+    typeof window !== "undefined" &&
+    !endpoint.startsWith("/auth/")
+  ) {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+    if (refreshToken) {
+      try {
+        const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (refreshResponse.ok) {
+          const refreshed = (await refreshResponse.json()) as LoginResponse;
+
+          localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
+          localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
+          localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
+
+          const retryHeaders = new Headers(fetchOptions.headers || undefined);
+          retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
+          if (
+            fetchOptions.body &&
+            !(fetchOptions.body instanceof FormData) &&
+            !retryHeaders.has("Content-Type")
+          ) {
+            retryHeaders.set("Content-Type", "application/json");
+          }
+
+          response = await fetch(url, {
+            ...fetchOptions,
+            cache: cache ?? undefined,
+            headers: retryHeaders,
+          });
+        } else {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+        }
+      } catch {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
+    }
   }
 
   if (!response.ok) {
@@ -365,6 +421,13 @@ export interface ServiceRequest {
   customerId: string;
   categoryId: string;
   category?: Category;
+  customer?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profileImage?: string | null;
+    createdAt?: string;
+  };
   title: string;
   description: string;
   address: string;
@@ -559,6 +622,8 @@ export interface ProviderReview {
   service: string;
   comment: string | null;
   reply: string | null;
+  images?: string[];
+  replyImages?: string[];
 }
 
 export interface ProviderReviewsResponse {
@@ -736,10 +801,14 @@ export const providerApi = {
     );
   },
 
-  replyToReview: (token: string, reviewId: string, reply: string) =>
+  replyToReview: (
+    token: string,
+    reviewId: string,
+    data: { reply: string; replyImages?: string[] },
+  ) =>
     apiRequest(`/providers/me/reviews/${reviewId}/reply`, {
       method: "POST",
-      body: JSON.stringify({ reply }),
+      body: JSON.stringify(data),
       token,
     }),
 };
@@ -812,10 +881,10 @@ export const quotesApi = {
     apiRequest<Quote[]>(`/quotes/request/${requestId}`, { token }),
 
   getMyQuotes: (token: string) =>
-    apiRequest<Quote[]>("/quotes/my-quotes", { token }),
+    apiRequest<Quote[]>("/quotes/received", { token }),
 
   getReceivedQuotes: (token: string) =>
-    apiRequest<Quote[]>("/quotes/received", { token }),
+    apiRequest<Quote[]>("/quotes/my-quotes", { token }),
 
   getById: (token: string, id: string) =>
     apiRequest<Quote>(`/quotes/${id}`, { token }),
@@ -845,6 +914,7 @@ export type BookingStatus =
   | "pending"
   | "confirmed"
   | "in_progress"
+  | "completion_pending"
   | "completed"
   | "cancelled";
 
@@ -854,7 +924,9 @@ export interface BookingReview {
   id: string;
   rating: number;
   comment?: string | null;
+  images?: string[];
   providerReply?: string | null;
+  providerReplyImages?: string[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -949,6 +1021,7 @@ export interface CreateBookingData {
 export interface CreateReviewData {
   rating: number;
   comment?: string;
+  images?: string[];
 }
 
 export const bookingsApi = {
@@ -1105,6 +1178,51 @@ export const messagesApi = {
 
   getUnreadCount: (token: string) =>
     apiRequest<{ unreadCount: number }>("/messages/unread-count", { token }),
+};
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const notificationsApi = {
+  getAll: (token: string, query?: { onlyUnread?: boolean; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (query?.onlyUnread !== undefined) {
+      params.append("onlyUnread", String(query.onlyUnread));
+    }
+    if (query?.limit) {
+      params.append("limit", String(query.limit));
+    }
+
+    const queryString = params.toString();
+    return apiRequest<NotificationItem[]>(
+      `/notifications${queryString ? `?${queryString}` : ""}`,
+      { token },
+    );
+  },
+
+  getUnreadCount: (token: string) =>
+    apiRequest<{ unreadCount: number }>("/notifications/unread-count", { token }),
+
+  markAsRead: (token: string, id: string) =>
+    apiRequest<NotificationItem>(`/notifications/${id}/read`, {
+      method: "POST",
+      token,
+    }),
+
+  markAllAsRead: (token: string) =>
+    apiRequest<{ updated: number }>("/notifications/read-all", {
+      method: "POST",
+      token,
+    }),
 };
 
 export type UploadFolder =
