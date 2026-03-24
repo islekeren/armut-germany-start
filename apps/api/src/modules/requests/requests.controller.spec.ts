@@ -1,4 +1,5 @@
 import { RequestsController } from "./requests.controller";
+import { ForbiddenException } from "@nestjs/common";
 
 describe("RequestsController", () => {
   const requestsService = {
@@ -19,11 +20,19 @@ describe("RequestsController", () => {
   });
 
   it("creates request for authenticated user", async () => {
-    const req = { user: { id: "u1" } };
+    const req = { user: { id: "u1", userType: "customer" } };
     const dto: any = { title: "Need cleaning" };
     requestsService.create.mockResolvedValue({ id: "r1" });
     await expect(controller.create(req, dto)).resolves.toEqual({ id: "r1" });
-    expect(requestsService.create).toHaveBeenCalledWith("u1", dto);
+    expect(requestsService.create).toHaveBeenCalledWith("u1", dto, "customer");
+  });
+
+  it("rejects non-customer users from creating requests", async () => {
+    const req = { user: { id: "u1", userType: "provider" } };
+    const dto: any = { title: "Need cleaning" };
+
+    expect(() => controller.create(req, dto)).toThrow(ForbiddenException);
+    expect(requestsService.create).not.toHaveBeenCalled();
   });
 
   it("returns all requests", async () => {

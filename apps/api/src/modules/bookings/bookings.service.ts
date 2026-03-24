@@ -257,28 +257,84 @@ export class BookingsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, requester: { id: string; userType?: string }) {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        quoteId: true,
+        customerId: true,
+        providerId: true,
+        scheduledDate: true,
+        status: true,
+        totalPrice: true,
+        paymentStatus: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
         quote: {
-          include: {
+          select: {
+            id: true,
+            requestId: true,
+            providerId: true,
+            customerId: true,
+            price: true,
+            message: true,
+            validUntil: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
             request: {
-              include: {
-                category: true,
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                address: true,
+                city: true,
+                postalCode: true,
+                lat: true,
+                lng: true,
+                preferredDate: true,
+                budgetMin: true,
+                budgetMax: true,
+                images: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+                category: {
+                  select: {
+                    id: true,
+                    slug: true,
+                    nameDe: true,
+                    nameEn: true,
+                    icon: true,
+                  },
+                },
               },
             },
           },
         },
         provider: {
-          include: {
+          select: {
+            id: true,
+            userId: true,
+            companyName: true,
+            description: true,
+            experienceYears: true,
+            serviceAreaRadius: true,
+            serviceAreaLat: true,
+            serviceAreaLng: true,
+            ratingAvg: true,
+            totalReviews: true,
+            isApproved: true,
+            createdAt: true,
+            updatedAt: true,
             user: {
               select: {
                 id: true,
                 firstName: true,
                 lastName: true,
                 phone: true,
-                email: true,
                 profileImage: true,
               },
             },
@@ -290,16 +346,47 @@ export class BookingsService {
             firstName: true,
             lastName: true,
             phone: true,
-            email: true,
+            profileImage: true,
           },
         },
-        review: true,
-        payment: true,
+        review: {
+          select: {
+            id: true,
+            bookingId: true,
+            reviewerId: true,
+            revieweeId: true,
+            rating: true,
+            comment: true,
+            providerReply: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        payment: {
+          select: {
+            id: true,
+            bookingId: true,
+            stripePaymentId: true,
+            amount: true,
+            currency: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
 
     if (!booking) {
       throw new NotFoundException("Booking not found");
+    }
+
+    const isAdmin = requester.userType === "admin";
+    const isCustomer = booking.customerId === requester.id;
+    const isProvider = booking.provider.userId === requester.id;
+
+    if (!isAdmin && !isCustomer && !isProvider) {
+      throw new ForbiddenException("Not authorized to view this booking");
     }
 
     return booking;

@@ -133,6 +133,20 @@ describe("QuotesService", () => {
         customerId: "customer-1",
         providerId: "provider-1",
       });
+
+      const quoteDetailQuery = prisma.quote.findUnique.mock.calls[0][0];
+      expect(quoteDetailQuery.select.provider.select.user.select).toEqual({
+        id: true,
+        firstName: true,
+        lastName: true,
+        profileImage: true,
+      });
+      expect(quoteDetailQuery.select.provider.select.user.select).not.toHaveProperty(
+        "phone"
+      );
+      expect(quoteDetailQuery.select.provider.select.user.select).not.toHaveProperty(
+        "email"
+      );
     });
   });
 

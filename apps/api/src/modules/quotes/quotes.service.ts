@@ -207,22 +207,42 @@ export class QuotesService {
   async findOne(id: string, userId: string) {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        requestId: true,
+        providerId: true,
+        customerId: true,
+        price: true,
+        message: true,
+        validUntil: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
         provider: {
-          include: {
+          select: {
+            id: true,
+            companyName: true,
+            ratingAvg: true,
+            totalReviews: true,
             user: {
               select: {
                 id: true,
                 firstName: true,
                 lastName: true,
                 profileImage: true,
-                phone: true,
               },
             },
           },
         },
         request: {
-          include: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            address: true,
+            city: true,
+            postalCode: true,
+            preferredDate: true,
             customer: {
               select: {
                 id: true,
@@ -230,7 +250,15 @@ export class QuotesService {
                 lastName: true,
               },
             },
-            category: true,
+            category: {
+              select: {
+                id: true,
+                slug: true,
+                nameDe: true,
+                nameEn: true,
+                icon: true,
+              },
+            },
           },
         },
       },

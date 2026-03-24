@@ -11,6 +11,10 @@
     "allRightsReserved": "Alle Rechte vorbehalten.",
     "learnMore": "Mehr erfahren"
   },
+  "comingSoon": {
+    "badge": "Demnächst",
+    "description": "{page} ist noch nicht verfügbar. Wir arbeiten noch an dieser Seite."
+  },
   "nav": {
     "home": "Startseite",
     "categories": "Kategorien",
@@ -310,6 +314,9 @@
     "submitting": "Wird gesendet...",
     "submitRequest": "Anfrage absenden",
     "loginRequired": "Sie müssen angemeldet sein, um eine Anfrage zu senden. Sie werden zur Anmeldung weitergeleitet.",
+    "providerBlockedTitle": "Anfragen sind nur für Kunden",
+    "providerBlockedDescription": "Anbieterkonten können keine Serviceanfragen erstellen. Nutzen Sie Ihr Anbieter-Dashboard, um passende Kundenanfragen zu finden und Angebote abzugeben.",
+    "providerBlockedAction": "Zum Anbieter-Dashboard",
     "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
     "errorNoToken": "Kein Authentifizierungs-Token gefunden."
   },

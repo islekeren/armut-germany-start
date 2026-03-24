@@ -62,10 +62,11 @@ describe("BookingsController", () => {
     expect(bookingsService.getUpcoming).toHaveBeenCalledWith("u1", "provider");
   });
 
-  it("gets booking by id", async () => {
+  it("gets booking by id for authenticated requester", async () => {
+    const req = { user: { id: "u1", userType: "customer" } };
     bookingsService.findOne.mockResolvedValue({ id: "b1" });
-    await expect(controller.findOne("b1")).resolves.toEqual({ id: "b1" });
-    expect(bookingsService.findOne).toHaveBeenCalledWith("b1");
+    await expect(controller.findOne("b1", req)).resolves.toEqual({ id: "b1" });
+    expect(bookingsService.findOne).toHaveBeenCalledWith("b1", req.user);
   });
 
   it("updates booking status", async () => {
