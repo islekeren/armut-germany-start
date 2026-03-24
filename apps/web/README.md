@@ -20,6 +20,10 @@ From this directory:
 npm run dev
 ```
 
+From the repository root, `npm run dev` starts this app together with the API.
+`npm run dev` uses Webpack mode because the default Next 16 Turbopack dev server currently hangs on `/` in this repository.
+If you want to compare behavior, `npm run dev:turbo` still starts the Turbopack dev server.
+
 Default local URL:
 
 - `http://localhost:3000`

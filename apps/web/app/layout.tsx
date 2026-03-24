@@ -4,6 +4,7 @@ import "./globals.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
 import { AuthProvider } from "@/contexts";
+import { NativeWebViewBridge } from "@/components/NativeWebViewBridge";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -48,6 +49,7 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
+            <NativeWebViewBridge />
             {children}
           </AuthProvider>
         </NextIntlClientProvider>

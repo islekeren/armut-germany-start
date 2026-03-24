@@ -26,6 +26,8 @@ coverage
 out/
 build
 dist
+.expo
+.expo-shared
 
 
 # Debug
@@ -36,4 +38,3 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
-

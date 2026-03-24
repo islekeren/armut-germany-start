@@ -15,6 +15,7 @@ import {
   type LoginData,
   type RegisterData,
 } from "@/lib/api";
+import { emitAuthStateMessage, WEB_AUTH_SYNC_EVENT } from "@/lib/native-bridge";
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +36,11 @@ const USER_KEY = "armut_user";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isRunningInNativeWebView = () => {
+    if (typeof window === "undefined") return false;
+    return typeof window.ReactNativeWebView?.postMessage === "function";
+  };
 
   // Get stored tokens
   const getAccessToken = () => {
@@ -61,29 +67,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const waitForNativeAuthSync = useCallback(async (timeoutMs = 800) => {
+    if (!isRunningInNativeWebView()) {
+      return;
+    }
+
+    if (getStoredUser() && getAccessToken() && getRefreshToken()) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const handleSync = () => {
+        window.removeEventListener(WEB_AUTH_SYNC_EVENT, handleSync);
+        window.clearTimeout(timeoutId);
+        resolve();
+      };
+
+      const timeoutId = window.setTimeout(handleSync, timeoutMs);
+      window.addEventListener(WEB_AUTH_SYNC_EVENT, handleSync, { once: true });
+    });
+  }, []);
+
+  const emitCurrentAuthState = useCallback((userData: User | null) => {
+    if (typeof window === "undefined") return;
+
+    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+    if (accessToken && refreshToken && userData) {
+      emitAuthStateMessage({
+        isAuthenticated: true,
+        accessToken,
+        refreshToken,
+        user: userData,
+      });
+      return;
+    }
+
+    emitAuthStateMessage({
+      isAuthenticated: false,
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+    });
+  }, []);
+
   // Store auth data
-  const storeAuthData = (accessToken: string, refreshToken: string, userData: User) => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(userData));
-    setUser(userData);
-  };
+  const storeAuthData = useCallback(
+    (accessToken: string, refreshToken: string, userData: User) => {
+      localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setUser(userData);
+      emitCurrentAuthState(userData);
+    },
+    [emitCurrentAuthState],
+  );
 
   // Clear auth data
-  const clearAuthData = () => {
+  const clearAuthData = useCallback(() => {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
-  };
+    emitCurrentAuthState(null);
+  }, [emitCurrentAuthState]);
 
   // Initialize auth state from storage
   const initializeAuth = useCallback(async () => {
     setIsLoading(true);
     try {
-      const storedUser = getStoredUser();
-      const accessToken = getAccessToken();
-      const refreshToken = getRefreshToken();
+      let storedUser = getStoredUser();
+      let accessToken = getAccessToken();
+      let refreshToken = getRefreshToken();
+
+      if (
+        (!storedUser || !accessToken || !refreshToken) &&
+        isRunningInNativeWebView()
+      ) {
+        await waitForNativeAuthSync();
+        storedUser = getStoredUser();
+        accessToken = getAccessToken();
+        refreshToken = getRefreshToken();
+      }
 
       if (storedUser && accessToken) {
         setUser(storedUser);
@@ -93,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = await authApi.getMe(accessToken);
           localStorage.setItem(USER_KEY, JSON.stringify(userData));
           setUser(userData);
+          emitCurrentAuthState(userData);
         } catch (error) {
           if (isApiUnavailableError(error)) {
             return;
@@ -102,7 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (refreshToken) {
             try {
               const response = await authApi.refreshToken(refreshToken);
-              storeAuthData(response.accessToken, response.refreshToken, response.user);
+              storeAuthData(
+                response.accessToken,
+                response.refreshToken,
+                response.user,
+              );
             } catch (refreshError) {
               if (isApiUnavailableError(refreshError)) {
                 return;
@@ -124,10 +195,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [
+    clearAuthData,
+    emitCurrentAuthState,
+    storeAuthData,
+    waitForNativeAuthSync,
+  ]);
 
   useEffect(() => {
     initializeAuth();
+  }, [initializeAuth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleNativeAuthSync = () => {
+      void initializeAuth();
+    };
+
+    window.addEventListener(WEB_AUTH_SYNC_EVENT, handleNativeAuthSync);
+    return () => {
+      window.removeEventListener(WEB_AUTH_SYNC_EVENT, handleNativeAuthSync);
+    };
   }, [initializeAuth]);
 
   // Login

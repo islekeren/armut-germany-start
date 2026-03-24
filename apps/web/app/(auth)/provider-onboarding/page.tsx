@@ -46,10 +46,16 @@ export default function ProviderOnboardingPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { register, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const onboardingMode = searchParams.get("mode");
+  const isCompletingExistingProvider = onboardingMode === "complete-profile";
+  const shouldSkipAccountCreation =
+    isCompletingExistingProvider &&
+    isAuthenticated &&
+    user?.userType === "provider";
 
   const [formData, setFormData] = useState<ProviderOnboardingData>({
     categories: [],
@@ -103,25 +109,48 @@ export default function ProviderOnboardingPage() {
   }, [t]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && !isSubmitting) {
-      router.push("/dashboard");
+    if (authLoading || isSubmitting) {
+      return;
     }
-  }, [authLoading, isAuthenticated, isSubmitting, router]);
+
+    if (isCompletingExistingProvider) {
+      if (isAuthenticated && user?.userType !== "provider") {
+        router.push("/");
+      }
+      return;
+    }
+
+    if (isAuthenticated) {
+      router.push(user?.userType === "provider" ? "/dashboard" : "/");
+    }
+  }, [
+    authLoading,
+    isAuthenticated,
+    isSubmitting,
+    isCompletingExistingProvider,
+    router,
+    user?.userType,
+  ]);
 
   useEffect(() => {
     const firstName = searchParams.get("firstName");
     const lastName = searchParams.get("lastName");
     const email = searchParams.get("email");
+    const phone = shouldSkipAccountCreation ? user?.phone ?? "" : "";
 
-    if (firstName || lastName || email) {
+    if (firstName || lastName || email || shouldSkipAccountCreation) {
       setFormData((prev) => ({
         ...prev,
-        firstName: firstName ?? prev.firstName,
-        lastName: lastName ?? prev.lastName,
-        email: email ?? prev.email,
+        firstName:
+          firstName ?? (shouldSkipAccountCreation ? user?.firstName : undefined) ?? prev.firstName,
+        lastName:
+          lastName ?? (shouldSkipAccountCreation ? user?.lastName : undefined) ?? prev.lastName,
+        email:
+          email ?? (shouldSkipAccountCreation ? user?.email : undefined) ?? prev.email,
+        phone: phone || prev.phone,
       }));
     }
-  }, [searchParams]);
+  }, [searchParams, shouldSkipAccountCreation, user]);
 
   const progressPercent = Math.round(((currentStep + 1) / steps.length) * 100);
 
@@ -158,17 +187,19 @@ export default function ProviderOnboardingPage() {
         setError(t("errors.enterProfile"));
         return false;
       }
-      if (formData.password.length < 8) {
-        setError(t("errors.passwordLength"));
-        return false;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError(t("errors.passwordMatch"));
-        return false;
-      }
-      if (!formData.gdprConsent) {
-        setError(t("errors.acceptTerms"));
-        return false;
+      if (!shouldSkipAccountCreation) {
+        if (formData.password.length < 8) {
+          setError(t("errors.passwordLength"));
+          return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          setError(t("errors.passwordMatch"));
+          return false;
+        }
+        if (!formData.gdprConsent) {
+          setError(t("errors.acceptTerms"));
+          return false;
+        }
       }
     }
     return true;
@@ -189,15 +220,17 @@ export default function ProviderOnboardingPage() {
     if (!validateStep()) return;
     setIsSubmitting(true);
     try {
-      await register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone || undefined,
-        userType: "provider",
-        gdprConsent: formData.gdprConsent,
-      });
+      if (!shouldSkipAccountCreation) {
+        await register({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone || undefined,
+          userType: "provider",
+          gdprConsent: formData.gdprConsent,
+        });
+      }
 
       const token = localStorage.getItem("armut_access_token");
       if (!token) {
@@ -252,6 +285,13 @@ export default function ProviderOnboardingPage() {
               {t("subtitle")}
             </p>
           </div>
+
+          {shouldSkipAccountCreation ? (
+            <AlertBanner className="mb-6">
+              Your account is ready. Finish your provider profile here and the
+              mobile app will continue into the dashboard.
+            </AlertBanner>
+          ) : null}
 
           <div className="mb-6">
             <div className="flex items-center justify-between text-sm text-muted">
@@ -516,50 +556,54 @@ export default function ProviderOnboardingPage() {
                     required
                   />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <FormLabel className="text-foreground">{t("labels.password")}</FormLabel>
-                    <FormInput
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      accent="secondary"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <FormLabel className="text-foreground">{t("labels.confirmPassword")}</FormLabel>
-                    <FormInput
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        setFormData({ ...formData, confirmPassword: e.target.value })
-                      }
-                      accent="secondary"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                </div>
-                <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.gdprConsent}
-                    onChange={(e) =>
-                      setFormData({ ...formData, gdprConsent: e.target.checked })
-                    }
-                    className="mt-1 rounded border-border"
-                  />
-                  <span className="text-sm text-muted">
-                    {t.rich("labels.agreeToTerms", {
-                        privacy: (children) => <Link href="/privacy" className="text-secondary hover:underline">{children}</Link>,
-                        terms: (children) => <Link href="/terms" className="text-secondary hover:underline">{children}</Link>
-                    })}
-                  </span>
-                </label>
+                {!shouldSkipAccountCreation ? (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <FormLabel className="text-foreground">{t("labels.password")}</FormLabel>
+                        <FormInput
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) =>
+                            setFormData({ ...formData, password: e.target.value })
+                          }
+                          accent="secondary"
+                          minLength={8}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <FormLabel className="text-foreground">{t("labels.confirmPassword")}</FormLabel>
+                        <FormInput
+                          type="password"
+                          value={formData.confirmPassword}
+                          onChange={(e) =>
+                            setFormData({ ...formData, confirmPassword: e.target.value })
+                          }
+                          accent="secondary"
+                          minLength={8}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.gdprConsent}
+                        onChange={(e) =>
+                          setFormData({ ...formData, gdprConsent: e.target.checked })
+                        }
+                        className="mt-1 rounded border-border"
+                      />
+                      <span className="text-sm text-muted">
+                        {t.rich("labels.agreeToTerms", {
+                            privacy: (children) => <Link href="/privacy" className="text-secondary hover:underline">{children}</Link>,
+                            terms: (children) => <Link href="/terms" className="text-secondary hover:underline">{children}</Link>
+                        })}
+                      </span>
+                    </label>
+                  </>
+                ) : null}
               </div>
             )}
 
