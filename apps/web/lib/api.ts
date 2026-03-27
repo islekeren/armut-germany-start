@@ -420,6 +420,8 @@ export interface ServiceRequest {
   id: string;
   customerId: string;
   categoryId: string;
+  requestSector?: string | null;
+  requestBranch?: string | null;
   category?: Category;
   customer?: {
     id: string;
@@ -450,6 +452,8 @@ export interface ServiceRequest {
 
 export interface CreateRequestData {
   categoryId: string;
+  requestSector?: string;
+  requestBranch?: string;
   title: string;
   description: string;
   address: string;
@@ -464,6 +468,8 @@ export interface CreateRequestData {
 }
 
 export interface UpdateRequestData {
+  requestSector?: string;
+  requestBranch?: string;
   title?: string;
   description?: string;
   address?: string;
@@ -519,6 +525,7 @@ export const requestsApi = {
     return apiRequest<ServiceRequest[]>(`/requests/my${params}`, {
       method: "GET",
       token,
+      cache: "no-store",
     });
   },
 
@@ -575,6 +582,15 @@ export interface ProviderRequest {
   title: string;
   category: string;
   categoryName: string;
+  requestSector?: string | null;
+  requestSectorNameEn?: string | null;
+  requestSectorNameDe?: string | null;
+  requestBranch?: string | null;
+  requestBranchNameEn?: string | null;
+  requestBranchNameDe?: string | null;
+  offerId?: string | null;
+  offerStatus?: QuoteStatus | null;
+  offeredAt?: string | null;
   description: string;
   location: string;
   address: string;
@@ -620,6 +636,12 @@ export interface ProviderReview {
   rating: number;
   date: string;
   service: string;
+  job?: {
+    bookingId: string;
+    requestId: string;
+    title: string;
+  };
+  customerComment?: string | null;
   comment: string | null;
   reply: string | null;
   images?: string[];
@@ -786,7 +808,7 @@ export const providerApi = {
     const queryString = params.toString();
     return apiRequest<ProviderBooking[]>(
       `/providers/me/bookings${queryString ? `?${queryString}` : ""}`,
-      { token },
+      { token, cache: "no-store" },
     );
   },
 
@@ -880,11 +902,13 @@ export const quotesApi = {
   getByRequest: (token: string, requestId: string) =>
     apiRequest<Quote[]>(`/quotes/request/${requestId}`, { token }),
 
+  // Provider's own sent quotes
   getMyQuotes: (token: string) =>
-    apiRequest<Quote[]>("/quotes/received", { token }),
-
-  getReceivedQuotes: (token: string) =>
     apiRequest<Quote[]>("/quotes/my-quotes", { token }),
+
+  // Customer's received quotes for their requests
+  getReceivedQuotes: (token: string) =>
+    apiRequest<Quote[]>("/quotes/received", { token, cache: "no-store" }),
 
   getById: (token: string, id: string) =>
     apiRequest<Quote>(`/quotes/${id}`, { token }),

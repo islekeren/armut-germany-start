@@ -9,22 +9,16 @@ import {
   providerApi,
   type ProviderBooking,
 } from "@/lib/api";
+import {
+  getBookingDisplayStatusClass,
+  toBookingDisplayStatus,
+} from "@/lib/bookings";
 
 type OrdersTab = "active" | "completed";
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-800",
-  confirmed: "bg-emerald-100 text-emerald-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  completion_pending: "bg-purple-100 text-purple-800",
-  completed: "bg-slate-100 text-slate-700",
-  cancelled: "bg-rose-100 text-rose-700",
-};
 
 export default function ProviderOrdersPage() {
   const tNav = useTranslations("provider.dashboard.navigation");
   const tOrders = useTranslations("provider.orders");
-  const tBookings = useTranslations("customer.bookings.status");
   const locale = useLocale();
   const [orders, setOrders] = useState<ProviderBooking[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<ProviderBooking | null>(null);
@@ -54,14 +48,33 @@ export default function ProviderOrdersPage() {
 
   useEffect(() => {
     loadOrders();
+
+    const refreshInterval = window.setInterval(() => {
+      loadOrders();
+    }, 15000);
+
+    const handleFocus = () => {
+      loadOrders();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", handleFocus);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const visibleOrders = useMemo(() => {
     if (tab === "completed") {
-      return orders.filter((order) => order.status === "completed");
+      return orders.filter(
+        (order) => order.status === "completed" || order.status === "cancelled",
+      );
     }
-    return orders.filter((order) => order.status !== "completed" && order.status !== "cancelled");
+    return orders.filter(
+      (order) => order.status !== "completed" && order.status !== "cancelled",
+    );
   }, [orders, tab]);
 
   const formatDate = (value: string) =>
@@ -125,26 +138,29 @@ export default function ProviderOrdersPage() {
             <p className="text-sm text-muted">{tOrders("empty")}</p>
           ) : (
             <div className="space-y-3">
-              {visibleOrders.map((order) => (
-                <button
-                  key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className={`w-full rounded-lg border p-4 text-left transition ${
-                    selectedOrder?.id === order.id ? "border-primary" : "border-border"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <h3 className="font-semibold">{order.title}</h3>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_STYLE[order.status] || "bg-slate-100 text-slate-700"}`}
-                    >
-                      {tBookings(order.status)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted">{order.customer}</p>
-                  <p className="mt-1 text-sm text-muted">{formatDate(order.scheduledDate)}</p>
-                </button>
-              ))}
+              {visibleOrders.map((order) => {
+                const displayStatus = toBookingDisplayStatus(order.status);
+                return (
+                  <button
+                    key={order.id}
+                    onClick={() => setSelectedOrder(order)}
+                    className={`w-full rounded-lg border p-4 text-left transition ${
+                      selectedOrder?.id === order.id ? "border-primary" : "border-border"
+                    }`}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="font-semibold">{order.title}</h3>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${getBookingDisplayStatusClass(displayStatus)}`}
+                      >
+                        {tOrders(`status.${displayStatus}`)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted">{order.customer}</p>
+                    <p className="mt-1 text-sm text-muted">{formatDate(order.scheduledDate)}</p>
+                  </button>
+                );
+              })}
             </div>
           )}
         </PanelCard>

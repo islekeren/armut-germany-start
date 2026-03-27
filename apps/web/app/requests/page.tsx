@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header, PanelCard } from "@/components";
 import { requestsApi, type ServiceRequest } from "@/lib/api";
+import {
+  getBranchById,
+  getBranchLabel,
+  getFallbackBranchByCategorySlug,
+  getSectorById,
+  getSectorLabel,
+} from "@/lib/request-taxonomy";
 
 export default function RequestsPage() {
   const t = useTranslations("requestsPage");
@@ -139,6 +146,31 @@ export default function RequestsPage() {
           <div className="space-y-4">
             {filteredRequests.map((request) => (
               <PanelCard key={request.id} className="p-5">
+                {(() => {
+                  const branch =
+                    getBranchById(request.requestBranch) ||
+                    getFallbackBranchByCategorySlug(request.category?.slug);
+                  const sector =
+                    getSectorById(request.requestSector) ||
+                    getSectorById(branch?.sectorId);
+
+                  if (!branch && !sector) return null;
+
+                  return (
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      {sector && (
+                        <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+                          {getSectorLabel(sector, locale)}
+                        </span>
+                      )}
+                      {branch && (
+                        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          {getBranchLabel(branch, locale)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     {request.category?.slug ? (

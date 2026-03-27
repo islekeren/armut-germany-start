@@ -5,6 +5,13 @@ import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
 import { requestsApi, type ServiceRequest } from "@/lib/api";
+import {
+  getBranchById,
+  getBranchLabel,
+  getFallbackBranchByCategorySlug,
+  getSectorById,
+  getSectorLabel,
+} from "@/lib/request-taxonomy";
 
 export default function ProviderRequestDetailPage() {
   const params = useParams<{ id: string }>();
@@ -39,8 +46,8 @@ export default function ProviderRequestDetailPage() {
   return (
     <ProviderSubpageShell
       title={t("title")}
-      backLabel={tNav("offers")}
-      backHref="/dashboard/requests"
+      backLabel={tNav("requests")}
+      backHref="/dashboard/listings"
       breadcrumbLabel={request?.title || t("title")}
     >
       {error && (
@@ -57,6 +64,34 @@ export default function ProviderRequestDetailPage() {
         </PanelCard>
       ) : (
         <div className="space-y-6">
+          {(() => {
+            const branch =
+              getBranchById(request.requestBranch) ||
+              getFallbackBranchByCategorySlug(request.category?.slug);
+            const sector =
+              getSectorById(request.requestSector) ||
+              getSectorById(branch?.sectorId);
+
+            if (!branch && !sector) return null;
+
+            return (
+              <PanelCard>
+                <div className="flex flex-wrap gap-2">
+                  {sector && (
+                    <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+                      {getSectorLabel(sector, locale)}
+                    </span>
+                  )}
+                  {branch && (
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      {getBranchLabel(branch, locale)}
+                    </span>
+                  )}
+                </div>
+              </PanelCard>
+            );
+          })()}
+
           <PanelCard>
             <h1 className="text-2xl font-bold">{request.title}</h1>
             <p className="mt-3 whitespace-pre-wrap text-muted">{request.description}</p>

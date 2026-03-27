@@ -74,6 +74,7 @@ describe("ProvidersService", () => {
       },
       quote: {
         count: jest.fn(),
+        findMany: jest.fn(),
       },
       booking: {
         count: jest.fn(),
@@ -327,6 +328,7 @@ describe("ProvidersService", () => {
       prisma.booking.count.mockResolvedValueOnce(3).mockResolvedValueOnce(7);
       prisma.serviceRequest.findMany.mockResolvedValue([]);
       prisma.booking.findMany.mockResolvedValue([]);
+      prisma.quote.findMany.mockResolvedValue([]);
 
       await service.getDashboard("user-1");
 

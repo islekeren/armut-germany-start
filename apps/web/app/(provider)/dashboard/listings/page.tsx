@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
 import {
   getStoredAccessToken,
@@ -9,6 +9,13 @@ import {
   quotesApi,
   type ProviderRequest,
 } from "@/lib/api";
+import {
+  getBranchById,
+  getBranchLabel,
+  getFallbackBranchByCategorySlug,
+  getSectorById,
+  getSectorLabel,
+} from "@/lib/request-taxonomy";
 
 type DateFilter = "all" | "today" | "last7" | "thisMonth";
 type SortFilter = "newest" | "oldest" | "budgetAsc" | "budgetDesc";
@@ -22,9 +29,9 @@ function getBudgetValue(request: ProviderRequest) {
 }
 
 export default function ListingsPage() {
+  const locale = useLocale();
   const t = useTranslations("provider.requests");
   const tNav = useTranslations("provider.dashboard.navigation");
-  const tCat = useTranslations("categories");
   const tFilters = useTranslations("provider.offers.filters");
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [allRequests, setAllRequests] = useState<ProviderRequest[]>([]);
@@ -76,18 +83,14 @@ export default function ListingsPage() {
   const categoryOptions = useMemo(() => {
     const map = new Map<string, number>();
     allRequests.forEach((request) => {
-      map.set(request.category, (map.get(request.category) || 0) + 1);
+      const branch =
+        getBranchById(request.requestBranch) ||
+        getFallbackBranchByCategorySlug(request.category);
+      if (!branch) return;
+      map.set(branch.id, (map.get(branch.id) || 0) + 1);
     });
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allRequests]);
-
-  const getCategoryLabel = (slug: string, fallback: string) => {
-    try {
-      return tCat(`${slug}.name`);
-    } catch {
-      return fallback;
-    }
-  };
 
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -107,7 +110,10 @@ export default function ListingsPage() {
     const term = search.trim().toLowerCase();
 
     const filtered = allRequests.filter((request) => {
-      if (category !== "all" && request.category !== category) return false;
+      const branch =
+        getBranchById(request.requestBranch) ||
+        getFallbackBranchByCategorySlug(request.category);
+      if (category !== "all" && branch?.id !== category) return false;
 
       if (dateFilter !== "all") {
         const createdAt = new Date(request.createdAt);
@@ -223,7 +229,17 @@ export default function ListingsPage() {
           offerValidUntil || new Date(Date.now() + 7 * 86400000).toISOString(),
       });
 
-      setAllRequests((prev) => prev.filter((req) => req.id !== requestId));
+      setAllRequests((prev) =>
+        prev.map((req) =>
+          req.id === requestId
+            ? {
+                ...req,
+                offerStatus: "pending",
+                offeredAt: new Date().toISOString(),
+              }
+            : req,
+        ),
+      );
       setSelectedRequest(null);
       setOfferPrice("");
       setOfferMessage("");
@@ -318,14 +334,22 @@ export default function ListingsPage() {
                 {t("filters.all")} ({allRequests.length})
               </button>
               {categoryOptions.map(([slug, count]) => (
+                (() => {
+                  const branch =
+                    getBranchById(slug) || getFallbackBranchByCategorySlug(slug);
+                  if (!branch) return null;
+                  return (
                 <button
                   key={slug}
                   type="button"
                   onClick={() => setCategory(slug)}
                   className={`rounded-full px-4 py-2 text-sm font-medium ${category === slug ? "bg-primary text-white" : "bg-background text-muted hover:bg-white"}`}
                 >
-                  {getCategoryLabel(slug, slug)} ({count})
+                  {getBranchLabel(branch, locale)}{" "}
+                  ({count})
                 </button>
+                  );
+                })()
               ))}
               <div className="ml-auto w-full md:w-56">
                 <label className="mb-1 block text-sm text-muted">
@@ -378,14 +402,39 @@ export default function ListingsPage() {
                   selectedRequest === request.id ? "ring-2 ring-primary" : ""
                 }`}
               >
+                {(() => {
+                  const branch =
+                    getBranchById(request.requestBranch) ||
+                    getFallbackBranchByCategorySlug(request.category);
+                  const sector =
+                    getSectorById(request.requestSector) ||
+                    getSectorById(branch?.sectorId);
+
+                  return (
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      {sector && (
+                        <span className="inline-block rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+                          {getSectorLabel(sector, locale)}
+                        </span>
+                      )}
+                      {branch && (
+                        <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          {getBranchLabel(branch, locale)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                      {getCategoryLabel(request.category, request.categoryName)}
-                    </span>
                     <h3 className="mt-2 text-lg font-semibold">
                       {request.title}
                     </h3>
+                    {request.offerStatus === "pending" && (
+                      <p className="mt-1 text-xs font-medium text-secondary">
+                        Pending offer sent
+                      </p>
+                    )}
                   </div>
                   <span className="text-sm text-muted">
                     {t("postedAt", { time: getTimeAgo(request.createdAt) })}
@@ -437,66 +486,74 @@ export default function ListingsPage() {
                     className="mt-4 space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-4"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div>
-                        <label className="mb-1 block text-sm text-muted">
-                          {t("quotePrice")}
-                        </label>
-                        <input
-                          type="number"
-                          value={offerPrice}
-                          onChange={(event) =>
-                            setOfferPrice(event.target.value)
-                          }
-                          className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                          placeholder="100"
-                        />
+                    {request.offerStatus ? (
+                      <div className="rounded-lg bg-white p-3 text-sm text-muted">
+                        You already sent an offer for this request. Check Pending Offers for status.
                       </div>
-                      <div className="md:col-span-2">
-                        <label className="mb-1 block text-sm text-muted">
-                          {t("validUntil")}
-                        </label>
-                        <input
-                          type="date"
-                          value={offerValidUntil}
-                          onChange={(event) =>
-                            setOfferValidUntil(event.target.value)
-                          }
-                          className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm text-muted">
-                        {t("quoteMessage")}
-                      </label>
-                      <textarea
-                        value={offerMessage}
-                        onChange={(event) =>
-                          setOfferMessage(event.target.value)
-                        }
-                        className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                        rows={3}
-                        placeholder={t("quoteMessagePlaceholder")}
-                      />
-                    </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRequest(null)}
-                        className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white"
-                      >
-                        {t("cancel")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSendOffer(request.id)}
-                        disabled={sendingOffer}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
-                      >
-                        {sendingOffer ? t("sendingOffer") : t("sendOffer")}
-                      </button>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div>
+                            <label className="mb-1 block text-sm text-muted">
+                              {t("quotePrice")}
+                            </label>
+                            <input
+                              type="number"
+                              value={offerPrice}
+                              onChange={(event) =>
+                                setOfferPrice(event.target.value)
+                              }
+                              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                              placeholder="100"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="mb-1 block text-sm text-muted">
+                              {t("validUntil")}
+                            </label>
+                            <input
+                              type="date"
+                              value={offerValidUntil}
+                              onChange={(event) =>
+                                setOfferValidUntil(event.target.value)
+                              }
+                              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-sm text-muted">
+                            {t("quoteMessage")}
+                          </label>
+                          <textarea
+                            value={offerMessage}
+                            onChange={(event) =>
+                              setOfferMessage(event.target.value)
+                            }
+                            className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                            rows={3}
+                            placeholder={t("quoteMessagePlaceholder")}
+                          />
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRequest(null)}
+                            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white"
+                          >
+                            {t("cancel")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendOffer(request.id)}
+                            disabled={sendingOffer}
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
+                          >
+                            {sendingOffer ? t("sendingOffer") : t("sendOffer")}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : null}
               </div>

@@ -5,37 +5,67 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header } from "@/components";
 import { getCategories, providersApi, type Category, type PublicProvider } from "@/lib/api";
+import {
+  PROVIDER_SERVICE_BRANCHES,
+  getProviderServiceBranchLabel,
+} from "@/lib/provider-service-taxonomy";
 
 export default function FindProvidersPage() {
   const t = useTranslations("findProviders");
   const locale = useLocale();
-  const isGerman = locale.startsWith("de");
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [providers, setProviders] = useState<PublicProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [categoryId, setCategoryId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [minRating, setMinRating] = useState("");
   const [city, setCity] = useState("");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
+
+  const availableCategorySlugs = useMemo(
+    () => new Set(categories.map((category) => category.slug)),
+    [categories],
+  );
+
+  const filterBranches = useMemo(
+    () =>
+      PROVIDER_SERVICE_BRANCHES.filter((branch) =>
+        availableCategorySlugs.has(branch.categorySlug),
+      ),
+    [availableCategorySlugs],
+  );
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const [categoriesData, providersData] = await Promise.all([
-          getCategories(),
-          providersApi.getAll({
-            categoryId: categoryId || undefined,
-            minRating: minRating ? Number(minRating) : undefined,
-            limit: 100,
-          }),
-        ]);
+        const categoriesData = await getCategories();
         setCategories(categoriesData);
+
+        const selectedBranch = branchId
+          ? PROVIDER_SERVICE_BRANCHES.find((branch) => branch.id === branchId)
+          : null;
+
+        const selectedCategory = selectedBranch
+          ? categoriesData.find(
+              (category) => category.slug === selectedBranch.categorySlug,
+            )
+          : null;
+
+        if (branchId && !selectedCategory) {
+          setProviders([]);
+          return;
+        }
+
+        const providersData = await providersApi.getAll({
+          categoryId: selectedCategory?.id,
+          minRating: minRating ? Number(minRating) : undefined,
+          limit: 100,
+        });
         setProviders(providersData.data);
       } catch (err) {
         console.error("Failed to load providers", err);
@@ -46,7 +76,7 @@ export default function FindProvidersPage() {
     };
 
     loadData();
-  }, [categoryId, minRating, t]);
+  }, [branchId, minRating, t]);
 
   const filteredProviders = useMemo(() => {
     const min = priceMin ? Number(priceMin) : null;
@@ -111,14 +141,14 @@ export default function FindProvidersPage() {
               <div>
                 <label className="mb-1 block text-sm text-muted">{t("filters.category")}</label>
                 <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value)}
                   className="w-full rounded-lg border border-border px-3 py-2 focus:border-primary focus:outline-none"
                 >
                   <option value="">{t("filters.allCategories")}</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {isGerman ? category.nameDe : category.nameEn}
+                  {filterBranches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {getProviderServiceBranchLabel(branch, locale)}
                     </option>
                   ))}
                 </select>

@@ -15,21 +15,14 @@ import {
 } from "@/lib/api";
 import {
   formatEuroAmount,
+  getBookingDisplayStatusClass,
   getBookingLocation,
   getBookingServiceTitle,
   getProviderContactName,
   getProviderDisplayName,
+  toBookingDisplayStatus,
   toDateTimeLocalValue,
 } from "@/lib/bookings";
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-800",
-  confirmed: "bg-emerald-100 text-emerald-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  completion_pending: "bg-purple-100 text-purple-800",
-  completed: "bg-slate-100 text-slate-700",
-  cancelled: "bg-rose-100 text-rose-700",
-};
 
 export default function BookingDetailPage() {
   const params = useParams();
@@ -275,6 +268,7 @@ export default function BookingDetailPage() {
   const canManageSchedule = ["pending", "confirmed"].includes(booking.status);
   const canReview = booking.status === "completed" && !booking.review;
   const canConfirmCompletion = booking.status === "completion_pending";
+  const displayStatus = toBookingDisplayStatus(booking.status);
   const categoryLabel =
     locale === "de"
       ? booking.quote?.request?.category?.nameDe
@@ -310,9 +304,9 @@ export default function BookingDetailPage() {
             <div>
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[booking.status] || "bg-slate-100 text-slate-700"}`}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${getBookingDisplayStatusClass(displayStatus)}`}
                 >
-                  {t(`status.${booking.status}`)}
+                  {t(`status.${displayStatus}`)}
                 </span>
                 <span className="text-sm text-muted">
                   {t(`paymentStatus.${booking.paymentStatus}`)}

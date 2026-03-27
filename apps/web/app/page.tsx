@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { AlertBanner, Header } from "@/components";
 import { getCategories, isApiUnavailableError, type Category } from "@/lib/api";
+import { HomeRedirect } from "@/components/ProviderHomeRedirect";
 
 export default async function Home() {
   const t = await getTranslations();
@@ -22,6 +23,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen">
+      <HomeRedirect />
       {/* Header */}
       <Header />
 

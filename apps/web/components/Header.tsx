@@ -65,7 +65,7 @@ export function Header() {
           </Link>
           <nav className="hidden gap-6 md:flex">
             {isAuthenticated && user?.userType === "provider" ? (
-              <Link href="/dashboard/requests" className="text-muted hover:text-foreground">
+              <Link href="/dashboard/listings" className="text-muted hover:text-foreground">
                 {t("nav.offers")}
               </Link>
             ) : isAuthenticated && user?.userType === "customer" ? (
@@ -156,7 +156,7 @@ export function Header() {
                     {user.userType === "provider" ? (
                       <>
                         <Link
-                          href="/dashboard/requests"
+                          href="/dashboard/listings"
                           className="block px-4 py-2 text-sm hover:bg-gray-100"
                           onClick={() => setShowDropdown(false)}
                         >

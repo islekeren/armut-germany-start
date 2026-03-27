@@ -650,6 +650,7 @@
       },
       "status": {
         "pending": "Pending",
+        "booked": "Booked",
         "confirmed": "Confirmed",
         "in_progress": "In progress",
         "completion_pending": "Waiting your confirmation",
@@ -789,6 +790,10 @@
       "activityOverview": "Here is an overview of your current activities.",
       "noRequests": "No new listings.",
       "noAppointments": "No upcoming appointments.",
+      "noPendingOffers": "No pending offers.",
+      "pendingOfferValidUntil": "Valid until {date}",
+      "pendingOffersUntitled": "Untitled listing",
+      "pendingOffersUnknownCustomer": "Unknown customer",
       "loading": "Loading...",
       "stats": {
         "newRequests": "New Listings",
@@ -799,6 +804,7 @@
       "sections": {
         "newRequests": "New Listings",
         "upcomingAppointments": "Upcoming Appointments",
+        "pendingOffers": "Pending Offers",
         "quickActions": "Quick Actions"
       },
       "viewAll": "View All",
@@ -822,6 +828,7 @@
         "overview": "Overview",
         "requests": "Listings",
         "offers": "Requests",
+        "pendingOffers": "Pending Offers",
         "orders": "Orders",
         "calendar": "Calendar",
         "messages": "Messages",
@@ -945,6 +952,12 @@
         "active": "Active Jobs",
         "completed": "Completed"
       },
+      "status": {
+        "pending": "Pending",
+        "booked": "Booked",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
       "loading": "Loading orders...",
       "empty": "No orders found in this section.",
       "selectOrder": "Select an order to view details.",
@@ -966,7 +979,10 @@
       "imagesSelected": "{count} image(s) selected",
       "send": "Send",
       "cancel": "Cancel",
-      "ratingBreakdown": "Rating Breakdown"
+      "ratingBreakdown": "Rating Breakdown",
+      "reviewedJob": "Reviewed job",
+      "customerComment": "Customer comment",
+      "noComment": "No written comment."
     },
     "messages": {
       "title": "Messages",

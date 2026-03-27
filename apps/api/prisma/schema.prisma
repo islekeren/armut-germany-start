@@ -165,6 +165,8 @@ model ServiceRequest {
   id            String        @id @default(uuid())
   customerId    String
   categoryId    String
+  requestSector String?
+  requestBranch String?
   title         String
   description   String
   address       String

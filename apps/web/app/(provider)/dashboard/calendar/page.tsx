@@ -4,9 +4,14 @@ import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { PanelCard, ProviderSubpageShell } from "@/components";
 import { providerApi, ProviderBooking } from "@/lib/api";
+import {
+  getBookingDisplayStatusClass,
+  toBookingDisplayStatus,
+} from "@/lib/bookings";
 
 export default function CalendarPage() {
   const t = useTranslations("provider.calendar");
+  const tOrderStatus = useTranslations("provider.orders.status");
   const tNav = useTranslations("provider.dashboard.navigation");
   const locale = useLocale();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -186,18 +191,17 @@ export default function CalendarPage() {
                           >
                             {day}
                           </div>
-                          {events.map((event) => (
-                            <div
-                              key={event.id}
-                              className={`mb-1 truncate rounded px-1 py-0.5 text-xs ${
-                                event.status === "confirmed"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
-                              {event.time} {event.title}
-                            </div>
-                          ))}
+                          {events.map((event) => {
+                            const displayStatus = toBookingDisplayStatus(event.status);
+                            return (
+                              <div
+                                key={event.id}
+                                className={`mb-1 truncate rounded px-1 py-0.5 text-xs ${getBookingDisplayStatusClass(displayStatus)}`}
+                              >
+                                {event.time} {event.title}
+                              </div>
+                            );
+                          })}
                         </>
                       )}
                     </div>
@@ -222,41 +226,40 @@ export default function CalendarPage() {
 
               {selectedEvents.length > 0 ? (
                 <div className="space-y-4">
-                  {selectedEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="rounded-lg border border-border p-4"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-medium">{event.title}</h4>
-                          <p className="text-sm text-muted">{event.customer}</p>
+                  {selectedEvents.map((event) => {
+                    const displayStatus = toBookingDisplayStatus(event.status);
+                    return (
+                      <div
+                        key={event.id}
+                        className="rounded-lg border border-border p-4"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-medium">{event.title}</h4>
+                            <p className="text-sm text-muted">{event.customer}</p>
+                          </div>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs ${getBookingDisplayStatusClass(displayStatus)}`}
+                          >
+                            {tOrderStatus(displayStatus)}
+                          </span>
                         </div>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs ${
-                            event.status === "confirmed"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {t(`status.${event.status}`)}
-                        </span>
+                        <div className="mt-3 space-y-1 text-sm text-muted">
+                          <div>🕐 {event.time} {t("oclock")}</div>
+                          <div>📍 {event.address}</div>
+                          <div>💰 {event.totalPrice}€</div>
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                          <button className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-background">
+                            {t("details")}
+                          </button>
+                          <button className="flex-1 rounded-lg bg-primary py-2 text-sm text-white hover:bg-primary-dark">
+                            {t("message")}
+                          </button>
+                        </div>
                       </div>
-                      <div className="mt-3 space-y-1 text-sm text-muted">
-                        <div>🕐 {event.time} {t("oclock")}</div>
-                        <div>📍 {event.address}</div>
-                        <div>💰 {event.totalPrice}€</div>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <button className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-background">
-                          {t("details")}
-                        </button>
-                        <button className="flex-1 rounded-lg bg-primary py-2 text-sm text-white hover:bg-primary-dark">
-                          {t("message")}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="py-8 text-center text-muted">

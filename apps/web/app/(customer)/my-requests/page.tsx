@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Header } from "@/components";
@@ -15,6 +15,13 @@ import {
   type ServiceRequest,
 } from "@/lib/api";
 import { getProviderDisplayName } from "@/lib/bookings";
+import {
+  getBranchById,
+  getBranchLabel,
+  getFallbackBranchByCategorySlug,
+  getSectorById,
+  getSectorLabel,
+} from "@/lib/request-taxonomy";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 
@@ -22,11 +29,14 @@ interface RequestCard {
   id: string;
   title: string;
   category: string;
+  categorySlug?: string;
   status: DisplayRequestStatus;
   createdAt: string;
   location: string;
   quotes: number;
   description: string;
+  requestSector?: string | null;
+  requestBranch?: string | null;
   bookedProvider?: string;
   bookingId?: string;
   acceptedQuoteId?: string;
@@ -65,6 +75,7 @@ const transformRequest = (
     id: request.id,
     title: request.title,
     category: request.category?.nameEn || request.category?.slug || request.categoryId,
+    categorySlug: request.category?.slug,
     status: mapApiStatus(request.status),
     createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
       month: "long",
@@ -74,6 +85,8 @@ const transformRequest = (
     location: `${request.postalCode} ${request.city}`,
     quotes: request._count?.quotes ?? request.quotes?.length ?? 0,
     description: request.description,
+    requestSector: request.requestSector,
+    requestBranch: request.requestBranch,
     bookedProvider: booking
       ? getProviderDisplayName(booking.provider)
       : acceptedQuote
@@ -102,56 +115,66 @@ export default function MyRequestsPage() {
   const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      const token = getStoredAccessToken();
-      if (!token) {
-        setError("Please log in to view your requests");
-        setIsLoading(false);
-        return;
-      }
+  const fetchRequests = useCallback(async () => {
+    const token = getStoredAccessToken();
+    if (!token) {
+      setError("Please log in to view your requests");
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        const [apiRequests, bookingsResponse, customerQuotes] = await Promise.all([
-          requestsApi.getMyRequests(token),
-          bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
-          quotesApi.getMyQuotes(token),
-        ]);
+    try {
+      const [apiRequests, bookingsResponse, customerQuotes] = await Promise.all([
+        requestsApi.getMyRequests(token),
+        bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
+        quotesApi.getReceivedQuotes(token),
+      ]);
 
-        const bookingsByRequestId = new Map<string, CustomerBooking>();
-        bookingsResponse.data.forEach((booking) => {
-          const requestId = booking.quote?.request?.id;
-          if (requestId) {
-            bookingsByRequestId.set(requestId, booking);
+      const bookingsByRequestId = new Map<string, CustomerBooking>();
+      bookingsResponse.data.forEach((booking) => {
+        const requestId = booking.quote?.request?.id;
+        if (requestId) {
+          bookingsByRequestId.set(requestId, booking);
+        }
+      });
+
+      const acceptedQuotesByRequestId = new Map<string, Quote>();
+      customerQuotes
+        .filter((quote) => quote.status === "accepted" && quote.request?.id)
+        .forEach((quote) => {
+          if (quote.request?.id) {
+            acceptedQuotesByRequestId.set(quote.request.id, quote);
           }
         });
 
-        const acceptedQuotesByRequestId = new Map<string, Quote>();
-        customerQuotes
-          .filter((quote) => quote.status === "accepted" && quote.request?.id)
-          .forEach((quote) => {
-            if (quote.request?.id) {
-              acceptedQuotesByRequestId.set(quote.request.id, quote);
-            }
-          });
+      const transformedRequests = (apiRequests || []).map((request) =>
+        transformRequest(request, {
+          bookingsByRequestId,
+          acceptedQuotesByRequestId,
+        }),
+      );
+      setRequests(transformedRequests);
+    } catch (err) {
+      console.error("Failed to fetch requests:", err);
+      setError(err instanceof Error ? err.message : "Failed to load requests");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-        const transformedRequests = (apiRequests || []).map((request) =>
-          transformRequest(request, {
-            bookingsByRequestId,
-            acceptedQuotesByRequestId,
-          }),
-        );
-        setRequests(transformedRequests);
-      } catch (err) {
-        console.error("Failed to fetch requests:", err);
-        setError(err instanceof Error ? err.message : "Failed to load requests");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchRequests();
-  }, [isAuthenticated]);
+
+    // Keep the list fresh when new offers arrive.
+    const intervalId = window.setInterval(fetchRequests, 15000);
+    const onFocus = () => fetchRequests();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [fetchRequests, isAuthenticated]);
 
   const handleDeleteRequest = async (requestId: string) => {
     const confirmed = window.confirm(t("deleteConfirm"));
@@ -269,6 +292,31 @@ export default function MyRequestsPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1">
                   <div className="mb-2 flex items-center gap-3">
+                    {(() => {
+                      const branch =
+                        getBranchById(request.requestBranch) ||
+                        getFallbackBranchByCategorySlug(request.categorySlug);
+                      const sector =
+                        getSectorById(request.requestSector) ||
+                        getSectorById(branch?.sectorId);
+
+                      if (!branch && !sector) return null;
+
+                      return (
+                        <>
+                          {sector && (
+                            <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+                              {getSectorLabel(sector)}
+                            </span>
+                          )}
+                          {branch && (
+                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                              {getBranchLabel(branch)}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium ${
                         statusLabels[request.status]?.color ?? ""

@@ -157,7 +157,9 @@ export default function ReviewsPage() {
                       </div>
                       <div>
                         <div className="font-semibold">{review.customer}</div>
-                        <div className="text-sm text-muted">{review.service}</div>
+                        <div className="text-sm text-muted">
+                          {t("reviewedJob")}: {review.job?.title || review.service}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -169,7 +171,12 @@ export default function ReviewsPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-muted">{review.comment}</p>
+                  <div className="mt-4">
+                    <div className="text-sm font-medium">{t("customerComment")}</div>
+                    <p className="mt-1 text-muted">
+                      {review.customerComment || review.comment || t("noComment")}
+                    </p>
+                  </div>
                   {review.images && review.images.length > 0 && (
                     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {review.images.map((imageUrl) => (

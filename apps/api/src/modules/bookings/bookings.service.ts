@@ -112,6 +112,9 @@ export class BookingsService {
         customerId: userId,
         providerId: quote.providerId,
         scheduledDate: new Date(createBookingDto.scheduledDate),
+        // Customer already accepted the quote before creating booking.
+        // New bookings should start as confirmed/booked.
+        status: "confirmed",
         totalPrice: quote.price,
       },
       include: {

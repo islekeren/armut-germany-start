@@ -7,21 +7,14 @@ import { AlertBanner, Header, PanelCard } from "@/components";
 import { bookingsApi, getStoredAccessToken, type CustomerBooking } from "@/lib/api";
 import {
   formatEuroAmount,
+  getBookingDisplayStatusClass,
   getBookingLocation,
   getBookingServiceTitle,
   getProviderDisplayName,
+  toBookingDisplayStatus,
 } from "@/lib/bookings";
 
 type BookingFilter = "all" | "upcoming" | "completed" | "cancelled";
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-800",
-  confirmed: "bg-emerald-100 text-emerald-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  completion_pending: "bg-purple-100 text-purple-800",
-  completed: "bg-slate-100 text-slate-700",
-  cancelled: "bg-rose-100 text-rose-700",
-};
 
 function canLeaveReview(booking: CustomerBooking) {
   if (booking.status === "cancelled" || booking.review) return false;
@@ -187,6 +180,7 @@ export default function CustomerBookingsPage() {
                 canLeaveReview(booking)
                   ? t("actions.leaveReview")
                   : t("actions.viewDetails");
+              const displayStatus = toBookingDisplayStatus(booking.status);
               const categoryLabel =
                 locale === "de"
                   ? booking.quote?.request?.category?.nameDe
@@ -198,9 +192,9 @@ export default function CustomerBookingsPage() {
                     <div className="flex-1">
                       <div className="mb-3 flex flex-wrap items-center gap-3">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[booking.status] || "bg-slate-100 text-slate-700"}`}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getBookingDisplayStatusClass(displayStatus)}`}
                         >
-                          {t(`status.${booking.status}`)}
+                          {t(`status.${displayStatus}`)}
                         </span>
                         <span className="text-sm text-muted">
                           {t(`paymentStatus.${booking.paymentStatus}`)}

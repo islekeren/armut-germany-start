@@ -650,6 +650,7 @@
       },
       "status": {
         "pending": "Ausstehend",
+        "booked": "Gebucht",
         "confirmed": "Bestätigt",
         "in_progress": "In Arbeit",
         "completion_pending": "Wartet auf Ihre Bestätigung",
@@ -789,6 +790,10 @@
       "activityOverview": "Hier ist eine Übersicht Ihrer aktuellen Aktivitäten.",
       "noRequests": "Keine neuen Anzeigen.",
       "noAppointments": "Keine anstehenden Termine.",
+      "noPendingOffers": "Keine ausstehenden Angebote.",
+      "pendingOfferValidUntil": "Gueltig bis {date}",
+      "pendingOffersUntitled": "Anzeige ohne Titel",
+      "pendingOffersUnknownCustomer": "Unbekannter Kunde",
       "loading": "Lädt...",
       "stats": {
         "newRequests": "Neue Anzeigen",
@@ -799,6 +804,7 @@
       "sections": {
         "newRequests": "Neue Anzeigen",
         "upcomingAppointments": "Anstehende Termine",
+        "pendingOffers": "Ausstehende Angebote",
         "quickActions": "Schnellaktionen"
       },
       "viewAll": "Alle ansehen",
@@ -822,6 +828,7 @@
         "overview": "Übersicht",
         "requests": "Anzeigen",
         "offers": "Anfragen",
+        "pendingOffers": "Ausstehende Angebote",
         "orders": "Aufträge",
         "calendar": "Kalender",
         "messages": "Nachrichten",
@@ -945,6 +952,12 @@
         "active": "Aktive Jobs",
         "completed": "Abgeschlossen"
       },
+      "status": {
+        "pending": "Ausstehend",
+        "booked": "Gebucht",
+        "completed": "Abgeschlossen",
+        "cancelled": "Storniert"
+      },
       "loading": "Aufträge werden geladen...",
       "empty": "In diesem Bereich wurden keine Aufträge gefunden.",
       "selectOrder": "Wählen Sie einen Auftrag, um Details zu sehen.",
@@ -966,7 +979,10 @@
       "imagesSelected": "{count} Bild(er) ausgewählt",
       "send": "Senden",
       "cancel": "Abbrechen",
-      "ratingBreakdown": "Bewertungsübersicht"
+      "ratingBreakdown": "Bewertungsübersicht",
+      "reviewedJob": "Bewerteter Auftrag",
+      "customerComment": "Kundenkommentar",
+      "noComment": "Kein geschriebener Kommentar."
     },
     "messages": {
       "title": "Nachrichten",
