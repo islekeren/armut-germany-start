@@ -183,6 +183,13 @@ export function Header() {
                         >
                           {t("nav.notifications")}
                         </Link>
+                        <Link
+                          href="/dashboard/settings"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          {t("provider.dashboard.navigation.settings")}
+                        </Link>
                       </>
                     ) : (
                       <>
@@ -234,6 +241,13 @@ export function Header() {
                           onClick={() => setShowDropdown(false)}
                         >
                           {t("nav.notifications")}
+                        </Link>
+                        <Link
+                          href="/settings"
+                          className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          {t("provider.dashboard.navigation.settings")}
                         </Link>
                       </>
                     )}

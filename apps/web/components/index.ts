@@ -16,3 +16,4 @@ export { FormLabel } from "./forms/FormLabel";
 export { FormInput } from "./forms/FormInput";
 export { FormTextarea } from "./forms/FormTextarea";
 export { FormSelect } from "./forms/FormSelect";
+export { AccountSettingsContent } from "./settings/AccountSettingsContent";

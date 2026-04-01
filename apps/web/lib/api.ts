@@ -383,6 +383,11 @@ export interface RegisterData {
   gdprConsent: boolean;
 }
 
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export const authApi = {
   login: (data: LoginData) =>
     apiRequest<LoginResponse>("/auth/login", {
@@ -411,6 +416,55 @@ export const authApi = {
   getMe: (token: string) =>
     apiRequest<User>("/auth/me", {
       method: "GET",
+      token,
+    }),
+
+  changePassword: (token: string, data: ChangePasswordData) =>
+    apiRequest<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+};
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  phone?: string | null;
+  firstName: string;
+  lastName: string;
+  userType: "customer" | "provider";
+  profileImage?: string | null;
+  isVerified?: boolean;
+  gdprConsent?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UpdateUserProfileData {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  profileImage?: string;
+}
+
+export const usersApi = {
+  getProfile: (token: string) =>
+    apiRequest<UserProfile>("/users/profile", {
+      method: "GET",
+      token,
+    }),
+
+  updateProfile: (token: string, data: UpdateUserProfileData) =>
+    apiRequest<UserProfile>("/users/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  deleteProfile: (token: string) =>
+    apiRequest<UserProfile>("/users/profile", {
+      method: "DELETE",
       token,
     }),
 };
