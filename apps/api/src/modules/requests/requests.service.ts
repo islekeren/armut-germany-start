@@ -5,10 +5,14 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateRequestDto, UpdateRequestDto, RequestQueryDto } from "./dto/request.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class RequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // Helper to check if a string is a valid UUID
   private isUUID(str: string): boolean {
@@ -238,6 +242,17 @@ export class RequestsService {
   async cancel(id: string, userId: string) {
     const request = await this.prisma.serviceRequest.findUnique({
       where: { id },
+      include: {
+        quotes: {
+          select: {
+            provider: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!request) {
@@ -252,10 +267,41 @@ export class RequestsService {
       throw new ForbiddenException("Can only cancel open requests");
     }
 
-    return this.prisma.serviceRequest.update({
+    const cancelledRequest = await this.prisma.serviceRequest.update({
       where: { id },
       data: { status: "cancelled" },
     });
+
+    const providerUserIds: string[] = [];
+    for (const quote of request.quotes ?? []) {
+      const providerUserId = quote.provider?.userId;
+      if (
+        typeof providerUserId === "string" &&
+        providerUserId.length > 0 &&
+        !providerUserIds.includes(providerUserId)
+      ) {
+        providerUserIds.push(providerUserId);
+      }
+    }
+
+    await Promise.all([
+      this.notificationsService.create(userId, {
+        type: "request_cancelled",
+        title: "Request cancelled",
+        message: `Your request "${request.title}" has been cancelled.`,
+        metadata: { requestId: request.id },
+      }),
+      ...providerUserIds.map((providerUserId) =>
+        this.notificationsService.create(providerUserId, {
+          type: "request_cancelled",
+          title: "Request cancelled",
+          message: `A customer cancelled the request "${request.title}".`,
+          metadata: { requestId: request.id },
+        }),
+      ),
+    ]);
+
+    return cancelledRequest;
   }
 
   async getForProvider(providerId: string, query: RequestQueryDto) {

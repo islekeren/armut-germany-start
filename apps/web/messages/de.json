@@ -18,12 +18,28 @@
   "nav": {
     "home": "Startseite",
     "categories": "Kategorien",
+    "findProvider": "Dienstleister finden",
+    "requests": "Anfragen",
+    "offers": "Anfragen",
     "howItWorks": "So funktioniert's",
+    "createRequest": "Anfrage erstellen",
     "dashboard": "Dashboard",
     "profile": "Profil",
     "myRequests": "Meine Anfragen",
     "bookings": "Buchungen",
-    "messages": "Nachrichten"
+    "messages": "Nachrichten",
+    "notifications": "Benachrichtigungen"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "subtitle": "{count} ungelesene Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "loading": "Benachrichtigungen werden geladen...",
+    "empty": "Noch keine Benachrichtigungen.",
+    "errors": {
+      "noToken": "Bitte melden Sie sich an, um Benachrichtigungen zu sehen.",
+      "loadFailed": "Benachrichtigungen konnten nicht geladen werden."
+    }
   },
   "categories": {
     "title": "Kategorien",
@@ -80,6 +96,44 @@
     "providersCount": "{count, plural, one {# Anbieter} other {# Anbieter}}",
     "categoriesUnavailable": "Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
   },
+  "findProviders": {
+    "title": "Dienstleister finden",
+    "subtitle": "Suchen Sie verifizierte Dienstleister und filtern Sie nach Bedarf.",
+    "loading": "Dienstleister werden geladen...",
+    "loadError": "Dienstleister konnten nicht geladen werden.",
+    "noProviders": "Keine Dienstleister entsprechen den Filtern.",
+    "priceOnRequest": "Preis auf Anfrage",
+    "cityUnknown": "Stadt nicht angegeben",
+    "viewProfile": "Profil ansehen",
+    "filters": {
+      "title": "Filter",
+      "category": "Kategorie",
+      "allCategories": "Alle Kategorien",
+      "minRating": "Mindestbewertung",
+      "allRatings": "Alle Bewertungen",
+      "city": "Stadt",
+      "cityPlaceholder": "z.B. Berlin",
+      "priceMin": "Mindestpreis (€)",
+      "priceMax": "Maximalpreis (€)"
+    }
+  },
+  "requestsPage": {
+    "title": "Offene Anfragen",
+    "subtitle": "Durchsuchen Sie Kundenanzeigen wie Dienstleister.",
+    "loading": "Anfragen werden geladen...",
+    "loadError": "Anfragen konnten nicht geladen werden.",
+    "noRequests": "Keine offenen Anfragen gefunden.",
+    "filters": {
+      "all": "Alle",
+      "cleaning": "Reinigung",
+      "renovation": "Renovierung",
+      "garden": "Garten"
+    },
+    "postedAt": "Vor {time} erstellt",
+    "flexible": "Flexibel",
+    "memberSince": "Mitglied seit {year}",
+    "budgetUpTo": "bis zu €{value}"
+  },
   "homePage": {
     "categoryCardDescription": "Finden Sie geprüfte Anbieter für {name}.",
     "categoriesUnavailable": "Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
@@ -125,7 +179,7 @@
     "next": "Weiter"
   },
   "providerPublicProfile": {
-    "requestQuote": "Angebot anfordern",
+    "requestQuote": "Angebot senden",
     "visitWebsite": "Webseite besuchen",
     "about": "Über den Anbieter",
     "highlights": "Highlights",
@@ -167,6 +221,38 @@
       "friday": "Freitag",
       "saturday": "Samstag",
       "sunday": "Sonntag"
+    },
+    "offerModal": {
+      "trigger": "Angebot senden",
+      "title": "Angebot senden",
+      "subtitle": "Teilen Sie Ihre Anfrage mit diesem Dienstleister.",
+      "close": "Schließen",
+      "cancel": "Abbrechen",
+      "submit": "Angebot senden",
+      "sending": "Wird gesendet...",
+      "done": "Fertig",
+      "goToRequests": "Zu meinen Anfragen",
+      "submitSuccess": "Ihre Anfrage wurde erfolgreich gesendet.",
+      "submitError": "Ihre Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+      "missingCategory": "Dieser Dienstleister hat noch keine Dienstleistungskategorie.",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "z.B. Anfrage für Wohnungsreinigung",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Beschreiben Sie Ihr Anliegen im Detail.",
+      "postalCodeLabel": "Postleitzahl",
+      "postalCodePlaceholder": "z.B. 10115",
+      "cityLabel": "Stadt",
+      "cityPlaceholder": "z.B. Berlin",
+      "budgetMinLabel": "Budget min (€)",
+      "budgetMaxLabel": "Budget max (€)",
+      "contactingProvider": "Sie kontaktieren diesen Dienstleister",
+      "sectionDetails": "Anfragedetails",
+      "sectionLocation": "Standort",
+      "sectionBudget": "Budget",
+      "descriptionHint": "Bitte geben Sie Umfang, Menge und wichtige Anforderungen an (mindestens 20 Zeichen).",
+      "budgetHint": "Optional. Wenn beide Werte gesetzt sind, muss das Mindestbudget kleiner oder gleich dem Maximalbudget sein.",
+      "descriptionTooShort": "Bitte schreiben Sie mindestens 20 Zeichen in die Beschreibung.",
+      "budgetRangeError": "Das Mindestbudget darf nicht höher als das Maximalbudget sein."
     }
   },
   "createRequest": {
@@ -175,6 +261,10 @@
     "step3": "Überprüfen",
     "whatDoYouNeed": "Was brauchen Sie?",
     "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",
+    "selectSector": "Hauptbereich waehlen",
+    "selectBranch": "Dienstleistungsbereich waehlen",
+    "branchSearchPlaceholder": "Dienstleistungsbereich suchen",
+    "noBranchMatch": "Kein passender Dienstleistungsbereich gefunden.",
     "loadingCategories": "Kategorien werden geladen...",
     "categoriesUnavailable": "Kategorien sind vorübergehend nicht verfügbar. Bitte versuchen Sie es in Kürze erneut.",
     "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
@@ -187,8 +277,17 @@
     "postalCodePlaceholder": "z.B. 10115",
     "city": "Stadt",
     "cityPlaceholder": "z.B. Berlin",
-    "preferredDate": "Wunschtermin",
+    "preferredDays": "Bevorzugte Tage",
     "preferredTime": "Bevorzugte Uhrzeit",
+    "days": {
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag",
+      "sunday": "Sonntag"
+    },
     "flexible": "Flexibel",
     "morning": "Morgens (8-12)",
     "afternoon": "Nachmittags (12-17)",
@@ -452,7 +551,8 @@
         "all": "Alle",
         "active": "Aktiv",
         "booked": "Gebucht",
-        "completed": "Abgeschlossen"
+        "completed": "Abgeschlossen",
+        "cancelled": "Abgebrochen"
       },
       "status": {
         "active": "Aktiv",
@@ -471,6 +571,11 @@
       "bookingPending": "Buchungsdetails stehen noch aus",
       "completedOn": "Abgeschlossen am",
       "rate": "Bewerten",
+      "delete": "Loeschen",
+      "deleting": "Wird geloescht...",
+      "deleteConfirm": "Moechten Sie diese Anfrage wirklich loeschen?",
+      "deleteSuccess": "Anfrage erfolgreich geloescht.",
+      "deleteError": "Anfrage konnte nicht geloescht werden.",
       "noRequests": "Keine Anfragen gefunden",
       "noRequestsHint": "Erstellen Sie eine neue Anfrage, um Angebote zu erhalten",
       "createRequest": "Anfrage erstellen",
@@ -545,8 +650,10 @@
       },
       "status": {
         "pending": "Ausstehend",
+        "booked": "Gebucht",
         "confirmed": "Bestätigt",
         "in_progress": "In Arbeit",
+        "completion_pending": "Wartet auf Ihre Bestätigung",
         "completed": "Abgeschlossen",
         "cancelled": "Storniert"
       },
@@ -632,9 +739,12 @@
         "cancelBooking": "Buchung stornieren",
         "reviewTitle": "Bewertung abgeben",
         "reviewHint": "Teilen Sie nach Abschluss mit, wie die Dienstleistung gelaufen ist.",
+        "reviewAvailableAt": "Bewerten ist erst nach {datetime} möglich.",
         "rating": "Bewertung",
         "comment": "Kommentar",
         "commentPlaceholder": "Erzählen Sie anderen, was gut lief und was besser sein könnte.",
+        "reviewImagesLabel": "Fotos hinzufügen (optional)",
+        "reviewImagesSelected": "{count} Foto(s) ausgewählt",
         "submittingReview": "Bewertung wird gesendet...",
         "submitReview": "Bewertung senden",
         "yourReview": "Ihre Bewertung",
@@ -644,9 +754,15 @@
           "pending": "Wartet auf die Bestätigung des Dienstleisters.",
           "confirmed": "Ihre Buchung ist bestätigt.",
           "in_progress": "Die Dienstleistung wird gerade ausgeführt.",
+          "completion_pending": "Der Dienstleister hat den Auftrag als erledigt markiert. Bitte prüfen und bestätigen.",
           "completed": "Diese Buchung ist abgeschlossen.",
           "cancelled": "Diese Buchung wurde storniert."
-        }
+        },
+        "confirmCompletionTitle": "Abschluss bestätigen",
+        "confirmCompletionHint": "Ihr Dienstleister hat den Auftrag als erledigt gemeldet. Bestätigen Sie, um die Buchung abzuschließen.",
+        "confirmCompletion": "Auftrag als abgeschlossen bestätigen",
+        "confirmCompletionSuccess": "Buchung als abgeschlossen markiert.",
+        "confirmCompletionError": "Abschluss konnte nicht bestätigt werden."
       }
     },
     "messages": {
@@ -672,27 +788,35 @@
       "title": "Übersicht",
       "welcomeBack": "Willkommen zurück, {name}! 👋",
       "activityOverview": "Hier ist eine Übersicht Ihrer aktuellen Aktivitäten.",
-      "noRequests": "Keine neuen Anfragen.",
+      "noRequests": "Keine neuen Anzeigen.",
       "noAppointments": "Keine anstehenden Termine.",
+      "noPendingOffers": "Keine ausstehenden Angebote.",
+      "pendingOfferValidUntil": "Gueltig bis {date}",
+      "pendingOffersUntitled": "Anzeige ohne Titel",
+      "pendingOffersUnknownCustomer": "Unbekannter Kunde",
       "loading": "Lädt...",
       "stats": {
-        "newRequests": "Neue Anfragen",
+        "newRequests": "Neue Anzeigen",
         "activeOrders": "Aktive Aufträge",
         "completed": "Abgeschlossen",
         "rating": "Bewertung"
       },
       "sections": {
-        "newRequests": "Neue Anfragen",
+        "newRequests": "Neue Anzeigen",
         "upcomingAppointments": "Anstehende Termine",
+        "pendingOffers": "Ausstehende Angebote",
         "quickActions": "Schnellaktionen"
       },
       "viewAll": "Alle ansehen",
       "calendar": "Kalender",
       "allOrders": "Alle Aufträge ansehen",
+      "createRequest": "Anzeige aufgeben",
       "sendOffer": "Angebot senden",
       "status": {
         "confirmed": "Bestätigt",
-        "pending": "Ausstehend"
+        "pending": "Ausstehend",
+        "in_progress": "In Arbeit",
+        "completion_pending": "Wartet auf Kundenbestätigung"
       },
       "quickActionButtons": {
         "editProfile": "Profil bearbeiten",
@@ -702,7 +826,9 @@
       },
       "navigation": {
         "overview": "Übersicht",
-        "requests": "Anfragen",
+        "requests": "Anzeigen",
+        "offers": "Anfragen",
+        "pendingOffers": "Ausstehende Angebote",
         "orders": "Aufträge",
         "calendar": "Kalender",
         "messages": "Nachrichten",
@@ -723,17 +849,20 @@
       }
     },
     "requests": {
-      "title": "Offene Anfragen",
-      "subtitle": "{count} Anfragen in Ihrem Servicegebiet",
+      "title": "Offene Anzeigen",
+      "subtitle": "{count} Anzeigen in Ihrem Servicegebiet",
       "loading": "Wird geladen...",
-      "loadError": "Anfragen konnten nicht geladen werden",
-      "noRequests": "Keine Anfragen gefunden",
+      "loadError": "Anzeigen konnten nicht geladen werden",
+      "noRequests": "Keine Anzeigen gefunden",
       "filters": {
         "all": "Alle",
         "cleaning": "Reinigung",
         "renovation": "Renovierung",
-        "garden": "Garten"
+        "garden": "Garten",
+        "searchLabel": "Suche",
+        "searchPlaceholder": "Titel, Beschreibung, Ort..."
       },
+      "flexible": "Flexibel",
       "postedAt": "Vor {time}",
       "memberSince": "Mitglied seit {year}",
       "sendOffer": "Angebot senden",
@@ -756,6 +885,9 @@
         "tip4": "Stellen Sie Rückfragen wenn nötig"
       },
       "acceptanceRate": "Ihrer Angebote wurden bisher angenommen"
+    },
+    "placeholders": {
+      "comingSoon": "Dieser Bereich wird bald verfuegbar sein."
     },
     "profile": {
       "title": "Profil bearbeiten",
@@ -809,8 +941,30 @@
       "oclock": "Uhr",
       "status": {
         "confirmed": "Bestätigt",
-        "pending": "Ausstehend"
+        "pending": "Ausstehend",
+        "in_progress": "In Arbeit",
+        "completion_pending": "Wartet auf Bestätigung",
+        "completed": "Abgeschlossen"
       }
+    },
+    "orders": {
+      "tabs": {
+        "active": "Aktive Jobs",
+        "completed": "Abgeschlossen"
+      },
+      "status": {
+        "pending": "Ausstehend",
+        "booked": "Gebucht",
+        "completed": "Abgeschlossen",
+        "cancelled": "Storniert"
+      },
+      "loading": "Aufträge werden geladen...",
+      "empty": "In diesem Bereich wurden keine Aufträge gefunden.",
+      "selectOrder": "Wählen Sie einen Auftrag, um Details zu sehen.",
+      "markCompleted": "Als erledigt markieren",
+      "completing": "Wird gesendet...",
+      "awaitingCustomer": "Abschlussanfrage an den Kunden gesendet. Warte auf Bestätigung.",
+      "completeError": "Auftragsstatus konnte nicht aktualisiert werden."
     },
     "reviews": {
       "title": "Meine Bewertungen",
@@ -822,9 +976,13 @@
       "yourReply": "Ihre Antwort",
       "reply": "Antworten",
       "replyPlaceholder": "Schreiben Sie Ihre Antwort...",
+      "imagesSelected": "{count} Bild(er) ausgewählt",
       "send": "Senden",
       "cancel": "Abbrechen",
-      "ratingBreakdown": "Bewertungsübersicht"
+      "ratingBreakdown": "Bewertungsübersicht",
+      "reviewedJob": "Bewerteter Auftrag",
+      "customerComment": "Kundenkommentar",
+      "noComment": "Kein geschriebener Kommentar."
     },
     "messages": {
       "title": "Nachrichten",
@@ -842,17 +1000,85 @@
       "send": "Senden",
       "sending": "Wird gesendet...",
       "selectConversation": "Wählen Sie eine Konversation aus der Liste"
+    },
+    "offers": {
+      "title": "Anfragen",
+      "subtitle": "{count} Anfragen insgesamt",
+      "loading": "Anfragen werden geladen...",
+      "loadError": "Anfragen konnten nicht geladen werden",
+      "sectorUnknown": "Unbekannter Bereich",
+      "incomingTitle": "Anfragen von Kunden",
+      "sentTitle": "Gesendete Anfragen",
+      "noIncoming": "Noch keine Kundenanfragen.",
+      "noSent": "Sie haben noch keine Anfragen gesendet.",
+      "noIncomingFiltered": "Keine Kundenanfragen entsprechen den Filtern.",
+      "noSentFiltered": "Keine gesendeten Anfragen entsprechen den Filtern.",
+      "untitledRequest": "Anzeige ohne Titel",
+      "unknownCustomer": "Unbekannter Kunde",
+      "fromCustomer": "Von: {name}",
+      "toCustomer": "An: {name}",
+      "validUntil": "Gültig bis {date}",
+      "filters": {
+        "title": "Anfragen filtern",
+        "sector": "Bereich",
+        "allSectors": "Alle Bereiche",
+        "date": "Datum",
+        "dateAll": "Alle Zeiträume",
+        "dateToday": "Heute",
+        "dateLast7": "Letzte 7 Tage",
+        "dateThisMonth": "Dieser Monat",
+        "priceMin": "Mindestpreis (€)",
+        "priceMax": "Maximalpreis (€)",
+        "sortBy": "Sortierung",
+        "sortNewest": "Neueste zuerst",
+        "sortOldest": "Älteste zuerst",
+        "sortPriceAsc": "Preis aufsteigend",
+        "sortPriceDesc": "Preis absteigend"
+      },
+      "status": {
+        "pending": "Ausstehend",
+        "accepted": "Angenommen",
+        "rejected": "Abgelehnt",
+        "expired": "Abgelaufen"
+      }
+    },
+    "requestDetail": {
+      "title": "Anfragedetails",
+      "loading": "Anfragedetails werden geladen...",
+      "loadError": "Anfragedetails konnten nicht geladen werden",
+      "notFound": "Anfrage wurde nicht gefunden.",
+      "detailsTitle": "Details",
+      "category": "Kategorie",
+      "status": "Status",
+      "location": "Ort",
+      "address": "Adresse",
+      "budget": "Budget",
+      "budgetFlexible": "Flexibel",
+      "createdAt": "Erstellt am",
+      "preferredDate": "Wunschtermin",
+      "notSpecified": "Nicht angegeben",
+      "quotes": "Angebote"
     }
   },
   "providerOnboarding": {
-    "title": "Anbieter-Onboarding",
-    "subtitle": "Schließen Sie wenige Schritte ab, um Ihr Anbieterprofil einzurichten.",
+    "title": "Dienstleister-Profil erstellen",
+    "subtitle": "Wählen Sie Ihre Dienstleistungen und vervollständigen Sie Ihr Profil.",
     "steps": {
-      "category": "Service-Kategorie",
+      "category": "Dienstleistungen",
       "name": "Name",
       "address": "Adresse",
       "contact": "Telefon & E-Mail",
-      "profile": "Anbieterprofil"
+      "profile": "Profil-Details"
+    },
+    "serviceSelection": {
+      "title": "Welche Dienstleistung bieten Sie an?",
+      "subtitle": "Wählen Sie zuerst Ihre Hauptdienstleistung. Weitere können Sie unten hinzufügen.",
+      "searchLabel": "Dienstleistung suchen",
+      "searchPlaceholder": "Nach Dienstleistungsname suchen",
+      "mainService": "Hauptdienstleistung",
+      "additionalServices": "Weitere Dienstleistungen",
+      "additionalServicesHint": "Mit weiteren Dienstleistungen erhalten Sie mehr passende Aufträge.",
+      "noMatch": "Kein passender Dienstleistungsbereich gefunden."
     },
     "labels": {
       "serviceCategories": "Service-Kategorien",

@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { resolveRequestTaxonomy } from "../../common/request-taxonomy";
 import {
   CreateProviderDto,
   UpdateProviderDto,
@@ -17,6 +18,15 @@ import {
 export class ProvidersService {
   constructor(private prisma: PrismaService) {}
 
+  private sanitizeStringArray(values?: string[]) {
+    if (!values?.length) return [];
+
+    return values
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+
   private getDefaultOpeningHours() {
     return [
       { day: "monday", closed: false, open: "08:00", close: "18:00" },
@@ -27,15 +37,6 @@ export class ProvidersService {
       { day: "saturday", closed: true },
       { day: "sunday", closed: true },
     ];
-  }
-
-  private sanitizeStringArray(values?: string[]) {
-    if (!values?.length) return [];
-
-    return values
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .slice(0, 20);
   }
 
   private normalizeOpeningHours(openingHours?: ProviderOpeningHourDto[]) {
@@ -793,6 +794,8 @@ export class ProvidersService {
           rating: review.rating,
           comment: review.comment,
           providerReply: review.providerReply,
+          images: review.images,
+          providerReplyImages: review.providerReplyImages,
           createdAt: review.createdAt,
           reviewer: {
             name: `${review.reviewer.firstName} ${review.reviewer.lastName}`.trim(),
@@ -845,7 +848,9 @@ export class ProvidersService {
       this.prisma.booking.count({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress"] },
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
         },
       }),
       this.prisma.booking.count({
@@ -903,16 +908,15 @@ export class ProvidersService {
         where: {
           status: "open",
           categoryId: { in: categoryIds },
-          quotes: {
-            none: { providerId: provider.id }, // Exclude requests already quoted by me
-          },
         },
       }),
       // Active Orders
       this.prisma.booking.count({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress"] },
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
         },
       }),
       // Completed Orders
@@ -927,9 +931,6 @@ export class ProvidersService {
         where: {
           status: "open",
           categoryId: { in: categoryIds },
-          quotes: {
-            none: { providerId: provider.id },
-          },
         },
         orderBy: { createdAt: "desc" },
         take: 3,
@@ -941,7 +942,9 @@ export class ProvidersService {
       this.prisma.booking.findMany({
         where: {
           providerId: provider.id,
-          status: { in: ["pending", "confirmed", "in_progress"] },
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
         },
         orderBy: { scheduledDate: "asc" },
         take: 3,
@@ -960,6 +963,39 @@ export class ProvidersService {
       }),
     ]);
 
+    const openRecentRequests = recentRequests.map((req) => ({
+      id: req.id,
+      title: req.title,
+      category: req.category.nameEn, // Or nameDe based on locale, but using EN for now
+      location: `${req.postalCode} ${req.city}`,
+      date: req.createdAt,
+      budget:
+        req.budgetMin && req.budgetMax
+          ? `${req.budgetMin}-${req.budgetMax}€`
+          : "Custom",
+      sortDate: req.createdAt,
+    }));
+
+    const dashboardRecentRequests = [...openRecentRequests]
+      .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
+      .slice(0, 3)
+      .map(({ sortDate: _sortDate, ...item }) => item);
+
+    const bookingAppointments = activeBookings.map((booking) => ({
+      id: booking.id,
+      customer: `${booking.customer.firstName} ${booking.customer.lastName}`,
+      service: booking.quote.request.category.nameEn,
+      date: booking.scheduledDate,
+      time: booking.scheduledDate, // Frontend will format this
+      status: booking.status,
+      sortDate: booking.scheduledDate,
+    }));
+
+    const dashboardAppointments = [...bookingAppointments]
+      .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
+      .slice(0, 3)
+      .map(({ sortDate: _sortDate, ...item }) => item);
+
     return {
       stats: {
         newRequests: newRequestsCount,
@@ -967,25 +1003,8 @@ export class ProvidersService {
         completed: completedCount,
         rating: provider.ratingAvg,
       },
-      recentRequests: recentRequests.map((req) => ({
-        id: req.id,
-        title: req.title,
-        category: req.category.nameEn, // Or nameDe based on locale, but using EN for now
-        location: `${req.postalCode} ${req.city}`,
-        date: req.createdAt,
-        budget:
-          req.budgetMin && req.budgetMax
-            ? `${req.budgetMin}-${req.budgetMax}€`
-            : "Custom",
-      })),
-      activeBookings: activeBookings.map((booking) => ({
-        id: booking.id,
-        customer: `${booking.customer.firstName} ${booking.customer.lastName}`,
-        service: booking.quote.request.category.nameEn,
-        date: booking.scheduledDate,
-        time: booking.scheduledDate, // Frontend will format this
-        status: booking.status,
-      })),
+      recentRequests: dashboardRecentRequests,
+      activeBookings: dashboardAppointments,
     };
   }
 
@@ -1033,25 +1052,45 @@ export class ProvidersService {
       throw new NotFoundException("Provider not found");
     }
 
-    let categoryIds = provider.services.map((s) => s.categoryId);
-
-    // Filter by specific category if provided
-    if (category) {
-      const cat = await this.prisma.category.findUnique({
-        where: { slug: category },
-      });
-      if (cat && categoryIds.includes(cat.id)) {
-        categoryIds = [cat.id];
-      }
+    const categoryIds = provider.services.map((service) => service.categoryId);
+    if (categoryIds.length === 0) {
+      return {
+        data: [],
+        meta: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        },
+      };
     }
 
     const where: any = {
       status: "open",
       categoryId: { in: categoryIds },
-      quotes: {
-        none: { providerId: provider.id },
-      },
     };
+
+    // Optional category filter, constrained to the provider's active service categories.
+    if (category) {
+      const cat = await this.prisma.category.findUnique({
+        where: { slug: category },
+      });
+      if (!cat || !categoryIds.includes(cat.id)) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+        };
+      }
+
+      if (cat) {
+        where.categoryId = cat.id;
+      }
+    }
 
     const [requests, total] = await Promise.all([
       this.prisma.serviceRequest.findMany({
@@ -1061,6 +1100,15 @@ export class ProvidersService {
         orderBy: { createdAt: "desc" },
         include: {
           category: true,
+          quotes: {
+            where: { providerId: provider.id },
+            select: {
+              id: true,
+              status: true,
+              createdAt: true,
+            },
+            take: 1,
+          },
           customer: {
             select: {
               id: true,
@@ -1075,29 +1123,51 @@ export class ProvidersService {
     ]);
 
     return {
-      data: requests.map((req) => ({
-        id: req.id,
-        title: req.title,
-        category: req.category.slug,
-        categoryName: req.category.nameEn,
-        description: req.description,
-        location: `${req.postalCode} ${req.city}`,
-        address: req.address,
-        preferredDate: req.preferredDate,
-        budget:
-          req.budgetMin && req.budgetMax
-            ? `${req.budgetMin}-${req.budgetMax}€`
-            : null,
-        budgetMin: req.budgetMin,
-        budgetMax: req.budgetMax,
-        createdAt: req.createdAt,
-        customer: {
-          name: `${req.customer.firstName} ${req.customer.lastName.charAt(0)}.`,
-          memberSince: new Date(req.customer.createdAt)
-            .getFullYear()
-            .toString(),
-        },
-      })),
+      data: requests.map((req) => {
+        const requestWithTaxonomy = req as typeof req & {
+          requestSector?: string | null;
+          requestBranch?: string | null;
+        };
+        const taxonomy = resolveRequestTaxonomy({
+          requestSector: requestWithTaxonomy.requestSector,
+          requestBranch: requestWithTaxonomy.requestBranch,
+          categorySlug: req.category.slug,
+        });
+        const myQuote = req.quotes?.[0] || null;
+
+        return {
+          id: req.id,
+          title: req.title,
+          category: req.category.slug,
+          categoryName: req.category.nameEn,
+          requestSector: taxonomy.sectorId,
+          requestSectorNameEn: taxonomy.sectorNameEn,
+          requestSectorNameDe: taxonomy.sectorNameDe,
+          requestBranch: taxonomy.branchId,
+          requestBranchNameEn: taxonomy.branchNameEn,
+          requestBranchNameDe: taxonomy.branchNameDe,
+          offerId: myQuote?.id || null,
+          offerStatus: myQuote?.status || null,
+          offeredAt: myQuote?.createdAt || null,
+          description: req.description,
+          location: `${req.postalCode} ${req.city}`,
+          address: req.address,
+          preferredDate: req.preferredDate,
+          budget:
+            req.budgetMin && req.budgetMax
+              ? `${req.budgetMin}-${req.budgetMax}€`
+              : null,
+          budgetMin: req.budgetMin,
+          budgetMax: req.budgetMax,
+          createdAt: req.createdAt,
+          customer: {
+            name: `${req.customer.firstName} ${req.customer.lastName.charAt(0)}.`,
+            memberSince: new Date(req.customer.createdAt)
+              .getFullYear()
+              .toString(),
+          },
+        };
+      }),
       meta: {
         total,
         page,
@@ -1213,7 +1283,10 @@ export class ProvidersService {
               quote: {
                 include: {
                   request: {
-                    select: { title: true },
+                    select: {
+                      id: true,
+                      title: true,
+                    },
                   },
                 },
               },
@@ -1242,8 +1315,16 @@ export class ProvidersService {
         rating: review.rating,
         date: review.createdAt,
         service: review.booking.quote.request.title,
+        job: {
+          bookingId: review.bookingId,
+          requestId: review.booking.quote.request.id,
+          title: review.booking.quote.request.title,
+        },
+        customerComment: review.comment,
         comment: review.comment,
         reply: review.providerReply,
+        images: review.images,
+        replyImages: review.providerReplyImages,
       })),
       stats: {
         average: provider.ratingAvg,
@@ -1259,7 +1340,12 @@ export class ProvidersService {
     };
   }
 
-  async replyToReview(userId: string, reviewId: string, reply: string) {
+  async replyToReview(
+    userId: string,
+    reviewId: string,
+    reply: string,
+    replyImages?: string[],
+  ) {
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
     });
@@ -1282,7 +1368,10 @@ export class ProvidersService {
 
     return this.prisma.review.update({
       where: { id: reviewId },
-      data: { providerReply: reply },
+      data: {
+        providerReply: reply,
+        providerReplyImages: this.sanitizeStringArray(replyImages).slice(0, 10),
+      },
     });
   }
 }

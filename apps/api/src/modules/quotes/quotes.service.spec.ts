@@ -28,12 +28,15 @@ describe("QuotesService", () => {
     },
     $transaction: jest.fn(),
   };
+  const notificationsService = {
+    create: jest.fn(),
+  };
 
   let service: QuotesService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new QuotesService(prisma as any);
+    service = new QuotesService(prisma as any, notificationsService as any);
   });
 
   describe("create", () => {

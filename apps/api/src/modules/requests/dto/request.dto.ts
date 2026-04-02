@@ -18,6 +18,14 @@ export class CreateRequestDto {
   @IsString()
   categoryId: string;
 
+  @IsOptional()
+  @IsString()
+  requestSector?: string;
+
+  @IsOptional()
+  @IsString()
+  requestBranch?: string;
+
   @IsString()
   title: string;
 
@@ -58,6 +66,14 @@ export class CreateRequestDto {
 }
 
 export class UpdateRequestDto {
+  @IsOptional()
+  @IsString()
+  requestSector?: string;
+
+  @IsOptional()
+  @IsString()
+  requestBranch?: string;
+
   @IsOptional()
   @IsString()
   title?: string;

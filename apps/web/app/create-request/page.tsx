@@ -10,6 +10,7 @@ import {
   FormLabel,
   FormSelect,
   FormTextarea,
+  Header,
   LanguageToggle,
 } from "@/components";
 import { useAuth } from "@/contexts";
@@ -22,6 +23,14 @@ import {
   isApiUnavailableError,
   type Category,
 } from "@/lib/api";
+import {
+  REQUEST_BRANCHES,
+  REQUEST_SECTORS,
+  type RequestBranch,
+  getBranchLabel,
+  getCategoryDisplayName,
+  getSectorLabel,
+} from "@/lib/request-taxonomy";
 
 export default function CreateRequestPage() {
   const t = useTranslations();
@@ -35,6 +44,9 @@ export default function CreateRequestPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [selectedSectorId, setSelectedSectorId] = useState<string | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [branchSearch, setBranchSearch] = useState("");
   const [formData, setFormData] = useState({
     category: initialCategory,
     title: "",
@@ -42,7 +54,7 @@ export default function CreateRequestPage() {
     postalCode: "",
     city: "",
     address: "",
-    preferredDate: "",
+    preferredDays: [] as string[],
     preferredTime: "",
     budgetMin: "",
     budgetMax: "",
@@ -50,8 +62,33 @@ export default function CreateRequestPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const weekdayKeys = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ] as const;
+
+  const availableCategorySlugs = new Set(categories.map((item) => item.slug));
+  const visibleBranches = REQUEST_BRANCHES.filter(
+    (branch) =>
+      branch.sectorId === selectedSectorId &&
+      availableCategorySlugs.has(branch.categorySlug) &&
+      (!branchSearch.trim() ||
+        getBranchLabel(branch).toLowerCase().includes(branchSearch.trim().toLowerCase())),
+  );
+
   const isProviderUser =
     !authLoading && isAuthenticated && user?.userType === "provider";
+
+  useEffect(() => {
+    if (isProviderUser) {
+      router.replace("/dashboard");
+    }
+  }, [isProviderUser, router]);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -72,25 +109,60 @@ export default function CreateRequestPage() {
     loadCategories();
   }, [t]);
 
-  const getCategoryDisplayName = (category: Category) => {
-    const localizedApiName = locale === "de" ? category.nameDe : category.nameEn;
-    const alternateApiName = locale === "de" ? category.nameEn : category.nameDe;
+  useEffect(() => {
+    if (!categories.length || !formData.category) return;
 
-    if (localizedApiName?.trim()) return localizedApiName;
-    if (alternateApiName?.trim()) return alternateApiName;
+    const selectedCategory = categories.find(
+      (cat) => cat.id === formData.category || cat.slug === formData.category,
+    );
+    if (!selectedCategory) return;
 
-    return t(`categories.${category.slug}.name`);
-  };
+    if (selectedCategory.id !== formData.category) {
+      setFormData((prev) => ({ ...prev, category: selectedCategory.id }));
+    }
+
+    const mappedBranch = REQUEST_BRANCHES.find(
+      (branch) => branch.categorySlug === selectedCategory.slug,
+    );
+    if (!mappedBranch) return;
+
+    setSelectedSectorId(mappedBranch.sectorId);
+    setSelectedBranchId(mappedBranch.id);
+  }, [categories, formData.category]);
 
   const getCategoryLabel = (categoryId: string) => {
     const selected = categories.find((cat) => cat.id === categoryId || cat.slug === categoryId);
     if (!selected) return categoryId;
-    return getCategoryDisplayName(selected);
+    return getCategoryDisplayName(selected, locale);
+  };
+  const selectedBranch = selectedBranchId
+    ? REQUEST_BRANCHES.find((branch) => branch.id === selectedBranchId) || null
+    : null;
+
+  const handleSectorSelect = (sectorId: string) => {
+    setSelectedSectorId(sectorId);
+    setSelectedBranchId(null);
+    setBranchSearch("");
+    setFormData((prev) => ({ ...prev, category: "" }));
+  };
+
+  const handleBranchSelect = (branch: RequestBranch) => {
+    const category = categories.find((cat) => cat.slug === branch.categorySlug);
+    if (!category) return;
+
+    setSelectedBranchId(branch.id);
+    setFormData((prev) => ({ ...prev, category: category.id }));
+    nextStep();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (user?.userType === "provider") {
+      router.replace("/dashboard");
+      return;
+    }
 
     // Check if user is authenticated
     if (!isAuthenticated) {
@@ -124,16 +196,22 @@ export default function CreateRequestPage() {
       const requestData: CreateRequestData = {
         categoryId: formData.category,
         title: formData.title,
-        description: formData.description,
+        description:
+          formData.preferredDays.length > 0
+            ? `${formData.description}\n\nPreferred days: ${formData.preferredDays
+                .map((day) => t(`createRequest.days.${day}`))
+                .join(", ")}`
+            : formData.description,
         address: formData.address || `${formData.postalCode} ${formData.city}`,
         city: formData.city,
         postalCode: formData.postalCode,
         lat: 0, // Would normally come from geocoding
         lng: 0, // Would normally come from geocoding
-        preferredDate: formData.preferredDate || undefined,
         budgetMin: formData.budgetMin ? parseFloat(formData.budgetMin) : undefined,
         budgetMax: formData.budgetMax ? parseFloat(formData.budgetMax) : undefined,
         images: imageUrls,
+        requestSector: selectedSectorId || undefined,
+        requestBranch: selectedBranchId || undefined,
       };
 
       await requestsApi.create(requestData, token);
@@ -152,6 +230,10 @@ export default function CreateRequestPage() {
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
+
+  if (authLoading) {
+    return null;
+  }
 
   if (isProviderUser) {
     return (
@@ -184,17 +266,7 @@ export default function CreateRequestPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Germany</span>
-            </Link>
-            <LanguageToggle />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Progress Bar */}
       <div className="border-b bg-white">
@@ -250,25 +322,64 @@ export default function CreateRequestPage() {
               ) : categoriesError ? (
                 <AlertBanner>{categoriesError}</AlertBanner>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, category: cat.id });
-                        nextStep();
-                      }}
-                      className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition hover:border-primary ${
-                        formData.category === cat.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border"
-                      }`}
-                    >
-                      <span className="text-2xl">{cat.icon}</span>
-                      <span className="font-medium">{getCategoryDisplayName(cat)}</span>
-                    </button>
-                  ))}
+                <div className="space-y-5">
+                  <div>
+                    <FormLabel size="base">{t("createRequest.selectSector")}</FormLabel>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {REQUEST_SECTORS.map((sector) => {
+                        const selected = selectedSectorId === sector.id;
+                        return (
+                          <button
+                            key={sector.id}
+                            type="button"
+                            onClick={() => handleSectorSelect(sector.id)}
+                            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                              selected
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border hover:border-primary"
+                            }`}
+                          >
+                            <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${sector.colorClass}`} />
+                            {getSectorLabel(sector, locale)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {selectedSectorId && (
+                    <div>
+                      <FormLabel size="base">{t("createRequest.selectBranch")}</FormLabel>
+                      <FormInput
+                        type="text"
+                        value={branchSearch}
+                        onChange={(e) => setBranchSearch(e.target.value)}
+                        placeholder={t("createRequest.branchSearchPlaceholder")}
+                        accent="primary"
+                      />
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {visibleBranches.map((branch) => (
+                          <button
+                            key={branch.id}
+                            type="button"
+                            onClick={() => handleBranchSelect(branch)}
+                            className={`rounded-lg border-2 p-3 text-left transition hover:border-primary ${
+                              selectedBranchId === branch.id
+                                ? "border-primary bg-primary/5"
+                                : "border-border"
+                            }`}
+                          >
+                            <span className="font-medium">{getBranchLabel(branch, locale)}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {visibleBranches.length === 0 && (
+                        <p className="mt-2 text-sm text-muted">
+                          {t("createRequest.noBranchMatch")}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -344,18 +455,33 @@ export default function CreateRequestPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <FormLabel size="base">{t("createRequest.preferredDate")}</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={formData.preferredDate}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          preferredDate: e.target.value,
-                        })
-                      }
-                      accent="primary"
-                    />
+                    <FormLabel size="base">{t("createRequest.preferredDays")}</FormLabel>
+                    <div className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3">
+                      {weekdayKeys.map((day) => {
+                        const selected = formData.preferredDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                preferredDays: selected
+                                  ? prev.preferredDays.filter((d) => d !== day)
+                                  : [...prev.preferredDays, day],
+                              }))
+                            }
+                            className={`rounded-md px-2 py-1 text-left text-sm ${
+                              selected
+                                ? "bg-primary text-white"
+                                : "bg-background text-foreground hover:bg-primary/10"
+                            }`}
+                          >
+                            {t(`createRequest.days.${day}`)}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div>
                     <FormLabel size="base">{t("createRequest.preferredTime")}</FormLabel>
@@ -490,6 +616,11 @@ export default function CreateRequestPage() {
                     {categories.find((c) => c.id === formData.category)?.icon}{" "}
                     {getCategoryLabel(formData.category)}
                   </div>
+                  {selectedBranchId && (
+                    <div className="mt-1 text-sm text-muted">
+                      {selectedBranch ? getBranchLabel(selectedBranch, locale) : ""}
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-lg bg-background p-4">
@@ -512,7 +643,11 @@ export default function CreateRequestPage() {
                   <div className="rounded-lg bg-background p-4">
                     <div className="mb-1 text-sm text-muted">{t("createRequest.appointmentLabel")}</div>
                     <div className="font-medium">
-                      {formData.preferredDate || t("createRequest.flexible")}
+                      {formData.preferredDays.length
+                        ? formData.preferredDays
+                            .map((day) => t(`createRequest.days.${day}`))
+                            .join(", ")
+                        : t("createRequest.flexible")}
                       {formData.preferredTime
                         ? `, ${t(`createRequest.${formData.preferredTime}`)}`
                         : ""}

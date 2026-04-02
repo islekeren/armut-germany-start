@@ -17,12 +17,15 @@ describe("RequestsService", () => {
       findUnique: jest.fn(),
     },
   };
+  const notificationsService = {
+    create: jest.fn(),
+  };
 
   let service: RequestsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new RequestsService(prisma as any);
+    service = new RequestsService(prisma as any, notificationsService as any);
   });
 
   describe("create", () => {

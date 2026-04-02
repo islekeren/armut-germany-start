@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { Header } from "@/components/Header";
 import { PageContainer } from "@/components/ui/PageContainer";
 
 interface ProviderSubpageShellProps {
@@ -21,19 +22,7 @@ export function ProviderSubpageShell({
 }: ProviderSubpageShellProps) {
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white shadow-sm">
-        <PageContainer className="py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
-              <span className="text-sm text-muted">Pro</span>
-            </Link>
-            <Link href={backHref} className="text-muted hover:text-foreground">
-              {backLabel}
-            </Link>
-          </div>
-        </PageContainer>
-      </header>
+      <Header />
 
       <PageContainer className="py-8">
         <nav className="mb-6 text-sm text-muted">

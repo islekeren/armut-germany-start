@@ -71,9 +71,12 @@ describe("BookingsController", () => {
 
   it("updates booking status", async () => {
     const req = { user: { id: "u1" } };
-    bookingsService.updateStatus.mockResolvedValue({ id: "b1", status: "confirmed" });
+    bookingsService.updateStatus.mockResolvedValue({
+      id: "b1",
+      status: "confirmed",
+    });
     await expect(
-      controller.updateStatus("b1", req, { status: "confirmed" } as any)
+      controller.updateStatus("b1", req, { status: "confirmed" } as any),
     ).resolves.toEqual({
       id: "b1",
       status: "confirmed",
@@ -81,7 +84,7 @@ describe("BookingsController", () => {
     expect(bookingsService.updateStatus).toHaveBeenCalledWith(
       "b1",
       "u1",
-      "confirmed"
+      "confirmed",
     );
   });
 
@@ -89,12 +92,12 @@ describe("BookingsController", () => {
     const req = { user: { id: "u1" } };
     bookingsService.reschedule.mockResolvedValue({ id: "b1" });
     await expect(
-      controller.reschedule("b1", req, "2026-02-24T12:00:00.000Z")
+      controller.reschedule("b1", req, "2026-02-24T12:00:00.000Z"),
     ).resolves.toEqual({ id: "b1" });
     expect(bookingsService.reschedule).toHaveBeenCalledWith(
       "b1",
       "u1",
-      "2026-02-24T12:00:00.000Z"
+      "2026-02-24T12:00:00.000Z",
     );
   });
 
@@ -112,12 +115,13 @@ describe("BookingsController", () => {
     const req = { user: { id: "u1" } };
     bookingsService.addProviderReply.mockResolvedValue({ id: "rev1" });
     await expect(
-      controller.addProviderReply("b1", req, { reply: "Thanks" } as any)
+      controller.addProviderReply("b1", req, { reply: "Thanks" } as any),
     ).resolves.toEqual({ id: "rev1" });
     expect(bookingsService.addProviderReply).toHaveBeenCalledWith(
       "b1",
       "u1",
-      "Thanks"
+      "Thanks",
+      undefined,
     );
   });
 });

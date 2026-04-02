@@ -15,6 +15,7 @@ import { ReviewsModule } from "./modules/reviews/reviews.module";
 import { MessagesModule } from "./modules/messages/messages.module";
 import { QuotesModule } from "./modules/quotes/quotes.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { UploadsModule } from "./modules/uploads/uploads.module";
     MessagesModule,
     QuotesModule,
     UploadsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

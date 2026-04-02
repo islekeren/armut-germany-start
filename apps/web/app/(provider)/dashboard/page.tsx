@@ -4,8 +4,18 @@ import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useEffect, useState } from "react";
-import { providerApi, DashboardData, messagesApi } from "@/lib/api";
+import {
+  providerApi,
+  DashboardData,
+  messagesApi,
+  notificationsApi,
+  quotesApi,
+} from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getBookingDisplayStatusClass,
+  toBookingDisplayStatus,
+} from "@/lib/bookings";
 
 // Initial empty state
 const initialData: DashboardData = {
@@ -19,22 +29,37 @@ const initialData: DashboardData = {
   activeBookings: [],
 };
 
+interface PendingOfferItem {
+  id: string;
+  title: string;
+  customer: string;
+  location: string;
+  price: number;
+  createdAt: string;
+  validUntil: string;
+}
+
 export default function ProviderDashboard() {
   const t = useTranslations("provider.dashboard");
+  const tOrderStatus = useTranslations("provider.orders.status");
   const locale = useLocale();
   const { user } = useAuth(); // Assuming useAuth exists and provides user context
   const [data, setData] = useState<DashboardData>(initialData);
+  const [pendingOffers, setPendingOffers] = useState<PendingOfferItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem("armut_access_token");
         if (token) {
-          const [dashboardData, unreadData] = await Promise.all([
+          const [dashboardData, unreadMessagesData, unreadNotificationsData, quoteData] = await Promise.all([
             providerApi.getDashboard(token),
             messagesApi.getUnreadCount(token),
+            notificationsApi.getUnreadCount(token),
+            quotesApi.getMyQuotes(token),
           ]);
           // Format dates for display
           const formattedData = {
@@ -49,8 +74,30 @@ export default function ProviderDashboard() {
               time: new Date(b.date).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
             }))
           };
+          const formattedPendingOffers = quoteData
+            .filter((quote) => quote.status === "pending")
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            )
+            .slice(0, 3)
+            .map((quote) => ({
+              id: quote.id,
+              title: quote.request?.title || t("pendingOffersUntitled"),
+              customer: quote.request?.customer
+                ? `${quote.request.customer.firstName} ${quote.request.customer.lastName}`
+                : t("pendingOffersUnknownCustomer"),
+              location: [quote.request?.postalCode, quote.request?.city]
+                .filter(Boolean)
+                .join(" "),
+              price: quote.price,
+              createdAt: new Date(quote.createdAt).toLocaleDateString(locale),
+              validUntil: new Date(quote.validUntil).toLocaleDateString(locale),
+            }));
           setData(formattedData);
-          setUnreadCount(unreadData.unreadCount);
+          setPendingOffers(formattedPendingOffers);
+          setUnreadMessages(unreadMessagesData.unreadCount);
+          setUnreadNotifications(unreadNotificationsData.unreadCount);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
@@ -60,7 +107,7 @@ export default function ProviderDashboard() {
     };
 
     fetchDashboard();
-  }, [locale]);
+  }, [locale, t]);
 
   const stats = [
     { labelKey: "newRequests", value: data.stats.newRequests, icon: "📬", color: "bg-blue-500" },
@@ -86,13 +133,37 @@ export default function ProviderDashboard() {
             <div className="flex items-center gap-4">
               <LanguageToggle />
               <Link
-                href="/dashboard/messages"
-                className="relative text-muted hover:text-foreground"
+                href="/notifications"
+                className="relative inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-background"
               >
-                <span className="text-xl">💬</span>
-                {unreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-xs text-white">
-                    {unreadCount}
+                <span>{t("navigation.notifications")}</span>
+                {unreadNotifications > 0 && (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-white">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/dashboard/messages"
+                className="relative inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 8h10M7 12h6m-8 8 3.5-3H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2v3Z"
+                  />
+                </svg>
+                <span>{t("navigation.messages")}</span>
+                {unreadMessages > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-xs text-white">
+                    {unreadMessages}
                   </span>
                 )}
               </Link>
@@ -123,7 +194,7 @@ export default function ProviderDashboard() {
                 </li>
                 <li>
                   <Link
-                    href="/dashboard/requests"
+                    href="/dashboard/listings"
                     className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
                   >
                     <span>📬</span> {t("navigation.requests")}
@@ -132,6 +203,14 @@ export default function ProviderDashboard() {
                         {data.stats.newRequests}
                       </span>
                     )}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard/offers"
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                  >
+                    <span>💶</span> {t("navigation.pendingOffers")}
                   </Link>
                 </li>
                 <li>
@@ -228,13 +307,13 @@ export default function ProviderDashboard() {
               ))}
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
               {/* Recent Requests */}
               <div className="rounded-xl bg-white p-6 shadow-sm">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">{t("sections.newRequests")}</h2>
                   <Link
-                    href="/dashboard/requests"
+                    href="/dashboard/listings"
                     className="text-sm text-primary hover:underline"
                   >
                     {t("viewAll")}
@@ -262,9 +341,7 @@ export default function ProviderDashboard() {
                         <span className="text-sm font-medium text-secondary">
                           {request.budget}
                         </span>
-                        <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark">
-                          {t("sendOffer")}
-                        </button>
+                        <span className="text-xs text-muted">#{request.id.slice(0, 8)}</span>
                       </div>
                     </div>
                   ))
@@ -287,7 +364,9 @@ export default function ProviderDashboard() {
                   {data.activeBookings.length === 0 ? (
                     <p className="text-muted text-sm">{t("noAppointments")}</p>
                   ) : (
-                    data.activeBookings.map((booking) => (
+                    data.activeBookings.map((booking) => {
+                      const displayStatus = toBookingDisplayStatus(booking.status);
+                      return (
                     <div
                       key={booking.id}
                       className="rounded-lg border border-border p-4"
@@ -300,13 +379,9 @@ export default function ProviderDashboard() {
                           </p>
                         </div>
                         <span
-                          className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            booking.status === "confirmed"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
+                          className={`rounded-full px-2 py-1 text-xs font-medium ${getBookingDisplayStatusClass(displayStatus)}`}
                         >
-                          {t(`status.${booking.status}`)}
+                          {tOrderStatus(displayStatus)}
                         </span>
                       </div>
                       <div className="mt-3 flex items-center gap-4 text-sm text-muted">
@@ -314,7 +389,8 @@ export default function ProviderDashboard() {
                         <span>🕐 {booking.time}</span>
                       </div>
                     </div>
-                  ))
+                      );
+                    })
                   )}
                 </div>
                 <Link
@@ -323,6 +399,51 @@ export default function ProviderDashboard() {
                 >
                   {t("allOrders")}
                 </Link>
+              </div>
+
+              {/* Pending Offers */}
+              <div className="rounded-xl bg-white p-6 shadow-sm md:col-span-2 xl:col-span-1">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">{t("sections.pendingOffers")}</h2>
+                  <Link
+                    href="/dashboard/offers"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    {t("viewAll")}
+                  </Link>
+                </div>
+                <div className="space-y-4">
+                  {pendingOffers.length === 0 ? (
+                    <p className="text-sm text-muted">{t("noPendingOffers")}</p>
+                  ) : (
+                    pendingOffers.map((offer) => (
+                      <div
+                        key={offer.id}
+                        className="rounded-lg border border-border p-4 transition hover:border-primary"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="font-medium">{offer.title}</h3>
+                            <p className="text-sm text-muted">{offer.customer}</p>
+                            {offer.location && (
+                              <p className="text-sm text-muted">{offer.location}</p>
+                            )}
+                          </div>
+                          <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
+                            {t("status.pending")}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-sm">
+                          <span className="font-medium text-secondary">€{offer.price}</span>
+                          <span className="text-muted">{offer.createdAt}</span>
+                        </div>
+                        <p className="mt-2 text-xs text-muted">
+                          {t("pendingOfferValidUntil", { date: offer.validUntil })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
