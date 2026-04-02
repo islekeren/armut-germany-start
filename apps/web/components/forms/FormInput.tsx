@@ -15,7 +15,7 @@ export function FormInput({
 
   return (
     <input
-      className={`w-full rounded-lg border border-border px-4 py-3 focus:outline-none ${accentClass} ${className}`.trim()}
+      className={`h-12 w-full rounded-md border-2 border-transparent bg-gray-100 px-4 py-3 text-base text-foreground focus:bg-white focus:outline-none ${accentClass} ${className}`.trim()}
       {...props}
     />
   );

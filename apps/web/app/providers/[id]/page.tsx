@@ -117,7 +117,7 @@ export default async function ProviderProfilePage({
       <Header />
 
       <section className="relative overflow-hidden bg-primary py-10 text-white">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-dark/70 to-primary/60" />
+        <div className="absolute inset-0 bg-primary/80" />
         <PageContainer className="relative">
           <nav className="mb-4 text-sm text-white/80">
             <Link href="/" className="hover:text-white">

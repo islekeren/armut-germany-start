@@ -24,8 +24,8 @@ export function ProviderSubpageShell({
     <div className="min-h-screen bg-background">
       <Header />
 
-      <PageContainer className="py-8">
-        <nav className="mb-6 text-sm text-muted">
+      <PageContainer className="py-6 sm:py-8">
+        <nav className="mb-5 flex flex-wrap items-center gap-1 text-xs text-muted sm:mb-6 sm:text-sm">
           <Link href={backHref} className="hover:text-primary">
             {backLabel}
           </Link>
@@ -33,7 +33,7 @@ export function ProviderSubpageShell({
           <span>{breadcrumbLabel || title}</span>
         </nav>
 
-        {headerSlot || <h1 className="mb-8 text-2xl font-bold">{title}</h1>}
+        {headerSlot || <h1 className="mb-6 text-xl font-bold sm:mb-8 sm:text-2xl">{title}</h1>}
 
         {children}
       </PageContainer>
