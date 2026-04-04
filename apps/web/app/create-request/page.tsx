@@ -54,6 +54,7 @@ export default function CreateRequestPage() {
     postalCode: "",
     city: "",
     address: "",
+    preferredDate: "",
     preferredDays: [] as string[],
     preferredTime: "",
     budgetMin: "",
@@ -192,21 +193,32 @@ export default function CreateRequestPage() {
         imageUrls = uploadedImages.map((item) => item.url);
       }
 
+      const schedulingNotes = [
+        formData.preferredDays.length > 0
+          ? `${t("createRequest.dayPreferencesLabel")}: ${formData.preferredDays
+              .map((day) => t(`createRequest.days.${day}`))
+              .join(", ")}`
+          : null,
+        formData.preferredTime
+          ? `${t("createRequest.timePreferenceLabel")}: ${t(
+              `createRequest.${formData.preferredTime}`
+            )}`
+          : null,
+      ].filter((value): value is string => Boolean(value));
+
       // Prepare the request data
       const requestData: CreateRequestData = {
         categoryId: formData.category,
         title: formData.title,
-        description:
-          formData.preferredDays.length > 0
-            ? `${formData.description}\n\nPreferred days: ${formData.preferredDays
-                .map((day) => t(`createRequest.days.${day}`))
-                .join(", ")}`
-            : formData.description,
+        description: schedulingNotes.length
+          ? `${formData.description}\n\n${schedulingNotes.join("\n")}`
+          : formData.description,
         address: formData.address || `${formData.postalCode} ${formData.city}`,
         city: formData.city,
         postalCode: formData.postalCode,
         lat: 0, // Would normally come from geocoding
         lng: 0, // Would normally come from geocoding
+        preferredDate: formData.preferredDate || undefined,
         budgetMin: formData.budgetMin ? parseFloat(formData.budgetMin) : undefined,
         budgetMax: formData.budgetMax ? parseFloat(formData.budgetMax) : undefined,
         images: imageUrls,
@@ -455,6 +467,20 @@ export default function CreateRequestPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
+                    <FormLabel size="base">{t("createRequest.preferredDate")}</FormLabel>
+                    <FormInput
+                      type="date"
+                      value={formData.preferredDate}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          preferredDate: e.target.value,
+                        })
+                      }
+                      accent="primary"
+                    />
+                  </div>
+                  <div>
                     <FormLabel size="base">{t("createRequest.preferredDays")}</FormLabel>
                     <div className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3">
                       {weekdayKeys.map((day) => {
@@ -642,15 +668,26 @@ export default function CreateRequestPage() {
                   </div>
                   <div className="rounded-lg bg-background p-4">
                     <div className="mb-1 text-sm text-muted">{t("createRequest.appointmentLabel")}</div>
-                    <div className="font-medium">
-                      {formData.preferredDays.length
-                        ? formData.preferredDays
+                    <div className="space-y-1 font-medium">
+                      <div>
+                        {formData.preferredDate
+                          ? new Date(formData.preferredDate).toLocaleDateString(locale)
+                          : t("createRequest.flexible")}
+                      </div>
+                      {formData.preferredDays.length > 0 ? (
+                        <div className="text-sm text-muted">
+                          {t("createRequest.dayPreferencesLabel")}:{" "}
+                          {formData.preferredDays
                             .map((day) => t(`createRequest.days.${day}`))
-                            .join(", ")
-                        : t("createRequest.flexible")}
-                      {formData.preferredTime
-                        ? `, ${t(`createRequest.${formData.preferredTime}`)}`
-                        : ""}
+                            .join(", ")}
+                        </div>
+                      ) : null}
+                      {formData.preferredTime ? (
+                        <div className="text-sm text-muted">
+                          {t("createRequest.timePreferenceLabel")}:{" "}
+                          {t(`createRequest.${formData.preferredTime}`)}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>

@@ -851,6 +851,12 @@ export const providerApi = {
     );
   },
 
+  getRequestById: (token: string, requestId: string) =>
+    apiRequest<ServiceRequest>(`/providers/me/requests/${requestId}`, {
+      token,
+      cache: "no-store",
+    }),
+
   getBookings: (
     token: string,
     query?: { month?: number; year?: number; status?: string },

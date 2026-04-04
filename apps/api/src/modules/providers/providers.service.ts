@@ -1177,6 +1177,47 @@ export class ProvidersService {
     };
   }
 
+  async getRequestById(userId: string, requestId: string) {
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: { categoryId: true },
+        },
+      },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const categoryIds = provider.services.map((service) => service.categoryId);
+    if (categoryIds.length === 0) {
+      throw new NotFoundException("Request not found");
+    }
+
+    const request = await this.prisma.serviceRequest.findFirst({
+      where: {
+        id: requestId,
+        categoryId: { in: categoryIds },
+        status: "open",
+      },
+      include: {
+        category: true,
+        _count: {
+          select: { quotes: true },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException("Request not found");
+    }
+
+    return request;
+  }
+
   async getBookings(
     userId: string,
     query: { month?: number; year?: number; status?: string },

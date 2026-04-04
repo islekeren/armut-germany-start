@@ -168,7 +168,7 @@ export function RequestOfferModal({
                 ) : null}
 
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                  <div className="font-semibold text-slate-800">{t("contactingProvider")}</div>
+                  <div className="font-semibold text-slate-800">{t("serviceContext")}</div>
                   <div className="mt-1 text-slate-700">
                     {providerName || "-"}
                     {serviceName ? ` • ${serviceName}` : ""}

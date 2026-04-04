@@ -69,6 +69,7 @@ describe("ProvidersService", () => {
         findUnique: jest.fn(),
       },
       serviceRequest: {
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         count: jest.fn(),
       },
@@ -390,6 +391,53 @@ describe("ProvidersService", () => {
         },
       });
       expect(prisma.serviceRequest.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getRequestById", () => {
+    it("returns a matching open request for the provider's active categories", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.findFirst.mockResolvedValue({
+        id: "request-1",
+        categoryId: "category-1",
+        status: "open",
+      });
+
+      const result = await service.getRequestById("user-1", "request-1");
+
+      expect(result).toEqual({
+        id: "request-1",
+        categoryId: "category-1",
+        status: "open",
+      });
+      expect(prisma.serviceRequest.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: "request-1",
+          categoryId: { in: ["category-1"] },
+          status: "open",
+        },
+        include: {
+          category: true,
+          _count: {
+            select: { quotes: true },
+          },
+        },
+      });
+    });
+
+    it("throws when the request is outside the provider scope", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.findFirst.mockResolvedValue(null);
+
+      await expect(service.getRequestById("user-1", "request-2")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
