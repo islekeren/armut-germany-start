@@ -15,13 +15,13 @@
       "typedRoutes": true
     },
     "ios": {
-      "bundleIdentifier": "com.workify.germany.mobile",
+      "bundleIdentifier": "com.workify.germany.mobile.pro",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.workify.germany.mobile"
+      "package": "com.workify.germany.mobile.pro"
     },
     "extra": {
       "router": {},
