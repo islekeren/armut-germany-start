@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -23,14 +23,7 @@ import {
   isApiUnavailableError,
   type Category,
 } from "@/lib/api";
-import {
-  REQUEST_BRANCHES,
-  REQUEST_SECTORS,
-  type RequestBranch,
-  getBranchLabel,
-  getCategoryDisplayName,
-  getSectorLabel,
-} from "@/lib/request-taxonomy";
+import { getCategoryDisplayName } from "@/lib/request-taxonomy";
 
 export default function CreateRequestPage() {
   const t = useTranslations();
@@ -39,13 +32,21 @@ export default function CreateRequestPage() {
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const initialCategory = searchParams.get("category") || searchParams.get("kategorie") || "";
+  const initialSector =
+    searchParams.get("sector") || searchParams.get("requestSector") || "";
+  const initialBranch =
+    searchParams.get("branch") || searchParams.get("requestBranch") || "";
 
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
-  const [selectedSectorId, setSelectedSectorId] = useState<string | null>(null);
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [selectedSectorId, setSelectedSectorId] = useState<string | null>(
+    initialSector || null,
+  );
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(
+    initialBranch || null,
+  );
   const [branchSearch, setBranchSearch] = useState("");
   const [formData, setFormData] = useState({
     category: initialCategory,
@@ -73,13 +74,47 @@ export default function CreateRequestPage() {
     "sunday",
   ] as const;
 
-  const availableCategorySlugs = new Set(categories.map((item) => item.slug));
-  const visibleBranches = REQUEST_BRANCHES.filter(
-    (branch) =>
-      branch.sectorId === selectedSectorId &&
-      availableCategorySlugs.has(branch.categorySlug) &&
-      (!branchSearch.trim() ||
-        getBranchLabel(branch).toLowerCase().includes(branchSearch.trim().toLowerCase())),
+  const sectorOptions = useMemo(() => {
+    const uniqueParents = new Map<string, NonNullable<Category["parent"]>>();
+
+    categories.forEach((category) => {
+      if (category.parent) {
+        uniqueParents.set(category.parent.slug, category.parent);
+      }
+    });
+
+    return Array.from(uniqueParents.values()).sort((a, b) =>
+      (locale.startsWith("de") ? a.nameDe : a.nameEn).localeCompare(
+        locale.startsWith("de") ? b.nameDe : b.nameEn,
+      ),
+    );
+  }, [categories, locale]);
+
+  const visibleCategories = useMemo(() => {
+    const normalizedQuery = branchSearch.trim().toLowerCase();
+
+    return categories
+      .filter((category) => category.parent?.slug === selectedSectorId)
+      .filter((category) => {
+        if (!normalizedQuery) return true;
+        return getCategoryDisplayName(category, locale)
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort((a, b) =>
+        getCategoryDisplayName(a, locale).localeCompare(
+          getCategoryDisplayName(b, locale),
+        ),
+      );
+  }, [branchSearch, categories, locale, selectedSectorId]);
+
+  const selectedCategory = useMemo(
+    () =>
+      categories.find(
+        (category) =>
+          category.id === formData.category || category.slug === formData.category,
+      ) || null,
+    [categories, formData.category],
   );
 
   const isProviderUser =
@@ -111,34 +146,44 @@ export default function CreateRequestPage() {
   }, [t]);
 
   useEffect(() => {
-    if (!categories.length || !formData.category) return;
+    if (!categories.length) return;
 
-    const selectedCategory = categories.find(
-      (cat) => cat.id === formData.category || cat.slug === formData.category,
-    );
-    if (!selectedCategory) return;
+    const resolvedCategory =
+      (selectedBranchId
+        ? categories.find((category) => category.slug === selectedBranchId) || null
+        : null) || selectedCategory;
 
-    if (selectedCategory.id !== formData.category) {
-      setFormData((prev) => ({ ...prev, category: selectedCategory.id }));
+    if (!resolvedCategory) return;
+
+    if (resolvedCategory.id !== formData.category) {
+      setFormData((prev) =>
+        prev.category === resolvedCategory.id
+          ? prev
+          : { ...prev, category: resolvedCategory.id },
+      );
     }
 
-    const mappedBranch = REQUEST_BRANCHES.find(
-      (branch) => branch.categorySlug === selectedCategory.slug,
-    );
-    if (!mappedBranch) return;
+    if (selectedBranchId !== resolvedCategory.slug) {
+      setSelectedBranchId(resolvedCategory.slug);
+    }
 
-    setSelectedSectorId(mappedBranch.sectorId);
-    setSelectedBranchId(mappedBranch.id);
-  }, [categories, formData.category]);
+    const nextSectorId = resolvedCategory.parent?.slug || null;
+
+    if (selectedSectorId !== nextSectorId) {
+      setSelectedSectorId(nextSectorId);
+    }
+  }, [categories, formData.category, selectedBranchId, selectedCategory, selectedSectorId]);
 
   const getCategoryLabel = (categoryId: string) => {
     const selected = categories.find((cat) => cat.id === categoryId || cat.slug === categoryId);
     if (!selected) return categoryId;
     return getCategoryDisplayName(selected, locale);
   };
-  const selectedBranch = selectedBranchId
-    ? REQUEST_BRANCHES.find((branch) => branch.id === selectedBranchId) || null
-    : null;
+
+  const getSectorLabel = (categoryParent?: Category["parent"] | null) => {
+    if (!categoryParent) return "";
+    return locale.startsWith("de") ? categoryParent.nameDe : categoryParent.nameEn;
+  };
 
   const handleSectorSelect = (sectorId: string) => {
     setSelectedSectorId(sectorId);
@@ -147,13 +192,30 @@ export default function CreateRequestPage() {
     setFormData((prev) => ({ ...prev, category: "" }));
   };
 
-  const handleBranchSelect = (branch: RequestBranch) => {
-    const category = categories.find((cat) => cat.slug === branch.categorySlug);
-    if (!category) return;
-
-    setSelectedBranchId(branch.id);
+  const handleCategorySelect = (category: Category) => {
+    setSelectedSectorId(category.parent?.slug || null);
+    setSelectedBranchId(category.slug);
     setFormData((prev) => ({ ...prev, category: category.id }));
     nextStep();
+  };
+
+  const buildCreateRequestRedirect = () => {
+    const params = new URLSearchParams();
+
+    if (formData.category) {
+      params.set("category", formData.category);
+    }
+
+    if (selectedSectorId) {
+      params.set("sector", selectedSectorId);
+    }
+
+    if (selectedBranchId) {
+      params.set("branch", selectedBranchId);
+    }
+
+    const query = params.toString();
+    return query ? `/create-request?${query}` : "/create-request";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,7 +229,9 @@ export default function CreateRequestPage() {
 
     // Check if user is authenticated
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/create-request?category=${formData.category}`);
+      router.push(
+        `/login?redirect=${encodeURIComponent(buildCreateRequestRedirect())}`,
+      );
       return;
     }
 
@@ -222,8 +286,8 @@ export default function CreateRequestPage() {
         budgetMin: formData.budgetMin ? parseFloat(formData.budgetMin) : undefined,
         budgetMax: formData.budgetMax ? parseFloat(formData.budgetMax) : undefined,
         images: imageUrls,
-        requestSector: selectedSectorId || undefined,
-        requestBranch: selectedBranchId || undefined,
+        requestSector: selectedCategory?.parent?.slug || selectedSectorId || undefined,
+        requestBranch: selectedCategory?.slug || selectedBranchId || undefined,
       };
 
       await requestsApi.create(requestData, token);
@@ -338,21 +402,20 @@ export default function CreateRequestPage() {
                   <div>
                     <FormLabel size="base">{t("createRequest.selectSector")}</FormLabel>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {REQUEST_SECTORS.map((sector) => {
-                        const selected = selectedSectorId === sector.id;
+                      {sectorOptions.map((sector) => {
+                        const selected = selectedSectorId === sector.slug;
                         return (
                           <button
                             key={sector.id}
                             type="button"
-                            onClick={() => handleSectorSelect(sector.id)}
+                            onClick={() => handleSectorSelect(sector.slug)}
                             className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                               selected
                                 ? "border-primary bg-primary/10 text-primary"
                                 : "border-border hover:border-primary"
                             }`}
                           >
-                            <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${sector.colorClass}`} />
-                            {getSectorLabel(sector, locale)}
+                            {getSectorLabel(sector)}
                           </button>
                         );
                       })}
@@ -370,22 +433,25 @@ export default function CreateRequestPage() {
                         accent="primary"
                       />
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {visibleBranches.map((branch) => (
+                        {visibleCategories.map((category) => (
                           <button
-                            key={branch.id}
+                            key={category.id}
                             type="button"
-                            onClick={() => handleBranchSelect(branch)}
+                            onClick={() => handleCategorySelect(category)}
                             className={`rounded-lg border-2 p-3 text-left transition hover:border-primary ${
-                              selectedBranchId === branch.id
+                              selectedBranchId === category.slug
                                 ? "border-primary bg-primary/5"
                                 : "border-border"
                             }`}
                           >
-                            <span className="font-medium">{getBranchLabel(branch, locale)}</span>
+                            <span className="mr-2 text-xl">{category.icon}</span>
+                            <span className="font-medium">
+                              {getCategoryDisplayName(category, locale)}
+                            </span>
                           </button>
                         ))}
                       </div>
-                      {visibleBranches.length === 0 && (
+                      {visibleCategories.length === 0 && (
                         <p className="mt-2 text-sm text-muted">
                           {t("createRequest.noBranchMatch")}
                         </p>
@@ -639,12 +705,12 @@ export default function CreateRequestPage() {
                 <div className="rounded-lg bg-background p-4">
                   <div className="mb-1 text-sm text-muted">{t("createRequest.categoryLabel")}</div>
                   <div className="font-medium">
-                    {categories.find((c) => c.id === formData.category)?.icon}{" "}
+                    {selectedCategory?.icon}{" "}
                     {getCategoryLabel(formData.category)}
                   </div>
-                  {selectedBranchId && (
+                  {selectedCategory?.parent && (
                     <div className="mt-1 text-sm text-muted">
-                      {selectedBranch ? getBranchLabel(selectedBranch, locale) : ""}
+                      {getSectorLabel(selectedCategory.parent)}
                     </div>
                   )}
                 </div>

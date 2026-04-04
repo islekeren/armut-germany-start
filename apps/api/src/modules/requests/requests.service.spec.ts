@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { RequestsService } from "./requests.service";
 
 describe("RequestsService", () => {
@@ -34,7 +38,7 @@ describe("RequestsService", () => {
         service.create(
           "provider-user-1",
           {
-            categoryId: "cleaning",
+            categoryId: "home-cleaning",
             title: "Need cleaning",
             description: "flat",
           } as any,
@@ -48,7 +52,11 @@ describe("RequestsService", () => {
 
     it("creates request when category id is uuid", async () => {
       const categoryId = "550e8400-e29b-41d4-a716-446655440000";
-      prisma.category.findUnique.mockResolvedValue({ id: "cat-1" });
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "electrician",
+        isActive: true,
+      });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-1" });
 
       await expect(
@@ -73,17 +81,21 @@ describe("RequestsService", () => {
     });
 
     it("creates request when category id is slug", async () => {
-      prisma.category.findUnique.mockResolvedValue({ id: "cat-2" });
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-2",
+        slug: "home-cleaning",
+        isActive: true,
+      });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-2" });
 
       await service.create("user-1", {
-        categoryId: "cleaning",
+        categoryId: "home-cleaning",
         title: "Need cleaning",
         description: "flat",
       } as any);
 
       expect(prisma.category.findUnique).toHaveBeenCalledWith({
-        where: { slug: "cleaning" },
+        where: { slug: "home-cleaning" },
       });
     });
 
@@ -92,11 +104,88 @@ describe("RequestsService", () => {
 
       await expect(
         service.create("user-1", {
-          categoryId: "cleaning",
+          categoryId: "home-cleaning",
           title: "Need cleaning",
           description: "flat",
         } as any)
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects inactive categories", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "home-cleaning",
+        isActive: false,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "home-cleaning",
+          title: "Need cleaning",
+          description: "flat",
+        } as any)
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("normalizes sector from a valid branch", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "office-cleaning",
+        isActive: true,
+      });
+      prisma.serviceRequest.create.mockResolvedValue({ id: "req-3" });
+
+      await service.create("user-1", {
+        categoryId: "office-cleaning",
+        requestBranch: "office-cleaning",
+        title: "Need cleaning",
+        description: "flat",
+      } as any);
+
+      expect(prisma.serviceRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            categoryId: "cat-1",
+            requestBranch: "office-cleaning",
+            requestSector: "cleaning-care",
+          }),
+        })
+      );
+    });
+
+    it("rejects mismatched branch/category combinations", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "home-cleaning",
+        isActive: true,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "home-cleaning",
+          requestBranch: "electrician",
+          title: "Need cleaning",
+          description: "flat",
+        } as any)
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects mismatched sector/branch combinations", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "office-cleaning",
+        isActive: true,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "office-cleaning",
+          requestSector: "digital-tech",
+          requestBranch: "office-cleaning",
+          title: "Need cleaning",
+          description: "flat",
+        } as any)
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

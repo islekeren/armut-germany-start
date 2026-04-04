@@ -10,6 +10,15 @@ export class CategoriesService {
       where: { isActive: true },
       orderBy: { nameDe: "asc" },
       include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
         _count: {
           select: { services: true },
         },
@@ -18,14 +27,40 @@ export class CategoriesService {
   }
 
   async findBySlug(slug: string) {
-    return this.prisma.category.findUnique({
+    const category = await this.prisma.category.findUnique({
       where: { slug },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
+      },
     });
+
+    return category?.isActive ? category : null;
   }
 
   async findById(id: string) {
-    return this.prisma.category.findUnique({
+    const category = await this.prisma.category.findUnique({
       where: { id },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
+      },
     });
+
+    return category?.isActive ? category : null;
   }
 }

@@ -22,6 +22,15 @@ describe("CategoriesService", () => {
       where: { isActive: true },
       orderBy: { nameDe: "asc" },
       include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
         _count: {
           select: { services: true },
         },
@@ -30,16 +39,48 @@ describe("CategoriesService", () => {
   });
 
   it("finds by slug", async () => {
-    await service.findBySlug("cleaning");
+    prisma.category.findUnique.mockResolvedValue({
+      id: "c1",
+      slug: "home-cleaning",
+      isActive: true,
+    });
+    await service.findBySlug("home-cleaning");
     expect(prisma.category.findUnique).toHaveBeenCalledWith({
-      where: { slug: "cleaning" },
+      where: { slug: "home-cleaning" },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
+      },
     });
   });
 
   it("finds by id", async () => {
+    prisma.category.findUnique.mockResolvedValue({
+      id: "c1",
+      slug: "home-cleaning",
+      isActive: true,
+    });
     await service.findById("c1");
     expect(prisma.category.findUnique).toHaveBeenCalledWith({
       where: { id: "c1" },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
+      },
     });
   });
 });

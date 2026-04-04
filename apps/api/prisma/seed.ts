@@ -1,86 +1,120 @@
 import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 import * as bcrypt from "bcrypt";
+import { REQUEST_BRANCHES, REQUEST_SECTORS } from "../src/common/request-taxonomy";
 
 // Load environment variables from .env file
 dotenv.config();
 
 const prisma = new PrismaClient();
 
-const categories = [
-  {
-    slug: "cleaning",
-    nameDe: "Cleaning",
-    nameEn: "Cleaning",
-    icon: "🧹",
-  },
-  {
-    slug: "moving",
-    nameDe: "Moving",
-    nameEn: "Moving",
-    icon: "📦",
-  },
-  {
-    slug: "renovation",
-    nameDe: "Renovation",
-    nameEn: "Renovation",
-    icon: "🔨",
-  },
-  {
-    slug: "garden",
-    nameDe: "Garden",
-    nameEn: "Garden",
-    icon: "🌳",
-  },
-  {
-    slug: "electrician",
-    nameDe: "Electrician",
-    nameEn: "Electrician",
-    icon: "⚡",
-  },
-  {
-    slug: "plumber",
-    nameDe: "Plumber",
-    nameEn: "Plumber",
-    icon: "🔧",
-  },
-  {
-    slug: "painter",
-    nameDe: "Painter",
-    nameEn: "Painter",
-    icon: "🎨",
-  },
-  {
-    slug: "locksmith",
-    nameDe: "Locksmith",
-    nameEn: "Locksmith",
-    icon: "🔐",
-  },
-  {
-    slug: "tutoring",
-    nameDe: "Tutoring",
-    nameEn: "Tutoring",
-    icon: "📚",
-  },
-  {
-    slug: "photography",
-    nameDe: "Photography",
-    nameEn: "Photography",
-    icon: "📷",
-  },
-  {
-    slug: "computerHelp",
-    nameDe: "Computer Help",
-    nameEn: "Computer Help",
-    icon: "💻",
-  },
-  {
-    slug: "petCare",
-    nameDe: "Pet Care",
-    nameEn: "Pet Care",
-    icon: "🐕",
-  },
-];
+const sectorIcons: Record<string, string> = {
+  "home-repair": "🧰",
+  "cleaning-care": "🪄",
+  "education-hobby": "🎓",
+  "art-events": "🎭",
+  "health-beauty": "🪞",
+  "digital-tech": "🧠",
+  logistics: "🚚",
+  "pet-care": "🐾",
+};
+
+const categories = REQUEST_BRANCHES.map((branch) => ({
+  slug: branch.categorySlug,
+  nameDe: branch.labelDe,
+  nameEn: branch.labelEn,
+  icon: branch.icon,
+  parentSlug: branch.sectorId,
+}));
+
+const sectorCategories = REQUEST_SECTORS.map((sector) => ({
+  slug: sector.id,
+  nameDe: sector.labelDe,
+  nameEn: sector.labelEn,
+  icon: sectorIcons[sector.id] || "📁",
+  isActive: false,
+}));
+
+const validCategorySlugSet = new Set([
+  ...categories.map((category) => category.slug),
+  ...sectorCategories.map((sector) => sector.slug),
+]);
+
+const legacyCategoryFallbackMap: Record<string, string> = {
+  cleaning: "home-cleaning",
+  moving: "moving",
+  renovation: "renovation",
+  garden: "garden-maintenance",
+  electrician: "electrician",
+  plumber: "plumber",
+  painter: "painter",
+  locksmith: "locksmith",
+  tutoring: "math",
+  photography: "event-photo",
+  computerHelp: "computer",
+  petCare: "pet-sitter",
+};
+
+const categorySectorBySlug = new Map(
+  REQUEST_BRANCHES.map((branch) => [branch.categorySlug, branch.sectorId]),
+);
+
+function inferCategorySlugFromText(text: string, fallbackSlug?: string | null) {
+  const normalized = text.toLowerCase();
+
+  if (normalized.includes("office")) return "office-cleaning";
+  if (
+    normalized.includes("deep") ||
+    normalized.includes("move out") ||
+    normalized.includes("move-out") ||
+    normalized.includes("handover")
+  ) {
+    return "deep-cleaning";
+  }
+  if (normalized.includes("window") || normalized.includes("apartment")) {
+    return "home-cleaning";
+  }
+  if (normalized.includes("garden")) return "garden-maintenance";
+  if (normalized.includes("bathroom") || normalized.includes("renovat")) {
+    return "renovation";
+  }
+  if (normalized.includes("electr")) return "electrician";
+  if (normalized.includes("math")) return "math";
+  if (normalized.includes("english")) return "english";
+  if (normalized.includes("music")) return "music";
+  if (normalized.includes("wedding")) return "wedding-photo";
+  if (normalized.includes("event")) return "event-photo";
+  if (normalized.includes("video")) return "video";
+  if (normalized.includes("beauty")) return "beauty";
+  if (normalized.includes("hair")) return "hair";
+  if (normalized.includes("computer")) return "computer";
+  if (normalized.includes("software") || normalized.includes("it support")) {
+    return "software";
+  }
+  if (normalized.includes("website") || normalized.includes("web")) {
+    return "website";
+  }
+  if (normalized.includes("furniture")) return "furniture";
+  if (normalized.includes("storage") || normalized.includes("warehouse")) {
+    return "storage";
+  }
+  if (normalized.includes("moving") || normalized.includes("move")) {
+    return "moving";
+  }
+  if (normalized.includes("groom")) return "pet-groom";
+  if (normalized.includes("dog")) return "dog-walk";
+  if (normalized.includes("pet")) return "pet-sitter";
+
+  if (fallbackSlug && validCategorySlugSet.has(fallbackSlug)) {
+    return fallbackSlug;
+  }
+
+  if (fallbackSlug && legacyCategoryFallbackMap[fallbackSlug]) {
+    return legacyCategoryFallbackMap[fallbackSlug];
+  }
+
+  return "home-cleaning";
+}
 
 function toSlug(input: string): string {
   return input
@@ -140,47 +174,131 @@ async function upsertProviderProfile(
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Clean up any duplicate categories with German slugs (from older seeds)
-  const validSlugs = categories.map((c) => c.slug);
-  const allCategories = await prisma.category.findMany();
-  for (const cat of allCategories) {
-    if (!validSlugs.includes(cat.slug)) {
-      // Find matching English-slug category by nameEn
-      const matchingCategory = allCategories.find(
-        (c) => c.nameEn === cat.nameEn && validSlugs.includes(c.slug),
-      );
-      if (matchingCategory) {
-        // Migrate dependent records
-        await prisma.serviceRequest.updateMany({
-          where: { categoryId: cat.id },
-          data: { categoryId: matchingCategory.id },
-        });
-        await prisma.service.updateMany({
-          where: { categoryId: cat.id },
-          data: { categoryId: matchingCategory.id },
-        });
-      }
-      await prisma.category.delete({ where: { id: cat.id } });
-      console.log(`🧹 Removed duplicate category: ${cat.slug}`);
-    }
+  const sectorCategoryMap = new Map();
+  for (const sector of sectorCategories) {
+    const sectorCategory = await prisma.category.upsert({
+      where: { slug: sector.slug },
+      update: {
+        nameDe: sector.nameDe,
+        nameEn: sector.nameEn,
+        icon: sector.icon,
+        isActive: false,
+        parentId: null,
+      },
+      create: {
+        slug: sector.slug,
+        nameDe: sector.nameDe,
+        nameEn: sector.nameEn,
+        icon: sector.icon,
+        isActive: false,
+      },
+    });
+    sectorCategoryMap.set(sector.slug, sectorCategory);
   }
 
-  // Create categories
   const categoryMap = new Map();
   for (const category of categories) {
+    const parent = sectorCategoryMap.get(category.parentSlug);
     const cat = await prisma.category.upsert({
       where: { slug: category.slug },
       update: {
-        ...category,
+        slug: category.slug,
+        nameDe: category.nameDe,
+        nameEn: category.nameEn,
+        icon: category.icon,
         isActive: true,
+        parentId: parent?.id || null,
       },
       create: {
-        ...category,
+        slug: category.slug,
+        nameDe: category.nameDe,
+        nameEn: category.nameEn,
+        icon: category.icon,
         isActive: true,
+        parentId: parent?.id || null,
       },
     });
     categoryMap.set(category.slug, cat);
-    // console.log(`✅ Upserted category: ${category.nameEn}`);
+  }
+
+  const allCategories = await prisma.category.findMany();
+  for (const cat of allCategories) {
+    if (validCategorySlugSet.has(cat.slug)) {
+      continue;
+    }
+
+    const defaultTargetSlug = inferCategorySlugFromText(
+      `${cat.nameEn} ${cat.nameDe}`,
+      cat.slug,
+    );
+    const defaultTargetCategory = categoryMap.get(defaultTargetSlug);
+
+    if (defaultTargetCategory) {
+      const requestsToMigrate = await prisma.serviceRequest.findMany({
+        where: { categoryId: cat.id },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          requestBranch: true,
+        },
+      });
+
+      for (const request of requestsToMigrate) {
+        const targetSlug =
+          (request.requestBranch && categoryMap.has(request.requestBranch)
+            ? request.requestBranch
+            : inferCategorySlugFromText(
+                `${request.title} ${request.description}`,
+                cat.slug,
+              )) || defaultTargetSlug;
+        const targetCategory =
+          categoryMap.get(targetSlug) || defaultTargetCategory;
+
+        if (!targetCategory) {
+          continue;
+        }
+
+        await prisma.serviceRequest.update({
+          where: { id: request.id },
+          data: {
+            categoryId: targetCategory.id,
+            requestBranch: targetCategory.slug,
+            requestSector: categorySectorBySlug.get(targetCategory.slug) || null,
+          },
+        });
+      }
+
+      const servicesToMigrate = await prisma.service.findMany({
+        where: { categoryId: cat.id },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+        },
+      });
+
+      for (const service of servicesToMigrate) {
+        const targetSlug = inferCategorySlugFromText(
+          `${service.title} ${service.description}`,
+          cat.slug,
+        );
+        const targetCategory =
+          categoryMap.get(targetSlug) || defaultTargetCategory;
+
+        if (!targetCategory) {
+          continue;
+        }
+
+        await prisma.service.update({
+          where: { id: service.id },
+          data: { categoryId: targetCategory.id },
+        });
+      }
+    }
+
+    await prisma.category.delete({ where: { id: cat.id } });
+    console.log(`🧹 Removed legacy category: ${cat.slug}`);
   }
 
   // Create Provider User
@@ -246,7 +364,7 @@ async function main() {
       ratingAvg: 4.9,
       totalReviews: 127,
       service: {
-        categorySlug: "cleaning",
+        categorySlug: "home-cleaning",
         title: "Home Cleaning",
         description: "Professional cleaning for apartments and houses.",
         priceMin: 25,
@@ -264,7 +382,7 @@ async function main() {
       ratingAvg: 4.8,
       totalReviews: 89,
       service: {
-        categorySlug: "cleaning",
+        categorySlug: "deep-cleaning",
         title: "Deep Home Cleaning",
         description: "Detailed cleaning with flexible scheduling.",
         priceMin: 30,
@@ -282,7 +400,7 @@ async function main() {
       ratingAvg: 4.7,
       totalReviews: 156,
       service: {
-        categorySlug: "cleaning",
+        categorySlug: "home-cleaning",
         title: "Apartment Cleaning",
         description: "Efficient and reliable cleaning services.",
         priceMin: 28,
@@ -382,18 +500,20 @@ async function main() {
   console.log(`✅ Upserted customer: ${customerEmail}`);
 
   // Add Services to Provider
-  const cleaningCat = categoryMap.get("cleaning");
-  if (cleaningCat) {
+  const homeCleaningCat = categoryMap.get("home-cleaning");
+  const officeCleaningCat = categoryMap.get("office-cleaning");
+  const deepCleaningCat = categoryMap.get("deep-cleaning");
+  if (homeCleaningCat) {
     // Check if service exists
     const existingService = await prisma.service.findFirst({
-      where: { providerId: provider.id, categoryId: cleaningCat.id },
+      where: { providerId: provider.id, categoryId: homeCleaningCat.id },
     });
 
     if (!existingService) {
       await prisma.service.create({
         data: {
           providerId: provider.id,
-          categoryId: cleaningCat.id,
+          categoryId: homeCleaningCat.id,
           title: "Professional Home Cleaning",
           description: "Deep cleaning for your apartment or house.",
           priceMin: 20,
@@ -406,7 +526,7 @@ async function main() {
   }
 
   // Create "Recent Requests" (Open requests matching provider service)
-  if (cleaningCat) {
+  if (homeCleaningCat && deepCleaningCat) {
     // Cleanup existing test data if needed? No, just create new ones unique enough or rely on cleanup elsewhere.
     // But seeding is often additive or idempotent.
     // Let's check if requests exist to avoid dupes on re-seed
@@ -417,7 +537,9 @@ async function main() {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: homeCleaningCat!.id,
+          requestSector: "cleaning-care",
+          requestBranch: "home-cleaning",
           title: "Have apartment cleaned (80sqm)",
           description: "Need cleaning for 3 room apartment, standard cleaning.",
           postalCode: "10115",
@@ -440,7 +562,9 @@ async function main() {
       await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: deepCleaningCat!.id,
+          requestSector: "cleaning-care",
+          requestBranch: "deep-cleaning",
           title: "Move out cleaning",
           description: "Deep cleaning for handover.",
           postalCode: "10119",
@@ -458,7 +582,7 @@ async function main() {
   }
 
   // Create "Active Bookings" / Calendar Events
-  if (cleaningCat) {
+  if (homeCleaningCat && officeCleaningCat && deepCleaningCat) {
     const activeBookingExists = await prisma.booking.findFirst({
       where: { providerId: provider.id, status: "confirmed" },
     });
@@ -468,7 +592,9 @@ async function main() {
       const bookingReq1 = await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: homeCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "home-cleaning",
           title: "Window Cleaning",
           description: "Window cleaning for apartment.",
           postalCode: "10115",
@@ -506,7 +632,9 @@ async function main() {
       const bookingReq2 = await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: officeCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "office-cleaning",
           title: "Office Cleaning",
           description: "Office cleaning for small office.",
           postalCode: "10117",
@@ -544,7 +672,9 @@ async function main() {
       const bookingReq3 = await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: deepCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "deep-cleaning",
           title: "Deep Cleaning",
           description: "Deep cleaning for apartment.",
           postalCode: "10439",
@@ -613,7 +743,7 @@ async function main() {
 
   // Create additional open requests from mock data
   const renovierungCat = categoryMap.get("renovation");
-  const gardenCat = categoryMap.get("garden");
+  const gardenCat = categoryMap.get("garden-maintenance");
   const elektrikerCat = categoryMap.get("electrician");
 
   // Add services to provider for these categories so requests appear
@@ -683,6 +813,8 @@ async function main() {
         data: {
           customerId: customerMap.get("thomas@test.com").id,
           categoryId: renovierungCat.id,
+          requestSector: "home-repair",
+          requestBranch: "renovation",
           title: "Renovate a bathroom",
           description:
             "Full renovation of a small bathroom (6 sqm). New tiles and fixtures.",
@@ -708,6 +840,8 @@ async function main() {
         data: {
           customerId: customerMap.get("sarah@test.com").id,
           categoryId: gardenCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "garden-maintenance",
           title: "Prepare garden for winter",
           description:
             "Garden (200 sqm) needs winter prep. Trim hedges and remove leaves.",
@@ -733,6 +867,8 @@ async function main() {
         data: {
           customerId: customerMap.get("michael@test.com").id,
           categoryId: elektrikerCat.id,
+          requestSector: "home-repair",
+          requestBranch: "electrician",
           title: "Inspect electrical installation",
           description:
             "Check old wiring in an older apartment and upgrade the fuse box if needed.",
@@ -751,7 +887,7 @@ async function main() {
   }
 
   // Create Completed Bookings with Reviews (from reviews page mock data)
-  if (cleaningCat) {
+  if (homeCleaningCat && officeCleaningCat && deepCleaningCat) {
     const existingReview = await prisma.review.findFirst({
       where: { revieweeId: providerUser.id },
     });
@@ -761,7 +897,9 @@ async function main() {
       const reviewReq1 = await prisma.serviceRequest.create({
         data: {
           customerId: customerUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: homeCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "home-cleaning",
           title: "Window Cleaning",
           description: "Window cleaning completed",
           postalCode: "10115",
@@ -812,7 +950,9 @@ async function main() {
       const reviewReq2 = await prisma.serviceRequest.create({
         data: {
           customerId: thomasUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: officeCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "office-cleaning",
           title: "Office Cleaning",
           description: "Office cleaning completed",
           postalCode: "10117",
@@ -864,7 +1004,9 @@ async function main() {
       const reviewReq3 = await prisma.serviceRequest.create({
         data: {
           customerId: sarahUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: deepCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "deep-cleaning",
           title: "Deep Cleaning",
           description: "Deep cleaning completed",
           postalCode: "10439",
@@ -916,7 +1058,9 @@ async function main() {
       const reviewReq4 = await prisma.serviceRequest.create({
         data: {
           customerId: michaelUser.id,
-          categoryId: cleaningCat.id,
+          categoryId: deepCleaningCat.id,
+          requestSector: "cleaning-care",
+          requestBranch: "deep-cleaning",
           title: "Move-out Cleaning",
           description: "Move-out cleaning completed",
           postalCode: "10119",

@@ -201,12 +201,25 @@ export interface User {
 }
 
 // Category API calls
+export interface CategoryParent {
+  id: string;
+  slug: string;
+  nameDe: string;
+  nameEn: string;
+  icon: string;
+}
+
 export interface Category {
   id: string;
   slug: string;
   nameDe: string;
   nameEn: string;
   icon: string;
+  parentId?: string | null;
+  parent?: CategoryParent | null;
+  _count?: {
+    services?: number;
+  };
 }
 
 export async function getCategories(): Promise<Category[]> {

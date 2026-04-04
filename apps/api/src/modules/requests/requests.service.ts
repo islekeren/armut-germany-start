@@ -2,10 +2,16 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateRequestDto, UpdateRequestDto, RequestQueryDto } from "./dto/request.dto";
 import { NotificationsService } from "../notifications/notifications.service";
+import {
+  getRequestBranchById,
+  getRequestBranchesByCategorySlug,
+  getRequestSectorById,
+} from "../../common/request-taxonomy";
 
 @Injectable()
 export class RequestsService {
@@ -29,7 +35,7 @@ export class RequestsService {
       throw new ForbiddenException("Only customers can create service requests");
     }
 
-    // Look up category by ID or slug
+    // Look up category by ID or slug.
     let category;
     if (this.isUUID(createRequestDto.categoryId)) {
       category = await this.prisma.category.findUnique({
@@ -42,17 +48,63 @@ export class RequestsService {
       });
     }
 
-    if (!category) {
+    if (!category || !category.isActive) {
       throw new NotFoundException("Category not found");
     }
+
+    const branch = getRequestBranchById(createRequestDto.requestBranch);
+    if (createRequestDto.requestBranch && !branch) {
+      throw new BadRequestException("Invalid request branch");
+    }
+
+    const sector = getRequestSectorById(createRequestDto.requestSector);
+    if (createRequestDto.requestSector && !sector) {
+      throw new BadRequestException("Invalid request sector");
+    }
+
+    if (branch && branch.categorySlug !== category.slug) {
+      throw new BadRequestException("Request branch does not match category");
+    }
+
+    if (branch && sector && branch.sectorId !== sector.id) {
+      throw new BadRequestException("Request sector does not match request branch");
+    }
+
+    const matchingBranches = getRequestBranchesByCategorySlug(category.slug);
+    if (
+      !branch &&
+      sector &&
+      !matchingBranches.some((item) => item.sectorId === sector.id)
+    ) {
+      throw new BadRequestException("Request sector does not match category");
+    }
+
+    const uniqueBranch = matchingBranches.length === 1 ? matchingBranches[0] : null;
+    const uniqueSectorId = [...new Set(matchingBranches.map((item) => item.sectorId))];
+    const fallbackSector =
+      uniqueSectorId.length === 1 ? getRequestSectorById(uniqueSectorId[0]) : null;
+
+    const normalizedBranch = branch || uniqueBranch;
+    const normalizedSector =
+      sector || getRequestSectorById(normalizedBranch?.sectorId) || fallbackSector;
+
+    const {
+      categoryId: _categoryId,
+      preferredDate,
+      requestSector: _requestSector,
+      requestBranch: _requestBranch,
+      ...requestData
+    } = createRequestDto;
 
     return this.prisma.serviceRequest.create({
       data: {
         customerId,
-        ...createRequestDto,
-        categoryId: category.id, // Use the actual category ID
-        preferredDate: createRequestDto.preferredDate
-          ? new Date(createRequestDto.preferredDate)
+        ...requestData,
+        categoryId: category.id,
+        requestSector: normalizedSector?.id || null,
+        requestBranch: normalizedBranch?.id || null,
+        preferredDate: preferredDate
+          ? new Date(preferredDate)
           : null,
       },
       include: {
