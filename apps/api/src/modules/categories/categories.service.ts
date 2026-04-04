@@ -8,7 +8,10 @@ export class CategoriesService {
 
   async findAll() {
     return this.prisma.category.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        parentId: { not: null },
+      },
       orderBy: { nameDe: "asc" },
       include: {
         parent: {
