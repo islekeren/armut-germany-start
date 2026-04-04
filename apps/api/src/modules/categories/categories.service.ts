@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { getCanonicalCategorySlug } from "@repo/shared";
 import { PrismaService } from "../../common/prisma/prisma.service";
 
 @Injectable()
@@ -27,8 +28,9 @@ export class CategoriesService {
   }
 
   async findBySlug(slug: string) {
+    const canonicalSlug = getCanonicalCategorySlug(slug) || slug;
     const category = await this.prisma.category.findUnique({
-      where: { slug },
+      where: { slug: canonicalSlug },
       include: {
         parent: {
           select: {

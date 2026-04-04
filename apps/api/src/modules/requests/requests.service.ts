@@ -5,13 +5,18 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { CreateRequestDto, UpdateRequestDto, RequestQueryDto } from "./dto/request.dto";
+import {
+  CreateRequestDto,
+  UpdateRequestDto,
+  RequestQueryDto,
+} from "./dto/request.dto";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
   getRequestBranchById,
   getRequestBranchesByCategorySlug,
   getRequestSectorById,
 } from "../../common/request-taxonomy";
+import { getCanonicalCategorySlug } from "@repo/shared";
 
 @Injectable()
 export class RequestsService {
@@ -22,17 +27,20 @@ export class RequestsService {
 
   // Helper to check if a string is a valid UUID
   private isUUID(str: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   }
 
   async create(
     customerId: string,
     createRequestDto: CreateRequestDto,
-    userType: "customer" | "provider" | "admin" = "customer"
+    userType: "customer" | "provider" | "admin" = "customer",
   ) {
     if (userType !== "customer") {
-      throw new ForbiddenException("Only customers can create service requests");
+      throw new ForbiddenException(
+        "Only customers can create service requests",
+      );
     }
 
     // Look up category by ID or slug.
@@ -42,9 +50,12 @@ export class RequestsService {
         where: { id: createRequestDto.categoryId },
       });
     } else {
+      const canonicalCategorySlug =
+        getCanonicalCategorySlug(createRequestDto.categoryId) ||
+        createRequestDto.categoryId;
       // Assume it's a slug
       category = await this.prisma.category.findUnique({
-        where: { slug: createRequestDto.categoryId },
+        where: { slug: canonicalCategorySlug },
       });
     }
 
@@ -67,7 +78,9 @@ export class RequestsService {
     }
 
     if (branch && sector && branch.sectorId !== sector.id) {
-      throw new BadRequestException("Request sector does not match request branch");
+      throw new BadRequestException(
+        "Request sector does not match request branch",
+      );
     }
 
     const matchingBranches = getRequestBranchesByCategorySlug(category.slug);
@@ -79,14 +92,21 @@ export class RequestsService {
       throw new BadRequestException("Request sector does not match category");
     }
 
-    const uniqueBranch = matchingBranches.length === 1 ? matchingBranches[0] : null;
-    const uniqueSectorId = [...new Set(matchingBranches.map((item) => item.sectorId))];
+    const uniqueBranch =
+      matchingBranches.length === 1 ? matchingBranches[0] : null;
+    const uniqueSectorId = [
+      ...new Set(matchingBranches.map((item) => item.sectorId)),
+    ];
     const fallbackSector =
-      uniqueSectorId.length === 1 ? getRequestSectorById(uniqueSectorId[0]) : null;
+      uniqueSectorId.length === 1
+        ? getRequestSectorById(uniqueSectorId[0])
+        : null;
 
     const normalizedBranch = branch || uniqueBranch;
     const normalizedSector =
-      sector || getRequestSectorById(normalizedBranch?.sectorId) || fallbackSector;
+      sector ||
+      getRequestSectorById(normalizedBranch?.sectorId) ||
+      fallbackSector;
 
     const {
       categoryId: _categoryId,
@@ -103,9 +123,7 @@ export class RequestsService {
         categoryId: category.id,
         requestSector: normalizedSector?.id || null,
         requestBranch: normalizedBranch?.id || null,
-        preferredDate: preferredDate
-          ? new Date(preferredDate)
-          : null,
+        preferredDate: preferredDate ? new Date(preferredDate) : null,
       },
       include: {
         customer: {
@@ -137,7 +155,16 @@ export class RequestsService {
   }
 
   async findAll(query: RequestQueryDto) {
-    const { categoryId, postalCode, lat, lng, radius, status, page = 1, limit = 10 } = query;
+    const {
+      categoryId,
+      postalCode,
+      lat,
+      lng,
+      radius,
+      status,
+      page = 1,
+      limit = 10,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -176,7 +203,12 @@ export class RequestsService {
     // Filter by distance if lat/lng provided
     if (lat && lng && radius) {
       requests = requests.filter((request) => {
-        const distance = this.calculateDistance(lat, lng, request.lat, request.lng);
+        const distance = this.calculateDistance(
+          lat,
+          lng,
+          request.lat,
+          request.lng,
+        );
         return distance <= radius;
       });
     }
@@ -412,7 +444,7 @@ export class RequestsService {
         provider.serviceAreaLat,
         provider.serviceAreaLng,
         request.lat,
-        request.lng
+        request.lng,
       );
       return distance <= provider.serviceAreaRadius;
     });
@@ -434,7 +466,7 @@ export class RequestsService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371;
     const dLat = this.toRad(lat2 - lat1);

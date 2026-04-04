@@ -61,6 +61,31 @@ describe("CategoriesService", () => {
     });
   });
 
+  it("resolves legacy slugs to the canonical category slug", async () => {
+    prisma.category.findUnique.mockResolvedValue({
+      id: "c1",
+      slug: "home-cleaning",
+      isActive: true,
+    });
+
+    await service.findBySlug("cleaning");
+
+    expect(prisma.category.findUnique).toHaveBeenCalledWith({
+      where: { slug: "home-cleaning" },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            slug: true,
+            nameDe: true,
+            nameEn: true,
+            icon: true,
+          },
+        },
+      },
+    });
+  });
+
   it("finds by id", async () => {
     prisma.category.findUnique.mockResolvedValue({
       id: "c1",

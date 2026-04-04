@@ -1,3 +1,5 @@
+import { getCanonicalCategorySlug } from "@repo/shared";
+
 type RequestSectorDefinition = {
   id: string;
   labelEn: string;
@@ -278,8 +280,11 @@ export function getRequestBranchById(branchId?: string | null) {
 }
 
 export function getRequestBranchesByCategorySlug(categorySlug?: string | null) {
-  if (!categorySlug) return [];
-  return REQUEST_BRANCHES.filter((branch) => branch.categorySlug === categorySlug);
+  const canonicalSlug = getCanonicalCategorySlug(categorySlug);
+  if (!canonicalSlug) return [];
+  return REQUEST_BRANCHES.filter(
+    (branch) => branch.categorySlug === canonicalSlug,
+  );
 }
 
 function getUniqueFallbackBranch(categorySlug?: string | null) {
@@ -299,7 +304,8 @@ export function resolveRequestTaxonomy(input: {
   categorySlug?: string | null;
 }) {
   const branch =
-    getRequestBranchById(input.requestBranch) || getUniqueFallbackBranch(input.categorySlug);
+    getRequestBranchById(input.requestBranch) ||
+    getUniqueFallbackBranch(input.categorySlug);
   const sector =
     getRequestSectorById(input.requestSector) ||
     getRequestSectorById(branch?.sectorId) ||
