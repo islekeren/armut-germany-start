@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsEnum,
 } from "class-validator";
+import { Type } from "class-transformer";
 
 export enum RequestStatus {
   OPEN = "open",
@@ -118,14 +119,17 @@ export class RequestQueryDto {
   postalCode?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   lat?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   lng?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   radius?: number;
 
@@ -134,10 +138,12 @@ export class RequestQueryDto {
   status?: RequestStatus;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }

@@ -1,7 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
-import * as request from "supertest";
+import request from "supertest";
 import { AppModule } from "../src/app.module";
+import { PrismaService } from "../src/common/prisma/prisma.service";
 
 describe("AppController (e2e)", () => {
   let app: INestApplication;
@@ -10,6 +11,13 @@ describe("AppController (e2e)", () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
+
+    const prisma = moduleFixture.get(PrismaService) as any;
+    prisma.category.findMany.mockResolvedValue([]);
+    prisma.provider.findMany.mockResolvedValue([]);
+    prisma.provider.count.mockResolvedValue(0);
+    prisma.serviceRequest.findMany.mockResolvedValue([]);
+    prisma.serviceRequest.count.mockResolvedValue(0);
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
@@ -24,7 +32,9 @@ describe("AppController (e2e)", () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   describe("Auth Module", () => {
@@ -112,29 +122,25 @@ describe("AppController (e2e)", () => {
     });
   });
 
-  describe("Search Module", () => {
-    describe("GET /api/search/providers", () => {
-      it("should search providers", () => {
+  describe("Requests Module", () => {
+    describe("GET /api/requests", () => {
+      it("should return service requests", () => {
         return request(app.getHttpServer())
-          .get("/api/search/providers?q=cleaning")
+          .get("/api/requests?status=open")
           .expect(200)
           .expect((res) => {
             expect(res.body).toHaveProperty("data");
             expect(res.body).toHaveProperty("meta");
           });
       });
+    });
+  });
 
+  describe("Provider Search", () => {
+    describe("GET /api/providers", () => {
       it("should support location-based search", () => {
         return request(app.getHttpServer())
-          .get("/api/search/providers?lat=52.52&lng=13.405&radius=25")
-          .expect(200);
-      });
-    });
-
-    describe("GET /api/search/requests", () => {
-      it("should search service requests", () => {
-        return request(app.getHttpServer())
-          .get("/api/search/requests?status=open")
+          .get("/api/providers?lat=52.52&lng=13.405&radius=25")
           .expect(200)
           .expect((res) => {
             expect(res.body).toHaveProperty("data");
