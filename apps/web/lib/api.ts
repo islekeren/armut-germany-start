@@ -123,94 +123,101 @@ export async function apiRequest<T>(
     }
   }
 
-  let response: Response;
   try {
-    response = await fetch(url, {
-      ...fetchOptions,
-      cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
-      headers,
-      signal: controller.signal,
-    });
-  } catch {
-    throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
-  }
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...fetchOptions,
+        cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
+        headers,
+        signal: controller.signal,
+      });
+    } catch {
+      throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+    }
 
-  // On client-side, try refreshing once when access token is expired.
-  if (
-    response.status === 401 &&
-    typeof window !== "undefined" &&
-    !endpoint.startsWith("/auth/")
-  ) {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    // On client-side, try refreshing once when access token is expired.
+    if (
+      response.status === 401 &&
+      typeof window !== "undefined" &&
+      !endpoint.startsWith("/auth/")
+    ) {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-    if (refreshToken) {
-      try {
-        const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ refreshToken }),
-        });
-
-        if (refreshResponse.ok) {
-          const refreshed = (await refreshResponse.json()) as LoginResponse;
-
-          localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
-          localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
-          localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
-
-          const retryHeaders = new Headers(fetchOptions.headers || undefined);
-          retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
-          if (
-            fetchOptions.body &&
-            !(fetchOptions.body instanceof FormData) &&
-            !retryHeaders.has("Content-Type")
-          ) {
-            retryHeaders.set("Content-Type", "application/json");
-          }
-
-          response = await fetch(url, {
-            ...fetchOptions,
-            cache: cache ?? undefined,
-            headers: retryHeaders,
+      if (refreshToken) {
+        try {
+          const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
           });
-        } else {
+
+          if (refreshResponse.ok) {
+            const refreshed = (await refreshResponse.json()) as LoginResponse;
+
+            localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
+            localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
+            localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
+
+            const retryHeaders = new Headers(fetchOptions.headers || undefined);
+            retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
+            if (
+              fetchOptions.body &&
+              !(fetchOptions.body instanceof FormData) &&
+              !retryHeaders.has("Content-Type")
+            ) {
+              retryHeaders.set("Content-Type", "application/json");
+            }
+
+            response = await fetch(url, {
+              ...fetchOptions,
+              cache: cache ?? undefined,
+              headers: retryHeaders,
+            });
+          } else {
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          }
+        } catch {
           localStorage.removeItem(ACCESS_TOKEN_KEY);
           localStorage.removeItem(REFRESH_TOKEN_KEY);
           localStorage.removeItem(USER_KEY);
         }
-      } catch {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
       }
     }
-  }
 
-  if (!response.ok) {
-    if (response.status >= 500) {
-      throw new ApiError(API_UNAVAILABLE_MESSAGE, {
-        status: response.status,
-        code: "unavailable",
-      });
+    if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ApiError(API_UNAVAILABLE_MESSAGE, {
+          status: response.status,
+          code: "unavailable",
+        });
+      }
+
+      const message = await getErrorMessage(response);
+      throw new ApiError(message, { status: response.status, code: "http" });
     }
 
-    const message = await getErrorMessage(response);
-    throw new ApiError(message, { status: response.status, code: "http" });
-  }
+    if (response.status === 204) {
+      return undefined as T;
+    }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
+    const contentType = response.headers.get("Content-Type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
 
-  const contentType = response.headers.get("Content-Type") || "";
-  if (contentType.includes("application/json")) {
-    return response.json();
+    const text = await response.text();
+    return text as T;
+  } finally {
+    clearTimeout(timeoutId);
+    if (signal) {
+      signal.removeEventListener("abort", abortFromCaller);
+    }
   }
-
-  const text = await response.text();
-  return text as T;
 }
 
 export function getStoredAccessToken(): string | null {
