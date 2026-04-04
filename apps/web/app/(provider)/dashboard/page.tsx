@@ -117,26 +117,27 @@ export default function ProviderDashboard() {
   ];
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">{t("loading")}</div>;
+    return <div className="flex min-h-screen items-center justify-center">{t("loading")}</div>;
   }
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary">Armut</span>
+              <span className="text-xl font-bold text-primary sm:text-2xl">Armut</span>
               <span className="text-sm text-muted">Pro</span>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <LanguageToggle />
               <Link
                 href="/notifications"
-                className="relative inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold text-foreground hover:bg-background"
+                className="relative inline-flex items-center gap-2 rounded-lg border border-border bg-white px-2 py-2 text-sm font-semibold text-foreground hover:bg-background sm:px-3"
               >
-                <span>{t("navigation.notifications")}</span>
+                <span className="hidden sm:inline">{t("navigation.notifications")}</span>
+                <span className="sm:hidden">🔔</span>
                 {unreadNotifications > 0 && (
                   <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-white">
                     {unreadNotifications > 99 ? "99+" : unreadNotifications}
@@ -145,7 +146,7 @@ export default function ProviderDashboard() {
               </Link>
               <Link
                 href="/dashboard/messages"
-                className="relative inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10"
+                className="relative inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2 py-2 text-sm font-semibold text-primary hover:bg-primary/10 sm:px-3"
               >
                 <svg
                   className="h-4 w-4"
@@ -160,7 +161,7 @@ export default function ProviderDashboard() {
                     d="M7 8h10M7 12h6m-8 8 3.5-3H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2v3Z"
                   />
                 </svg>
-                <span>{t("navigation.messages")}</span>
+                <span className="hidden sm:inline">{t("navigation.messages")}</span>
                 {unreadMessages > 0 && (
                   <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-xs text-white">
                     {unreadMessages}
@@ -169,7 +170,7 @@ export default function ProviderDashboard() {
               </Link>
               <Link
                 href="/dashboard/profile"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm text-white sm:h-10 sm:w-10"
               >
                 {user?.firstName?.charAt(0) || "P"}
               </Link>
@@ -178,24 +179,24 @@ export default function ProviderDashboard() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="flex flex-col gap-8 lg:flex-row">
           {/* Sidebar */}
           <aside className="w-full lg:w-64">
-            <nav className="rounded-xl bg-white p-4 shadow-sm">
-              <ul className="space-y-1">
-                <li>
+            <nav className="rounded-xl bg-white p-3 shadow-sm sm:p-4">
+              <ul className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard"
-                    className="flex items-center gap-3 rounded-lg bg-primary/10 px-4 py-3 font-medium text-primary"
+                    className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary sm:px-4 sm:py-3"
                   >
                     <span>📊</span> {t("navigation.overview")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/listings"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>📬</span> {t("navigation.requests")}
                     {data.stats.newRequests > 0 && (
@@ -205,66 +206,66 @@ export default function ProviderDashboard() {
                     )}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/offers"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>💶</span> {t("navigation.pendingOffers")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/orders"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>📋</span> {t("navigation.orders")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/calendar"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>📅</span> {t("navigation.calendar")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/messages"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>💬</span> {t("navigation.messages")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/reviews"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>⭐</span> {t("navigation.reviews")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/finances"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>💰</span> {t("navigation.finances")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/profile"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>👤</span> {t("navigation.profile")}
                   </Link>
                 </li>
-                <li>
+                <li className="min-w-max lg:min-w-0">
                   <Link
                     href="/dashboard/settings"
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-muted hover:bg-background"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
                   >
                     <span>⚙️</span> {t("navigation.settings")}
                   </Link>
@@ -277,10 +278,10 @@ export default function ProviderDashboard() {
           <main className="flex-1">
             {/* Welcome */}
             <div className="mb-8">
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-xl font-bold sm:text-2xl">
                 {t("welcomeBack", { name: user?.firstName || "Provider" })}
               </h1>
-              <p className="text-muted">
+              <p className="text-sm text-muted sm:text-base">
                 {t("activityOverview")}
               </p>
             </div>

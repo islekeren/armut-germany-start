@@ -259,7 +259,7 @@ export default function ProviderProfilePage() {
     <ProviderSubpageShell title={t("title")} backLabel={tNav("overview")}>
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-8 text-white">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-dark/70 to-primary/60" />
+          <div className="absolute inset-0 bg-primary/80" />
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-start gap-4">
               {profile?.user.profileImage ? (

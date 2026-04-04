@@ -21,7 +21,7 @@ interface MessagesWorkspaceProps {
   currentUserId?: string;
   newMessage: string;
   onNewMessageChange: (value: string) => void;
-  onSelectConversation: (conversationId: string) => void;
+  onSelectConversation: (conversationId: string | null) => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
   getOtherParticipantName: (conversation: ConversationItem) => string;
   getConversationLabel: (conversation: ConversationItem) => string;
@@ -68,7 +68,9 @@ export function MessagesWorkspace({
 }: MessagesWorkspaceProps) {
   return (
     <div className={wrapperClassName}>
-      <aside className={asideClassName}>
+      <aside
+        className={`${asideClassName} ${selectedConversation ? "hidden sm:block" : "block"}`.trim()}
+      >
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">{title}</h2>
         </div>
@@ -199,8 +201,92 @@ export function MessagesWorkspace({
         )}
       </div>
 
-      <div className="flex flex-1 items-center justify-center sm:hidden">
-        <p className="text-muted">{selectConversationLabel}</p>
+      <div
+        className={`flex flex-1 flex-col sm:hidden ${selectedConversation ? "block" : "hidden"}`.trim()}
+      >
+        {selectedConversation ? (
+          <>
+            <div className={`flex items-center gap-3 border-b border-border p-4 ${chatHeaderClassName}`.trim()}>
+              <button
+                type="button"
+                onClick={() => onSelectConversation(null)}
+                className="rounded-full border border-border px-3 py-1 text-sm text-muted"
+                aria-label="Back to conversations"
+              >
+                ←
+              </button>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-white">
+                {getOtherParticipantName(selectedConversation).charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <h3 className="truncate font-semibold">
+                  {getOtherParticipantName(selectedConversation)}
+                </h3>
+                <p className="truncate text-sm text-muted">
+                  {getConversationLabel(selectedConversation)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {isLoadingMessages ? (
+                <div className="text-sm text-muted">{loadingMessagesLabel}</div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message) => {
+                    const isOwnMessage = message.senderId === currentUserId;
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[85%] rounded-2xl px-4 py-2 ${
+                            isOwnMessage
+                              ? "bg-primary text-white"
+                              : incomingBubbleClassName
+                          }`}
+                        >
+                          <p>{message.content}</p>
+                          <p
+                            className={`mt-1 text-right text-xs ${
+                              isOwnMessage ? "text-white/70" : "text-muted"
+                            }`}
+                          >
+                            {formatTime(message.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className={`border-t border-border p-3 ${composerClassName}`.trim()}>
+              <form onSubmit={onSendMessage} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(event) => onNewMessageChange(event.target.value)}
+                  placeholder={messagePlaceholder}
+                  className="min-w-0 flex-1 rounded-full border border-border px-4 py-2 focus:border-primary focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={isSending || !newMessage.trim()}
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+                >
+                  {isSending ? sendingLabel : sendLabel}
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-6 text-center">
+            <p className="text-sm text-muted">{selectConversationLabel}</p>
+          </div>
+        )}
       </div>
     </div>
   );
