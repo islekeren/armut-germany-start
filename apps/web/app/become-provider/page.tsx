@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Footer, FormInput, FormLabel, FormSelect, Header } from "@/components";
+import {
+  PROVIDER_SERVICE_BRANCHES,
+  getProviderServiceBranchLabel,
+} from "@/lib/provider-service-taxonomy";
 
 const benefitKeys = [
   "newCustomers",
@@ -23,23 +27,9 @@ const benefitIcons: Record<string, string> = {
   support: "🤝",
 };
 
-const categoryKeys = [
-  "cleaning",
-  "moving",
-  "renovation",
-  "garden",
-  "electrician",
-  "plumber",
-  "painter",
-  "locksmith",
-  "tutoring",
-  "photography",
-  "computerHelp",
-  "petCare",
-];
-
 export default function BecomeProviderPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const [formData, setFormData] = useState({
     companyName: "",
     contactName: "",
@@ -48,6 +38,15 @@ export default function BecomeProviderPage() {
     category: "",
     postalCode: "",
   });
+  const categoryOptions = useMemo(
+    () =>
+      [...PROVIDER_SERVICE_BRANCHES].sort((a, b) =>
+        getProviderServiceBranchLabel(a, locale).localeCompare(
+          getProviderServiceBranchLabel(b, locale),
+        ),
+      ),
+    [locale],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,17 +88,41 @@ export default function BecomeProviderPage() {
               <div className="rounded-2xl bg-white/10 p-8">
                 <div className="text-center">
                   <div className="mb-4 text-6xl">🔧</div>
-                  <div className="text-3xl font-bold">{t("becomeProvider.stats.providers").split(" ")[0]}</div>
-                  <div className="text-white/80">{t("becomeProvider.stats.providers").split(" ").slice(1).join(" ")}</div>
+                  <div className="text-3xl font-bold">
+                    {t("becomeProvider.stats.providers").split(" ")[0]}
+                  </div>
+                  <div className="text-white/80">
+                    {t("becomeProvider.stats.providers")
+                      .split(" ")
+                      .slice(1)
+                      .join(" ")}
+                  </div>
                 </div>
                 <div className="mt-6 grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <div className="text-2xl font-bold">{t("becomeProvider.stats.customers").split(" ")[0]}</div>
-                    <div className="text-sm text-white/80">{t("becomeProvider.stats.customers").split(" ").slice(1).join(" ")}</div>
+                    <div className="text-2xl font-bold">
+                      {t("becomeProvider.stats.customers").split(" ")[0]}
+                    </div>
+                    <div className="text-sm text-white/80">
+                      {t("becomeProvider.stats.customers")
+                        .split(" ")
+                        .slice(1)
+                        .join(" ")}
+                    </div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{t("becomeProvider.stats.rating").split(" ").slice(0, 2).join(" ")}</div>
-                    <div className="text-sm text-white/80">{t("becomeProvider.stats.rating").split(" ").slice(2).join(" ")}</div>
+                    <div className="text-2xl font-bold">
+                      {t("becomeProvider.stats.rating")
+                        .split(" ")
+                        .slice(0, 2)
+                        .join(" ")}
+                    </div>
+                    <div className="text-sm text-white/80">
+                      {t("becomeProvider.stats.rating")
+                        .split(" ")
+                        .slice(2)
+                        .join(" ")}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -121,8 +144,12 @@ export default function BecomeProviderPage() {
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-xl font-bold text-white">
                     {num}
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold">{t(`becomeProvider.steps.step${num}.title`)}</h3>
-                  <p className="text-muted">{t(`becomeProvider.steps.step${num}.description`)}</p>
+                  <h3 className="mb-2 text-lg font-semibold">
+                    {t(`becomeProvider.steps.step${num}.title`)}
+                  </h3>
+                  <p className="text-muted">
+                    {t(`becomeProvider.steps.step${num}.description`)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -133,16 +160,19 @@ export default function BecomeProviderPage() {
       {/* Benefits */}
       <section id="vorteile" className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-12 text-center text-3xl font-bold">{t("becomeProvider.benefits.title")}</h2>
+          <h2 className="mb-12 text-center text-3xl font-bold">
+            {t("becomeProvider.benefits.title")}
+          </h2>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {benefitKeys.map((key) => (
-              <div
-                key={key}
-                className="rounded-xl bg-background p-6"
-              >
+              <div key={key} className="rounded-xl bg-background p-6">
                 <div className="mb-4 text-4xl">{benefitIcons[key]}</div>
-                <h3 className="mb-2 text-lg font-semibold">{t(`becomeProvider.benefits.${key}.title`)}</h3>
-                <p className="text-muted">{t(`becomeProvider.benefits.${key}.description`)}</p>
+                <h3 className="mb-2 text-lg font-semibold">
+                  {t(`becomeProvider.benefits.${key}.title`)}
+                </h3>
+                <p className="text-muted">
+                  {t(`becomeProvider.benefits.${key}.description`)}
+                </p>
               </div>
             ))}
           </div>
@@ -162,9 +192,7 @@ export default function BecomeProviderPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <FormLabel>
-                  {t("becomeProvider.form.companyName")}
-                </FormLabel>
+                <FormLabel>{t("becomeProvider.form.companyName")}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.companyName}
@@ -177,9 +205,7 @@ export default function BecomeProviderPage() {
               </div>
 
               <div>
-                <FormLabel>
-                  {t("becomeProvider.form.contactPerson")}
-                </FormLabel>
+                <FormLabel>{t("becomeProvider.form.contactPerson")}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.contactName}
@@ -193,9 +219,7 @@ export default function BecomeProviderPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <FormLabel>
-                    {t("becomeProvider.form.email")}
-                  </FormLabel>
+                  <FormLabel>{t("becomeProvider.form.email")}</FormLabel>
                   <FormInput
                     type="email"
                     value={formData.email}
@@ -207,9 +231,7 @@ export default function BecomeProviderPage() {
                   />
                 </div>
                 <div>
-                  <FormLabel>
-                    {t("becomeProvider.form.phone")}
-                  </FormLabel>
+                  <FormLabel>{t("becomeProvider.form.phone")}</FormLabel>
                   <FormInput
                     type="tel"
                     value={formData.phone}
@@ -224,9 +246,7 @@ export default function BecomeProviderPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <FormLabel>
-                    {t("becomeProvider.form.mainCategory")}
-                  </FormLabel>
+                  <FormLabel>{t("becomeProvider.form.mainCategory")}</FormLabel>
                   <FormSelect
                     value={formData.category}
                     onChange={(e) =>
@@ -235,18 +255,18 @@ export default function BecomeProviderPage() {
                     accent="secondary"
                     required
                   >
-                    <option value="">{t("becomeProvider.form.pleaseSelect")}</option>
-                    {categoryKeys.map((key) => (
-                      <option key={key} value={key}>
-                        {t(`categories.${key}.name`)}
+                    <option value="">
+                      {t("becomeProvider.form.pleaseSelect")}
+                    </option>
+                    {categoryOptions.map((branch) => (
+                      <option key={branch.id} value={branch.categorySlug}>
+                        {getProviderServiceBranchLabel(branch, locale)}
                       </option>
                     ))}
                   </FormSelect>
                 </div>
                 <div>
-                  <FormLabel>
-                    {t("becomeProvider.form.postalCode")}
-                  </FormLabel>
+                  <FormLabel>{t("becomeProvider.form.postalCode")}</FormLabel>
                   <FormInput
                     type="text"
                     value={formData.postalCode}

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
-import { getCanonicalCategorySlug } from "@repo/shared";
 import { AlertBanner, Header, Footer, RequestCtaLink } from "@/components";
 import {
   getCategoryBySlug,
@@ -54,7 +53,6 @@ export default async function CategoryPage({
   const isGerman = locale.startsWith("de");
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
-  const canonicalSlug = getCanonicalCategorySlug(slug) || slug;
   const pageParam = Array.isArray(resolvedSearchParams?.page)
     ? resolvedSearchParams.page[0]
     : resolvedSearchParams?.page;
@@ -71,14 +69,8 @@ export default async function CategoryPage({
   let categoryUnavailable = false;
   let providersUnavailable = false;
 
-  if (canonicalSlug !== slug) {
-    permanentRedirect(
-      buildCategoryPageHref(canonicalSlug, resolvedSearchParams),
-    );
-  }
-
   try {
-    category = await getCategoryBySlug(canonicalSlug);
+    category = await getCategoryBySlug(slug);
   } catch (error) {
     if (isApiNotFoundError(error)) {
       notFound();
@@ -94,13 +86,7 @@ export default async function CategoryPage({
     notFound();
   }
 
-  if (category && category.slug !== slug) {
-    permanentRedirect(
-      buildCategoryPageHref(category.slug, resolvedSearchParams),
-    );
-  }
-
-  const activeSlug = category?.slug || canonicalSlug;
+  const activeSlug = category?.slug || slug;
 
   const fallbackDisplayName = slug
     .split("-")

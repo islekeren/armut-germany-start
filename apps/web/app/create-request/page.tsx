@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { getCanonicalCategorySlug } from "@repo/shared";
 import {
   AlertBanner,
   FormInput,
@@ -32,16 +31,12 @@ export default function CreateRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
-  const initialCategoryParam =
-    searchParams.get("category") || searchParams.get("kategorie") || "";
   const initialCategory =
-    getCanonicalCategorySlug(initialCategoryParam) || initialCategoryParam;
+    searchParams.get("category") || searchParams.get("kategorie") || "";
   const initialSector =
     searchParams.get("sector") || searchParams.get("requestSector") || "";
-  const initialBranchParam =
-    searchParams.get("branch") || searchParams.get("requestBranch") || "";
   const initialBranch =
-    getCanonicalCategorySlug(initialBranchParam) || initialBranchParam;
+    searchParams.get("branch") || searchParams.get("requestBranch") || "";
 
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);

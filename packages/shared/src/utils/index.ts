@@ -1,5 +1,3 @@
-export * from "./category-slugs";
-
 /**
  * Format price in EUR
  */

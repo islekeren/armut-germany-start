@@ -1,5 +1,3 @@
-import { getCanonicalCategorySlug } from "@repo/shared";
-
 type RequestSectorDefinition = {
   id: string;
   labelEn: string;
@@ -280,10 +278,9 @@ export function getRequestBranchById(branchId?: string | null) {
 }
 
 export function getRequestBranchesByCategorySlug(categorySlug?: string | null) {
-  const canonicalSlug = getCanonicalCategorySlug(categorySlug);
-  if (!canonicalSlug) return [];
+  if (!categorySlug) return [];
   return REQUEST_BRANCHES.filter(
-    (branch) => branch.categorySlug === canonicalSlug,
+    (branch) => branch.categorySlug === categorySlug,
   );
 }
 

@@ -16,7 +16,6 @@ import {
   getRequestBranchesByCategorySlug,
   getRequestSectorById,
 } from "../../common/request-taxonomy";
-import { getCanonicalCategorySlug } from "@repo/shared";
 
 @Injectable()
 export class RequestsService {
@@ -50,16 +49,13 @@ export class RequestsService {
         where: { id: createRequestDto.categoryId },
       });
     } else {
-      const canonicalCategorySlug =
-        getCanonicalCategorySlug(createRequestDto.categoryId) ||
-        createRequestDto.categoryId;
       // Assume it's a slug
       category = await this.prisma.category.findUnique({
-        where: { slug: canonicalCategorySlug },
+        where: { slug: createRequestDto.categoryId },
       });
     }
 
-    if (!category || !category.isActive) {
+    if (!category || !category.isActive || !category.parentId) {
       throw new NotFoundException("Category not found");
     }
 

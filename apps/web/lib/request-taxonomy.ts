@@ -1,4 +1,3 @@
-import { getCanonicalCategorySlug } from "@repo/shared";
 import type { Category } from "@/lib/api";
 
 export type RequestSector = {
@@ -267,10 +266,9 @@ export function getBranchById(branchId?: string | null) {
 }
 
 export function getBranchesByCategorySlug(categorySlug?: string | null) {
-  const canonicalSlug = getCanonicalCategorySlug(categorySlug);
-  if (!canonicalSlug) return [];
+  if (!categorySlug) return [];
   return REQUEST_BRANCHES.filter(
-    (branch) => branch.categorySlug === canonicalSlug,
+    (branch) => branch.categorySlug === categorySlug,
   );
 }
 

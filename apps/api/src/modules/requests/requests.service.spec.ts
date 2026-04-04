@@ -55,6 +55,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "electrician",
+        parentId: "sector-1",
         isActive: true,
       });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-1" });
@@ -84,6 +85,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-2",
         slug: "home-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-2" });
@@ -99,31 +101,21 @@ describe("RequestsService", () => {
       });
     });
 
-    it("accepts legacy category slugs", async () => {
+    it("rejects legacy broad categories", async () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-2",
-        slug: "home-cleaning",
+        slug: "cleaning",
+        parentId: null,
         isActive: true,
       });
-      prisma.serviceRequest.create.mockResolvedValue({ id: "req-legacy" });
 
-      await service.create("user-1", {
-        categoryId: "cleaning",
-        title: "Need cleaning",
-        description: "flat",
-      } as any);
-
-      expect(prisma.category.findUnique).toHaveBeenCalledWith({
-        where: { slug: "home-cleaning" },
-      });
-      expect(prisma.serviceRequest.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            customerId: "user-1",
-            categoryId: "cat-2",
-          }),
-        }),
-      );
+      await expect(
+        service.create("user-1", {
+          categoryId: "cleaning",
+          title: "Need cleaning",
+          description: "flat",
+        } as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it("throws when category is not found", async () => {
@@ -142,6 +134,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "home-cleaning",
+        parentId: "sector-1",
         isActive: false,
       });
 
@@ -158,6 +151,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "office-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-3" });
@@ -184,6 +178,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "home-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
 
@@ -201,6 +196,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "office-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
 
