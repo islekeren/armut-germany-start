@@ -169,7 +169,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
       {error && (
@@ -180,37 +180,40 @@ export default function MessagesPage() {
         </div>
       )}
 
-      <MessagesWorkspace
-        title={t("title")}
-        loadingLabel={t("loading")}
-        noConversationsLabel={t("noConversations")}
-        noMessagesYetLabel={t("noMessagesYet")}
-        loadingMessagesLabel={t("loadingMessages")}
-        selectConversationLabel={t("selectConversation")}
-        messagePlaceholder={t("placeholder")}
-        sendLabel={t("send")}
-        sendingLabel={t("sending")}
-        conversations={conversations}
-        messages={messages}
-        selectedConversationId={selectedConversationId}
-        selectedConversation={selectedConversation}
-        isLoadingConversations={isLoadingConversations}
-        isLoadingMessages={isLoadingMessages}
-        isSending={isSending}
-        currentUserId={user?.id}
-        newMessage={newMessage}
-        onNewMessageChange={setNewMessage}
-        onSelectConversation={setSelectedConversationId}
-        onSendMessage={handleSendMessage}
-        getOtherParticipantName={getOtherParticipantName}
-        getConversationLabel={getConversationLabel}
-        formatListTime={formatListTime}
-        formatTime={formatTime}
-        asideClassName="w-full border-r border-border bg-white sm:w-80 lg:w-96"
-        chatHeaderClassName="bg-white"
-        composerClassName="bg-white"
-        incomingBubbleClassName="bg-white"
-      />
+      <div className="flex min-h-0 flex-1">
+        <MessagesWorkspace
+          title={t("title")}
+          loadingLabel={t("loading")}
+          noConversationsLabel={t("noConversations")}
+          noMessagesYetLabel={t("noMessagesYet")}
+          loadingMessagesLabel={t("loadingMessages")}
+          selectConversationLabel={t("selectConversation")}
+          messagePlaceholder={t("placeholder")}
+          sendLabel={t("send")}
+          sendingLabel={t("sending")}
+          conversations={conversations}
+          messages={messages}
+          selectedConversationId={selectedConversationId}
+          selectedConversation={selectedConversation}
+          isLoadingConversations={isLoadingConversations}
+          isLoadingMessages={isLoadingMessages}
+          isSending={isSending}
+          currentUserId={user?.id}
+          newMessage={newMessage}
+          onNewMessageChange={setNewMessage}
+          onSelectConversation={setSelectedConversationId}
+          onSendMessage={handleSendMessage}
+          getOtherParticipantName={getOtherParticipantName}
+          getConversationLabel={getConversationLabel}
+          formatListTime={formatListTime}
+          formatTime={formatTime}
+          asideClassName="w-full border-r border-border bg-white sm:w-80 lg:w-96"
+          chatHeaderClassName="bg-white"
+          composerClassName="bg-white"
+          incomingBubbleClassName="bg-white"
+          wrapperClassName="flex flex-1 min-h-0 overflow-hidden"
+        />
+      </div>
     </div>
   );
 }

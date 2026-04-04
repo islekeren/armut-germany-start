@@ -60,7 +60,7 @@ export default function BecomeProviderPage() {
       <Header />
 
       {/* Hero */}
-      <section className="bg-gradient-to-br from-secondary to-secondary/80 py-16 text-white">
+      <section className="bg-secondary py-16 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
