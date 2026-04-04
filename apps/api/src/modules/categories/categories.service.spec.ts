@@ -19,7 +19,10 @@ describe("CategoriesService", () => {
     prisma.category.findMany.mockResolvedValue([{ id: "c1" }]);
     await service.findAll();
     expect(prisma.category.findMany).toHaveBeenCalledWith({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        parentId: { not: null },
+      },
       orderBy: { nameDe: "asc" },
       include: {
         parent: {
