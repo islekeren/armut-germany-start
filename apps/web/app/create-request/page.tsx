@@ -31,7 +31,8 @@ export default function CreateRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
-  const initialCategory = searchParams.get("category") || searchParams.get("kategorie") || "";
+  const initialCategory =
+    searchParams.get("category") || searchParams.get("kategorie") || "";
   const initialSector =
     searchParams.get("sector") || searchParams.get("requestSector") || "";
   const initialBranch =
@@ -112,7 +113,8 @@ export default function CreateRequestPage() {
     () =>
       categories.find(
         (category) =>
-          category.id === formData.category || category.slug === formData.category,
+          category.id === formData.category ||
+          category.slug === formData.category,
       ) || null,
     [categories, formData.category],
   );
@@ -150,7 +152,8 @@ export default function CreateRequestPage() {
 
     const resolvedCategory =
       (selectedBranchId
-        ? categories.find((category) => category.slug === selectedBranchId) || null
+        ? categories.find((category) => category.slug === selectedBranchId) ||
+          null
         : null) || selectedCategory;
 
     if (!resolvedCategory) return;
@@ -172,17 +175,27 @@ export default function CreateRequestPage() {
     if (selectedSectorId !== nextSectorId) {
       setSelectedSectorId(nextSectorId);
     }
-  }, [categories, formData.category, selectedBranchId, selectedCategory, selectedSectorId]);
+  }, [
+    categories,
+    formData.category,
+    selectedBranchId,
+    selectedCategory,
+    selectedSectorId,
+  ]);
 
   const getCategoryLabel = (categoryId: string) => {
-    const selected = categories.find((cat) => cat.id === categoryId || cat.slug === categoryId);
+    const selected = categories.find(
+      (cat) => cat.id === categoryId || cat.slug === categoryId,
+    );
     if (!selected) return categoryId;
     return getCategoryDisplayName(selected, locale);
   };
 
   const getSectorLabel = (categoryParent?: Category["parent"] | null) => {
     if (!categoryParent) return "";
-    return locale.startsWith("de") ? categoryParent.nameDe : categoryParent.nameEn;
+    return locale.startsWith("de")
+      ? categoryParent.nameDe
+      : categoryParent.nameEn;
   };
 
   const handleSectorSelect = (sectorId: string) => {
@@ -252,7 +265,7 @@ export default function CreateRequestPage() {
       if (formData.images.length > 0) {
         const uploadedImages = await uploadsApi.uploadRequestImages(
           token,
-          formData.images
+          formData.images,
         );
         imageUrls = uploadedImages.map((item) => item.url);
       }
@@ -265,7 +278,7 @@ export default function CreateRequestPage() {
           : null,
         formData.preferredTime
           ? `${t("createRequest.timePreferenceLabel")}: ${t(
-              `createRequest.${formData.preferredTime}`
+              `createRequest.${formData.preferredTime}`,
             )}`
           : null,
       ].filter((value): value is string => Boolean(value));
@@ -283,21 +296,26 @@ export default function CreateRequestPage() {
         lat: 0, // Would normally come from geocoding
         lng: 0, // Would normally come from geocoding
         preferredDate: formData.preferredDate || undefined,
-        budgetMin: formData.budgetMin ? parseFloat(formData.budgetMin) : undefined,
-        budgetMax: formData.budgetMax ? parseFloat(formData.budgetMax) : undefined,
+        budgetMin: formData.budgetMin
+          ? parseFloat(formData.budgetMin)
+          : undefined,
+        budgetMax: formData.budgetMax
+          ? parseFloat(formData.budgetMax)
+          : undefined,
         images: imageUrls,
-        requestSector: selectedCategory?.parent?.slug || selectedSectorId || undefined,
+        requestSector:
+          selectedCategory?.parent?.slug || selectedSectorId || undefined,
         requestBranch: selectedCategory?.slug || selectedBranchId || undefined,
       };
 
       await requestsApi.create(requestData, token);
-      
+
       // Redirect to my-requests page on success
       router.push("/my-requests");
     } catch (err) {
       console.error("Failed to create request:", err);
       setError(
-        err instanceof Error ? err.message : t("createRequest.errorCreating")
+        err instanceof Error ? err.message : t("createRequest.errorCreating"),
       );
     } finally {
       setIsLoading(false);
@@ -328,9 +346,14 @@ export default function CreateRequestPage() {
 
         <div className="mx-auto max-w-3xl px-4 py-8">
           <AlertBanner variant="warning">
-            <p className="font-semibold">{t("createRequest.providerBlockedTitle")}</p>
+            <p className="font-semibold">
+              {t("createRequest.providerBlockedTitle")}
+            </p>
             <p>{t("createRequest.providerBlockedDescription")}</p>
-            <Link href="/dashboard" className="mt-3 inline-block font-medium underline">
+            <Link
+              href="/dashboard"
+              className="mt-3 inline-block font-medium underline"
+            >
               {t("createRequest.providerBlockedAction")}
             </Link>
           </AlertBanner>
@@ -352,9 +375,7 @@ export default function CreateRequestPage() {
               <div key={s} className="flex items-center">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold ${
-                    step >= s
-                      ? "bg-primary text-white"
-                      : "bg-border text-muted"
+                    step >= s ? "bg-primary text-white" : "bg-border text-muted"
                   }`}
                 >
                   {s}
@@ -393,14 +414,18 @@ export default function CreateRequestPage() {
               {categoriesLoading ? (
                 <div className="py-12 text-center">
                   <div className="mb-4 text-4xl">⏳</div>
-                  <p className="text-muted">{t("createRequest.loadingCategories")}</p>
+                  <p className="text-muted">
+                    {t("createRequest.loadingCategories")}
+                  </p>
                 </div>
               ) : categoriesError ? (
                 <AlertBanner>{categoriesError}</AlertBanner>
               ) : (
                 <div className="space-y-5">
                   <div>
-                    <FormLabel size="base">{t("createRequest.selectSector")}</FormLabel>
+                    <FormLabel size="base">
+                      {t("createRequest.selectSector")}
+                    </FormLabel>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {sectorOptions.map((sector) => {
                         const selected = selectedSectorId === sector.slug;
@@ -424,7 +449,9 @@ export default function CreateRequestPage() {
 
                   {selectedSectorId && (
                     <div>
-                      <FormLabel size="base">{t("createRequest.selectBranch")}</FormLabel>
+                      <FormLabel size="base">
+                        {t("createRequest.selectBranch")}
+                      </FormLabel>
                       <FormInput
                         type="text"
                         value={branchSearch}
@@ -444,7 +471,9 @@ export default function CreateRequestPage() {
                                 : "border-border"
                             }`}
                           >
-                            <span className="mr-2 text-xl">{category.icon}</span>
+                            <span className="mr-2 text-xl">
+                              {category.icon}
+                            </span>
                             <span className="font-medium">
                               {getCategoryDisplayName(category, locale)}
                             </span>
@@ -475,7 +504,9 @@ export default function CreateRequestPage() {
 
               <div className="space-y-6">
                 <div>
-                  <FormLabel size="base">{t("createRequest.requestTitle")}</FormLabel>
+                  <FormLabel size="base">
+                    {t("createRequest.requestTitle")}
+                  </FormLabel>
                   <FormInput
                     type="text"
                     value={formData.title}
@@ -489,7 +520,9 @@ export default function CreateRequestPage() {
                 </div>
 
                 <div>
-                  <FormLabel size="base">{t("createRequest.description")}</FormLabel>
+                  <FormLabel size="base">
+                    {t("createRequest.description")}
+                  </FormLabel>
                   <FormTextarea
                     value={formData.description}
                     onChange={(e) =>
@@ -504,7 +537,9 @@ export default function CreateRequestPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <FormLabel size="base">{t("createRequest.postalCode")}</FormLabel>
+                    <FormLabel size="base">
+                      {t("createRequest.postalCode")}
+                    </FormLabel>
                     <FormInput
                       type="text"
                       value={formData.postalCode}
@@ -533,7 +568,9 @@ export default function CreateRequestPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <FormLabel size="base">{t("createRequest.preferredDate")}</FormLabel>
+                    <FormLabel size="base">
+                      {t("createRequest.preferredDate")}
+                    </FormLabel>
                     <FormInput
                       type="date"
                       value={formData.preferredDate}
@@ -547,7 +584,9 @@ export default function CreateRequestPage() {
                     />
                   </div>
                   <div>
-                    <FormLabel size="base">{t("createRequest.preferredDays")}</FormLabel>
+                    <FormLabel size="base">
+                      {t("createRequest.preferredDays")}
+                    </FormLabel>
                     <div className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3">
                       {weekdayKeys.map((day) => {
                         const selected = formData.preferredDays.includes(day);
@@ -576,7 +615,9 @@ export default function CreateRequestPage() {
                     </div>
                   </div>
                   <div>
-                    <FormLabel size="base">{t("createRequest.preferredTime")}</FormLabel>
+                    <FormLabel size="base">
+                      {t("createRequest.preferredTime")}
+                    </FormLabel>
                     <FormSelect
                       value={formData.preferredTime}
                       onChange={(e) =>
@@ -588,9 +629,15 @@ export default function CreateRequestPage() {
                       accent="primary"
                     >
                       <option value="">{t("createRequest.flexible")}</option>
-                      <option value="morning">{t("createRequest.morning")}</option>
-                      <option value="afternoon">{t("createRequest.afternoon")}</option>
-                      <option value="evening">{t("createRequest.evening")}</option>
+                      <option value="morning">
+                        {t("createRequest.morning")}
+                      </option>
+                      <option value="afternoon">
+                        {t("createRequest.afternoon")}
+                      </option>
+                      <option value="evening">
+                        {t("createRequest.evening")}
+                      </option>
                     </FormSelect>
                   </div>
                 </div>
@@ -609,7 +656,8 @@ export default function CreateRequestPage() {
                           })
                         }
                         placeholder={t("createRequest.budgetMin")}
-                        accent="primary" className="pr-8"
+                        accent="primary"
+                        className="pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
                         €
@@ -626,7 +674,8 @@ export default function CreateRequestPage() {
                           })
                         }
                         placeholder={t("createRequest.budgetMax")}
-                        accent="primary" className="pr-8"
+                        accent="primary"
+                        className="pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
                         €
@@ -636,7 +685,9 @@ export default function CreateRequestPage() {
                 </div>
 
                 <div>
-                  <FormLabel size="base">{t("createRequest.addPhotos")}</FormLabel>
+                  <FormLabel size="base">
+                    {t("createRequest.addPhotos")}
+                  </FormLabel>
                   <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
                     <input
                       type="file"
@@ -666,7 +717,8 @@ export default function CreateRequestPage() {
                   </div>
                   {formData.images.length > 0 && (
                     <p className="mt-2 text-sm text-muted">
-                      {formData.images.length} {t("createRequest.filesSelected")}
+                      {formData.images.length}{" "}
+                      {t("createRequest.filesSelected")}
                     </p>
                   )}
                 </div>
@@ -703,7 +755,9 @@ export default function CreateRequestPage() {
 
               <div className="space-y-4">
                 <div className="rounded-lg bg-background p-4">
-                  <div className="mb-1 text-sm text-muted">{t("createRequest.categoryLabel")}</div>
+                  <div className="mb-1 text-sm text-muted">
+                    {t("createRequest.categoryLabel")}
+                  </div>
                   <div className="font-medium">
                     {selectedCategory?.icon}{" "}
                     {getCategoryLabel(formData.category)}
@@ -716,28 +770,40 @@ export default function CreateRequestPage() {
                 </div>
 
                 <div className="rounded-lg bg-background p-4">
-                  <div className="mb-1 text-sm text-muted">{t("createRequest.titleLabel")}</div>
+                  <div className="mb-1 text-sm text-muted">
+                    {t("createRequest.titleLabel")}
+                  </div>
                   <div className="font-medium">{formData.title}</div>
                 </div>
 
                 <div className="rounded-lg bg-background p-4">
-                  <div className="mb-1 text-sm text-muted">{t("createRequest.descriptionLabel")}</div>
-                  <div className="whitespace-pre-wrap">{formData.description}</div>
+                  <div className="mb-1 text-sm text-muted">
+                    {t("createRequest.descriptionLabel")}
+                  </div>
+                  <div className="whitespace-pre-wrap">
+                    {formData.description}
+                  </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-lg bg-background p-4">
-                    <div className="mb-1 text-sm text-muted">{t("createRequest.locationLabel")}</div>
+                    <div className="mb-1 text-sm text-muted">
+                      {t("createRequest.locationLabel")}
+                    </div>
                     <div className="font-medium">
                       {formData.postalCode} {formData.city}
                     </div>
                   </div>
                   <div className="rounded-lg bg-background p-4">
-                    <div className="mb-1 text-sm text-muted">{t("createRequest.appointmentLabel")}</div>
+                    <div className="mb-1 text-sm text-muted">
+                      {t("createRequest.appointmentLabel")}
+                    </div>
                     <div className="space-y-1 font-medium">
                       <div>
                         {formData.preferredDate
-                          ? new Date(formData.preferredDate).toLocaleDateString(locale)
+                          ? new Date(formData.preferredDate).toLocaleDateString(
+                              locale,
+                            )
                           : t("createRequest.flexible")}
                       </div>
                       {formData.preferredDays.length > 0 ? (
@@ -760,7 +826,9 @@ export default function CreateRequestPage() {
 
                 {(formData.budgetMin || formData.budgetMax) && (
                   <div className="rounded-lg bg-background p-4">
-                    <div className="mb-1 text-sm text-muted">{t("createRequest.budgetLabel")}</div>
+                    <div className="mb-1 text-sm text-muted">
+                      {t("createRequest.budgetLabel")}
+                    </div>
                     <div className="font-medium">
                       {formData.budgetMin && `${formData.budgetMin}€`}
                       {formData.budgetMin && formData.budgetMax && " - "}
@@ -774,7 +842,9 @@ export default function CreateRequestPage() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">💡</span>
                   <div>
-                    <div className="font-medium">{t("createRequest.nextStepsTitle")}</div>
+                    <div className="font-medium">
+                      {t("createRequest.nextStepsTitle")}
+                    </div>
                     <p className="mt-1 text-sm text-muted">
                       {t("createRequest.nextStepsText")}
                     </p>
@@ -807,7 +877,9 @@ export default function CreateRequestPage() {
                   disabled={isLoading}
                   className="rounded-lg bg-secondary px-8 py-3 font-semibold text-white hover:bg-secondary/90 disabled:opacity-50"
                 >
-                  {isLoading ? t("createRequest.submitting") : t("createRequest.submitRequest")}
+                  {isLoading
+                    ? t("createRequest.submitting")
+                    : t("createRequest.submitRequest")}
                 </button>
               </div>
             </div>

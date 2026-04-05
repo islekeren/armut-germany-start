@@ -45,7 +45,7 @@ export class CategoriesService {
       },
     });
 
-    return category?.isActive ? category : null;
+    return category?.isActive && category.parentId ? category : null;
   }
 
   async findById(id: string) {

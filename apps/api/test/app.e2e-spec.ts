@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
-import * as request from "supertest";
+import request from "supertest";
 import { AppModule } from "../src/app.module";
 
 describe("AppController (e2e)", () => {
@@ -107,6 +107,25 @@ describe("AppController (e2e)", () => {
           .expect((res) => {
             expect(res.body.meta.page).toBe(1);
             expect(res.body.meta.limit).toBe(10);
+          });
+      });
+    });
+  });
+
+  describe("Requests Module", () => {
+    describe("GET /api/requests", () => {
+      it("should support category-slug filtered request listing", () => {
+        return request(app.getHttpServer())
+          .get("/api/requests?categorySlug=home-cleaning")
+          .expect(200)
+          .expect((res) => {
+            expect(res.body).toHaveProperty("data");
+            expect(res.body).toHaveProperty("meta");
+            expect(Array.isArray(res.body.data)).toBe(true);
+
+            for (const item of res.body.data) {
+              expect(item.category?.slug).toBe("home-cleaning");
+            }
           });
       });
     });

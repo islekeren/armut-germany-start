@@ -20,12 +20,32 @@ function getServiceForCategory(provider: PublicProvider, categoryId: string) {
   );
 }
 
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function buildCategoryPageHref(slug: string, searchParams?: SearchParams) {
+  const params = new URLSearchParams();
+
+  Object.entries(searchParams || {}).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => params.append(key, item));
+      return;
+    }
+
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `/category/${slug}?${query}` : `/category/${slug}`;
+}
+
 export default async function CategoryPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const t = await getTranslations("categoryPage");
   const tNav = await getTranslations("nav");
@@ -33,7 +53,10 @@ export default async function CategoryPage({
   const isGerman = locale.startsWith("de");
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
-  const currentPage = Math.max(1, Number(resolvedSearchParams?.page) || 1);
+  const pageParam = Array.isArray(resolvedSearchParams?.page)
+    ? resolvedSearchParams.page[0]
+    : resolvedSearchParams?.page;
+  const currentPage = Math.max(1, Number(pageParam) || 1);
   const limit = 10;
   let category: Category | null = null;
   let providers: PublicProvider[] = [];
@@ -62,6 +85,8 @@ export default async function CategoryPage({
   if (!category && !categoryUnavailable) {
     notFound();
   }
+
+  const activeSlug = category?.slug || slug;
 
   const fallbackDisplayName = slug
     .split("-")
@@ -174,7 +199,7 @@ export default async function CategoryPage({
               <p className="text-muted">{t("ctaSubtitle")}</p>
             </div>
             <RequestCtaLink
-              href={`/create-request?category=${slug}`}
+              href={`/create-request?category=${activeSlug}`}
               className="rounded-lg bg-secondary px-6 py-3 font-semibold text-white hover:bg-secondary/90"
             >
               {t("ctaButton")}
@@ -308,7 +333,7 @@ export default async function CategoryPage({
                             </p>
                             <div className="mt-4 flex gap-3">
                               <RequestCtaLink
-                                href={`/create-request?category=${slug}`}
+                                href={`/create-request?category=${activeSlug}`}
                                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
                               >
                                 {t("requestQuote")}
@@ -331,7 +356,10 @@ export default async function CategoryPage({
               {meta.totalPages > 1 ? (
                 <div className="mt-8 flex items-center justify-center gap-2">
                   <Link
-                    href={`/category/${slug}?page=${Math.max(1, currentPage - 1)}`}
+                    href={buildCategoryPageHref(activeSlug, {
+                      ...resolvedSearchParams,
+                      page: String(Math.max(1, currentPage - 1)),
+                    })}
                     aria-disabled={currentPage === 1}
                     className={`rounded-lg border border-border px-4 py-2 hover:bg-background ${
                       currentPage === 1 ? "pointer-events-none opacity-50" : ""
@@ -346,7 +374,10 @@ export default async function CategoryPage({
                     })}
                   </span>
                   <Link
-                    href={`/category/${slug}?page=${Math.min(meta.totalPages, currentPage + 1)}`}
+                    href={buildCategoryPageHref(activeSlug, {
+                      ...resolvedSearchParams,
+                      page: String(Math.min(meta.totalPages, currentPage + 1)),
+                    })}
                     aria-disabled={currentPage >= meta.totalPages}
                     className={`rounded-lg border border-border px-4 py-2 hover:bg-background ${
                       currentPage >= meta.totalPages

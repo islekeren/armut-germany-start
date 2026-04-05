@@ -45,6 +45,7 @@ describe("CategoriesService", () => {
     prisma.category.findUnique.mockResolvedValue({
       id: "c1",
       slug: "home-cleaning",
+      parentId: "sector-1",
       isActive: true,
     });
     await service.findBySlug("home-cleaning");
@@ -64,10 +65,22 @@ describe("CategoriesService", () => {
     });
   });
 
+  it("returns null for categories outside the active branch taxonomy", async () => {
+    prisma.category.findUnique.mockResolvedValue({
+      id: "c1",
+      slug: "cleaning",
+      parentId: null,
+      isActive: true,
+    });
+
+    await expect(service.findBySlug("cleaning")).resolves.toBeNull();
+  });
+
   it("finds by id", async () => {
     prisma.category.findUnique.mockResolvedValue({
       id: "c1",
       slug: "home-cleaning",
+      parentId: "sector-1",
       isActive: true,
     });
     await service.findById("c1");

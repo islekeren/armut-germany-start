@@ -42,8 +42,8 @@ describe("RequestsService", () => {
             title: "Need cleaning",
             description: "flat",
           } as any,
-          "provider"
-        )
+          "provider",
+        ),
       ).rejects.toThrow(ForbiddenException);
 
       expect(prisma.category.findUnique).not.toHaveBeenCalled();
@@ -55,6 +55,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "electrician",
+        parentId: "sector-1",
         isActive: true,
       });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-1" });
@@ -64,7 +65,7 @@ describe("RequestsService", () => {
           categoryId,
           title: "Need cleaning",
           description: "flat",
-        } as any)
+        } as any),
       ).resolves.toEqual({ id: "req-1" });
 
       expect(prisma.category.findUnique).toHaveBeenCalledWith({
@@ -76,7 +77,7 @@ describe("RequestsService", () => {
             customerId: "user-1",
             categoryId: "cat-1",
           }),
-        })
+        }),
       );
     });
 
@@ -84,6 +85,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-2",
         slug: "home-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-2" });
@@ -99,6 +101,23 @@ describe("RequestsService", () => {
       });
     });
 
+    it("rejects legacy broad categories", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-2",
+        slug: "cleaning",
+        parentId: null,
+        isActive: true,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "cleaning",
+          title: "Need cleaning",
+          description: "flat",
+        } as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
     it("throws when category is not found", async () => {
       prisma.category.findUnique.mockResolvedValue(null);
 
@@ -107,7 +126,7 @@ describe("RequestsService", () => {
           categoryId: "home-cleaning",
           title: "Need cleaning",
           description: "flat",
-        } as any)
+        } as any),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -115,6 +134,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "home-cleaning",
+        parentId: "sector-1",
         isActive: false,
       });
 
@@ -123,14 +143,34 @@ describe("RequestsService", () => {
           categoryId: "home-cleaning",
           title: "Need cleaning",
           description: "flat",
-        } as any)
+        } as any),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it("rejects leaf categories missing from the request taxonomy", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-9",
+        slug: "custom-cleaning",
+        parentId: "sector-1",
+        isActive: true,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "custom-cleaning",
+          title: "Need cleaning",
+          description: "flat",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.serviceRequest.create).not.toHaveBeenCalled();
     });
 
     it("normalizes sector from a valid branch", async () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "office-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
       prisma.serviceRequest.create.mockResolvedValue({ id: "req-3" });
@@ -149,7 +189,7 @@ describe("RequestsService", () => {
             requestBranch: "office-cleaning",
             requestSector: "cleaning-care",
           }),
-        })
+        }),
       );
     });
 
@@ -157,6 +197,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "home-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
 
@@ -166,7 +207,7 @@ describe("RequestsService", () => {
           requestBranch: "electrician",
           title: "Need cleaning",
           description: "flat",
-        } as any)
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -174,6 +215,7 @@ describe("RequestsService", () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
         slug: "office-cleaning",
+        parentId: "sector-1",
         isActive: true,
       });
 
@@ -184,7 +226,7 @@ describe("RequestsService", () => {
           requestBranch: "office-cleaning",
           title: "Need cleaning",
           description: "flat",
-        } as any)
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -208,7 +250,7 @@ describe("RequestsService", () => {
           }),
           skip: 5,
           take: 5,
-        })
+        }),
       );
       expect(result.meta).toEqual({
         total: 14,
@@ -216,6 +258,62 @@ describe("RequestsService", () => {
         limit: 5,
         totalPages: 3,
       });
+    });
+
+    it("filters requests by category slug", async () => {
+      prisma.serviceRequest.findMany.mockResolvedValue([{ id: "r1" }]);
+      prisma.serviceRequest.count.mockResolvedValue(1);
+
+      await service.findAll({
+        categorySlug: "home-cleaning",
+        page: 1,
+        limit: 10,
+      } as any);
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            category: { slug: "home-cleaning" },
+          }),
+        }),
+      );
+      expect(prisma.serviceRequest.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            category: { slug: "home-cleaning" },
+          }),
+        }),
+      );
+    });
+
+    it("filters requests by city when using the legacy city query", async () => {
+      prisma.serviceRequest.findMany.mockResolvedValue([{ id: "r1" }]);
+      prisma.serviceRequest.count.mockResolvedValue(1);
+
+      await service.findAll({
+        city: "Berlin",
+        page: 1,
+        limit: 10,
+      } as any);
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            city: { contains: "Berlin", mode: "insensitive" },
+          }),
+        }),
+      );
+      expect(prisma.serviceRequest.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            city: { contains: "Berlin", mode: "insensitive" },
+          }),
+        }),
+      );
     });
 
     it("filters by distance when lat/lng/radius are provided", async () => {
@@ -244,7 +342,7 @@ describe("RequestsService", () => {
       expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { customerId: "u1", status: "open" },
-        })
+        }),
       );
     });
   });
@@ -257,7 +355,9 @@ describe("RequestsService", () => {
 
     it("throws when request is missing", async () => {
       prisma.serviceRequest.findUnique.mockResolvedValue(null);
-      await expect(service.findOne("missing")).rejects.toThrow(NotFoundException);
+      await expect(service.findOne("missing")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -265,7 +365,7 @@ describe("RequestsService", () => {
     it("throws when request is missing", async () => {
       prisma.serviceRequest.findUnique.mockResolvedValue(null);
       await expect(service.update("r1", "u1", {} as any)).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
 
@@ -275,7 +375,7 @@ describe("RequestsService", () => {
         customerId: "other",
       });
       await expect(service.update("r1", "u1", {} as any)).rejects.toThrow(
-        ForbiddenException
+        ForbiddenException,
       );
     });
 
@@ -284,13 +384,16 @@ describe("RequestsService", () => {
         id: "r1",
         customerId: "u1",
       });
-      prisma.serviceRequest.update.mockResolvedValue({ id: "r1", title: "Updated" });
+      prisma.serviceRequest.update.mockResolvedValue({
+        id: "r1",
+        title: "Updated",
+      });
 
       await expect(
         service.update("r1", "u1", {
           title: "Updated",
           preferredDate: "2026-02-24T12:00:00.000Z",
-        } as any)
+        } as any),
       ).resolves.toEqual({ id: "r1", title: "Updated" });
 
       expect(prisma.serviceRequest.update).toHaveBeenCalledWith(
@@ -300,7 +403,7 @@ describe("RequestsService", () => {
             title: "Updated",
             preferredDate: new Date("2026-02-24T12:00:00.000Z"),
           }),
-        })
+        }),
       );
     });
   });
@@ -308,7 +411,9 @@ describe("RequestsService", () => {
   describe("cancel", () => {
     it("throws when request is missing", async () => {
       prisma.serviceRequest.findUnique.mockResolvedValue(null);
-      await expect(service.cancel("r1", "u1")).rejects.toThrow(NotFoundException);
+      await expect(service.cancel("r1", "u1")).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("throws when request owner does not match", async () => {
@@ -317,7 +422,9 @@ describe("RequestsService", () => {
         customerId: "other",
         status: "open",
       });
-      await expect(service.cancel("r1", "u1")).rejects.toThrow(ForbiddenException);
+      await expect(service.cancel("r1", "u1")).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it("throws when request is not open", async () => {
@@ -326,7 +433,9 @@ describe("RequestsService", () => {
         customerId: "u1",
         status: "in_progress",
       });
-      await expect(service.cancel("r1", "u1")).rejects.toThrow(ForbiddenException);
+      await expect(service.cancel("r1", "u1")).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it("cancels open request", async () => {
@@ -355,7 +464,7 @@ describe("RequestsService", () => {
     it("throws when provider is missing", async () => {
       prisma.provider.findUnique.mockResolvedValue(null);
       await expect(service.getForProvider("p1", {} as any)).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
     });
 
@@ -383,7 +492,7 @@ describe("RequestsService", () => {
             status: "open",
             categoryId: { in: ["cat-1"] },
           }),
-        })
+        }),
       );
       expect(result).toEqual({
         data: [{ id: "near", lat: 52.52, lng: 13.405 }],

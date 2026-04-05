@@ -594,11 +594,13 @@ export interface UpdateRequestData {
 }
 
 export interface RequestsQuery {
-  category?: string;
-  city?: string;
+  categorySlug?: string;
+  postalCode?: string;
   status?: string;
   page?: number;
   limit?: number;
+  category?: string;
+  city?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -619,8 +621,11 @@ export const requestsApi = {
 
   getAll: (query?: RequestsQuery) => {
     const params = new URLSearchParams();
-    if (query?.category) params.append("category", query.category);
-    if (query?.city) params.append("city", query.city);
+    const categorySlug = query?.categorySlug ?? query?.category;
+
+    if (categorySlug) params.append("categorySlug", categorySlug);
+    if (query?.postalCode) params.append("postalCode", query.postalCode);
+    else if (query?.city) params.append("city", query.city);
     if (query?.status) params.append("status", query.status);
     if (query?.page) params.append("page", query.page.toString());
     if (query?.limit) params.append("limit", query.limit.toString());
