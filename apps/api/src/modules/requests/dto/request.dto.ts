@@ -127,11 +127,19 @@ export class UpdateRequestDto {
 export class RequestQueryDto {
   @IsOptional()
   @IsString()
-  categoryId?: string;
+  categorySlug?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 
   @IsOptional()
   @IsString()
   postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
 
   @IsOptional()
   @IsNumber()

@@ -147,6 +147,25 @@ describe("RequestsService", () => {
       ).rejects.toThrow(NotFoundException);
     });
 
+    it("rejects leaf categories missing from the request taxonomy", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-9",
+        slug: "custom-cleaning",
+        parentId: "sector-1",
+        isActive: true,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "custom-cleaning",
+          title: "Need cleaning",
+          description: "flat",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.serviceRequest.create).not.toHaveBeenCalled();
+    });
+
     it("normalizes sector from a valid branch", async () => {
       prisma.category.findUnique.mockResolvedValue({
         id: "cat-1",
@@ -239,6 +258,62 @@ describe("RequestsService", () => {
         limit: 5,
         totalPages: 3,
       });
+    });
+
+    it("filters requests by category slug", async () => {
+      prisma.serviceRequest.findMany.mockResolvedValue([{ id: "r1" }]);
+      prisma.serviceRequest.count.mockResolvedValue(1);
+
+      await service.findAll({
+        categorySlug: "home-cleaning",
+        page: 1,
+        limit: 10,
+      } as any);
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            category: { slug: "home-cleaning" },
+          }),
+        }),
+      );
+      expect(prisma.serviceRequest.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            category: { slug: "home-cleaning" },
+          }),
+        }),
+      );
+    });
+
+    it("filters requests by city when using the legacy city query", async () => {
+      prisma.serviceRequest.findMany.mockResolvedValue([{ id: "r1" }]);
+      prisma.serviceRequest.count.mockResolvedValue(1);
+
+      await service.findAll({
+        city: "Berlin",
+        page: 1,
+        limit: 10,
+      } as any);
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            city: { contains: "Berlin", mode: "insensitive" },
+          }),
+        }),
+      );
+      expect(prisma.serviceRequest.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "open",
+            city: { contains: "Berlin", mode: "insensitive" },
+          }),
+        }),
+      );
     });
 
     it("filters by distance when lat/lng/radius are provided", async () => {

@@ -8,17 +8,6 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-const sectorIcons: Record<string, string> = {
-  "home-repair": "🧰",
-  "cleaning-care": "🪄",
-  "education-hobby": "🎓",
-  "art-events": "🎭",
-  "health-beauty": "🪞",
-  "digital-tech": "🧠",
-  logistics: "🚚",
-  "pet-care": "🐾",
-};
-
 const categories = REQUEST_BRANCHES.map((branch) => ({
   slug: branch.categorySlug,
   nameDe: branch.labelDe,
@@ -31,8 +20,8 @@ const sectorCategories = REQUEST_SECTORS.map((sector) => ({
   slug: sector.id,
   nameDe: sector.labelDe,
   nameEn: sector.labelEn,
-  icon: sectorIcons[sector.id] || "📁",
-  isActive: false,
+  icon: sector.icon,
+  isActive: sector.isActive,
 }));
 
 function toSlug(input: string): string {

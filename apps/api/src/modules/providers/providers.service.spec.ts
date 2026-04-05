@@ -1,7 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ProvidersService } from "./providers.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { NotFoundException, ForbiddenException } from "@nestjs/common";
+import {
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from "@nestjs/common";
 
 describe("ProvidersService", () => {
   let service: ProvidersService;
@@ -101,6 +105,130 @@ describe("ProvidersService", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("create", () => {
+    const providerUser = {
+      id: "user-1",
+      firstName: "Max",
+      lastName: "Mustermann",
+      email: "max@example.com",
+      userType: "provider",
+    };
+
+    beforeEach(() => {
+      prisma.provider.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(providerUser);
+      prisma.provider.create.mockResolvedValue({ id: "provider-1" });
+    });
+
+    it("creates services for valid leaf categories", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "cat-1",
+          slug: "home-cleaning",
+          nameEn: "Home Cleaning",
+          isActive: true,
+          parentId: "sector-1",
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["home-cleaning"],
+        } as any),
+      ).resolves.toEqual({ id: "provider-1" });
+
+      expect(prisma.category.findMany).toHaveBeenCalledWith({
+        where: { slug: { in: ["home-cleaning"] } },
+      });
+      expect(prisma.provider.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            services: {
+              create: [
+                expect.objectContaining({
+                  categoryId: "cat-1",
+                  title: "Home Cleaning",
+                  description: "Reliable cleaning",
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+    });
+
+    it("rejects unknown category slugs", async () => {
+      prisma.category.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["missing-category"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.provider.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects inactive categories", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "cat-1",
+          slug: "home-cleaning",
+          nameEn: "Home Cleaning",
+          isActive: false,
+          parentId: "sector-1",
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["home-cleaning"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects root categories that are not leaf branches", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "sector-1",
+          slug: "cleaning",
+          nameEn: "Cleaning",
+          isActive: true,
+          parentId: null,
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["cleaning"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects duplicate submitted slugs when the resolved count mismatches", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "cat-1",
+          slug: "home-cleaning",
+          nameEn: "Home Cleaning",
+          isActive: true,
+          parentId: "sector-1",
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["home-cleaning", "home-cleaning"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe("findAll", () => {

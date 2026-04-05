@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { AlertBanner, Header, PanelCard } from "@/components";
 import { requestsApi, type ServiceRequest } from "@/lib/api";
 import {
@@ -15,10 +16,15 @@ import {
 export default function RequestsPage() {
   const t = useTranslations("requestsPage");
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState("all");
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const categorySlugParam =
+    searchParams.get("categorySlug") || searchParams.get("category") || undefined;
+  const postalCodeParam = searchParams.get("postalCode") || undefined;
+  const cityParam = searchParams.get("city") || undefined;
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -28,6 +34,9 @@ export default function RequestsPage() {
         const response = await requestsApi.getAll({
           status: "open",
           limit: 100,
+          categorySlug: categorySlugParam,
+          postalCode: postalCodeParam,
+          city: cityParam,
         });
         setRequests(response.data);
       } catch (err) {
@@ -39,7 +48,7 @@ export default function RequestsPage() {
     };
 
     fetchRequests();
-  }, [t]);
+  }, [categorySlugParam, cityParam, postalCodeParam, t]);
 
   const categoryOptions = useMemo(() => {
     const map = new Map<string, number>();

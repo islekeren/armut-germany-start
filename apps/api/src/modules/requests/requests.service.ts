@@ -15,6 +15,7 @@ import {
   getRequestBranchById,
   getRequestBranchesByCategorySlug,
   getRequestSectorById,
+  resolveRequestTaxonomy,
 } from "../../common/request-taxonomy";
 
 @Injectable()
@@ -59,6 +60,13 @@ export class RequestsService {
       throw new NotFoundException("Category not found");
     }
 
+    const matchingBranches = getRequestBranchesByCategorySlug(category.slug);
+    if (!matchingBranches.length) {
+      throw new BadRequestException(
+        "Category is not available in request taxonomy",
+      );
+    }
+
     const branch = getRequestBranchById(createRequestDto.requestBranch);
     if (createRequestDto.requestBranch && !branch) {
       throw new BadRequestException("Invalid request branch");
@@ -79,7 +87,6 @@ export class RequestsService {
       );
     }
 
-    const matchingBranches = getRequestBranchesByCategorySlug(category.slug);
     if (
       !branch &&
       sector &&
@@ -88,21 +95,17 @@ export class RequestsService {
       throw new BadRequestException("Request sector does not match category");
     }
 
-    const uniqueBranch =
-      matchingBranches.length === 1 ? matchingBranches[0] : null;
-    const uniqueSectorId = [
-      ...new Set(matchingBranches.map((item) => item.sectorId)),
-    ];
-    const fallbackSector =
-      uniqueSectorId.length === 1
-        ? getRequestSectorById(uniqueSectorId[0])
-        : null;
+    const resolvedTaxonomy = resolveRequestTaxonomy({
+      requestSector: createRequestDto.requestSector,
+      requestBranch: createRequestDto.requestBranch,
+      categorySlug: category.slug,
+    });
 
-    const normalizedBranch = branch || uniqueBranch;
-    const normalizedSector =
-      sector ||
-      getRequestSectorById(normalizedBranch?.sectorId) ||
-      fallbackSector;
+    if (!resolvedTaxonomy.branchId || !resolvedTaxonomy.sectorId) {
+      throw new BadRequestException(
+        "Category is not supported by the request taxonomy",
+      );
+    }
 
     const {
       categoryId: _categoryId,
@@ -117,8 +120,8 @@ export class RequestsService {
         customerId,
         ...requestData,
         categoryId: category.id,
-        requestSector: normalizedSector?.id || null,
-        requestBranch: normalizedBranch?.id || null,
+        requestSector: resolvedTaxonomy.sectorId,
+        requestBranch: resolvedTaxonomy.branchId,
         preferredDate: preferredDate ? new Date(preferredDate) : null,
       },
       include: {
@@ -152,8 +155,10 @@ export class RequestsService {
 
   async findAll(query: RequestQueryDto) {
     const {
-      categoryId,
+      categorySlug,
+      category,
       postalCode,
+      city,
       lat,
       lng,
       radius,
@@ -167,12 +172,16 @@ export class RequestsService {
       status: status || "open",
     };
 
-    if (categoryId) {
-      where.categoryId = categoryId;
+    const resolvedCategorySlug = categorySlug || category;
+
+    if (resolvedCategorySlug) {
+      where.category = { slug: resolvedCategorySlug };
     }
 
     if (postalCode) {
       where.postalCode = { startsWith: postalCode.substring(0, 2) };
+    } else if (city) {
+      where.city = { contains: city, mode: "insensitive" };
     }
 
     let requests = await this.prisma.serviceRequest.findMany({
