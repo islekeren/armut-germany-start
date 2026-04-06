@@ -10,5 +10,7 @@ module.exports = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
+  setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
   testTimeout: 60000,
+  watchman: false,
 };
