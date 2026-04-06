@@ -57,11 +57,17 @@ Observed on 2026-03-21: the repository is functional enough to inspect and run l
    npm run db:seed
    ```
 
-5. Start the apps from the repository root:
+5. Start the web and API apps from the repository root:
 
    ```bash
    cd ../..
    npm run dev
+   ```
+
+   If you also want the Expo app running, use:
+
+   ```bash
+   npm run dev:all
    ```
 
 ### Local URLs
@@ -76,8 +82,10 @@ From the repository root:
 
 ```bash
 npm run dev
+npm run dev:all
 npm run dev:web
 npm run dev:api
+npm run dev:mobile
 npm run lint
 npm run check-types
 npm run build
@@ -136,8 +144,7 @@ The seed script also creates categories, multiple providers, sample requests, qu
 Observed:
 
 - Root `README.md` and `apps/web/README.md` were previously too weak to support safe agent work and have been rewritten.
-- Root `dev:mobile` script points at a non-existent `mobile` workspace.
-- Root `tsconfig.json` still extends `expo/tsconfig.base`, but there is no mobile app in this repository.
+- Root `dev` now starts only `web` and `api`; use `dev:all` when you also want the Expo app.
 - actual hosted deployment uses the `deployment` branch, Vercel for the frontend, and Railway for the backend, while `.github/workflows/ci.yml` still contains placeholder deploy jobs for `main` and `develop`.
 
 These are documented in more detail in:
