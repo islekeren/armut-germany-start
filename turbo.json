@@ -5,7 +5,11 @@
     "API_URL",
     "NEXT_PUBLIC_API_URL",
     "EXPO_PUBLIC_API_URL",
-    "EXPO_PUBLIC_WEB_URL"
+    "EXPO_PUBLIC_WEB_URL",
+    "API_TIMEOUT_MS",
+    "NEXT_PUBLIC_API_TIMEOUT_MS",
+    "NEXT_PUBLIC_API_URL",
+    "NODE_ENV"
   ],
   "tasks": {
     "build": {

@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
-import { requestsApi, type ServiceRequest } from "@/lib/api";
+import {
+  getStoredAccessToken,
+  providerApi,
+  type ServiceRequest,
+} from "@/lib/api";
 import {
   getBranchById,
   getBranchLabel,
@@ -30,7 +34,12 @@ export default function ProviderRequestDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await requestsApi.getById(requestId);
+        const token = getStoredAccessToken();
+        if (!token) {
+          throw new Error("Missing access token");
+        }
+
+        const data = await providerApi.getRequestById(token, requestId);
         setRequest(data);
       } catch (err) {
         console.error("Failed to load request detail", err);

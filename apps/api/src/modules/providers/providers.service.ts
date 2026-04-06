@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { resolveRequestTaxonomy } from "../../common/request-taxonomy";
@@ -50,6 +51,54 @@ export class ProvidersService {
       open: entry.closed ? null : entry.open || null,
       close: entry.closed ? null : entry.close || null,
     }));
+  }
+
+  private validateProviderCategories(
+    requestedCategories: string[],
+    resolvedCategories: {
+      id: string;
+      slug: string;
+      nameEn: string;
+      isActive: boolean;
+      parentId: string | null;
+    }[],
+  ) {
+    const resolvedBySlug = new Map(
+      resolvedCategories.map((category) => [category.slug, category]),
+    );
+    const missingCategories = requestedCategories.filter(
+      (slug) => !resolvedBySlug.has(slug),
+    );
+
+    if (missingCategories.length > 0) {
+      throw new BadRequestException(
+        `Unknown category slugs: ${missingCategories.join(", ")}`,
+      );
+    }
+
+    const inactiveCategories = resolvedCategories
+      .filter((category) => !category.isActive)
+      .map((category) => category.slug);
+    if (inactiveCategories.length > 0) {
+      throw new BadRequestException(
+        `Inactive categories are not allowed: ${inactiveCategories.join(", ")}`,
+      );
+    }
+
+    const nonLeafCategories = resolvedCategories
+      .filter((category) => category.parentId === null)
+      .map((category) => category.slug);
+    if (nonLeafCategories.length > 0) {
+      throw new BadRequestException(
+        `Categories must be leaf branches: ${nonLeafCategories.join(", ")}`,
+      );
+    }
+
+    if (resolvedCategories.length !== requestedCategories.length) {
+      throw new BadRequestException(
+        "Resolved category count does not match requested count",
+      );
+    }
   }
 
   private normalizeProfileSlug(value: string) {
@@ -130,9 +179,11 @@ export class ProvidersService {
     }> = [];
 
     if (categories?.length) {
+      const requestedCategories = categories;
       const categoryRecords = await this.prisma.category.findMany({
-        where: { slug: { in: categories } },
+        where: { slug: { in: requestedCategories } },
       });
+      this.validateProviderCategories(requestedCategories, categoryRecords);
 
       servicesData = categoryRecords.map((category) => ({
         categoryId: category.id,
@@ -1175,6 +1226,47 @@ export class ProvidersService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async getRequestById(userId: string, requestId: string) {
+    const provider = await this.prisma.provider.findUnique({
+      where: { userId },
+      include: {
+        services: {
+          where: { isActive: true },
+          select: { categoryId: true },
+        },
+      },
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found");
+    }
+
+    const categoryIds = provider.services.map((service) => service.categoryId);
+    if (categoryIds.length === 0) {
+      throw new NotFoundException("Request not found");
+    }
+
+    const request = await this.prisma.serviceRequest.findFirst({
+      where: {
+        id: requestId,
+        categoryId: { in: categoryIds },
+        status: "open",
+      },
+      include: {
+        category: true,
+        _count: {
+          select: { quotes: true },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException("Request not found");
+    }
+
+    return request;
   }
 
   async getBookings(

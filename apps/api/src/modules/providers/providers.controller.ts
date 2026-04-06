@@ -64,6 +64,12 @@ export class ProvidersController {
     return this.providersService.getRequests(req.user.id, query);
   }
 
+  @Get("me/requests/:requestId")
+  @UseGuards(JwtAuthGuard)
+  getMyRequestById(@Req() req: any, @Param("requestId") requestId: string) {
+    return this.providersService.getRequestById(req.user.id, requestId);
+  }
+
   @Get("me/bookings")
   @UseGuards(JwtAuthGuard)
   getMyBookings(@Req() req: any, @Query() query: ProviderBookingsQueryDto) {

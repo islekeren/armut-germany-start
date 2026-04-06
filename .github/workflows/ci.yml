@@ -177,7 +177,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Detect Playwright setup
+        id: playwright
+        run: |
+          has_config="false"
+          has_tests="false"
+
+          if find apps/web -maxdepth 1 -type f \( -name 'playwright.config.ts' -o -name 'playwright.config.js' -o -name 'playwright.config.mjs' -o -name 'playwright.config.cjs' \) | grep -q .; then
+            has_config="true"
+          fi
+
+          if find apps/web \( -path 'apps/web/tests/*' -o -path 'apps/web/e2e/*' \) | grep -q .; then
+            has_tests="true"
+          fi
+
+          if [ "$has_config" = "true" ] && [ "$has_tests" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Playwright browsers
+        if: steps.playwright.outputs.enabled == 'true'
         run: npx playwright install --with-deps
 
       - name: Generate Prisma Client
@@ -199,14 +220,19 @@ jobs:
           JWT_REFRESH_SECRET: test-refresh-secret
 
       - name: Run Playwright E2E tests
+        if: steps.playwright.outputs.enabled == 'true'
         working-directory: apps/web
-        run: npx playwright test --if-present
+        run: npx playwright test
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000
 
+      - name: Skip Playwright E2E tests
+        if: steps.playwright.outputs.enabled != 'true'
+        run: echo "Skipping Playwright E2E tests because no Playwright config and tests were found in apps/web."
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.playwright.outputs.enabled == 'true'
         with:
           name: playwright-report
           path: apps/web/playwright-report

@@ -123,150 +123,101 @@ export async function apiRequest<T>(
     }
   }
 
-  let response: Response;
   try {
-    response = await fetch(url, {
-      ...fetchOptions,
-      cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
-      headers,
-      signal: controller.signal,
-    });
-  } catch {
-    throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...fetchOptions,
+        cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
+        headers,
+        signal: controller.signal,
+      });
+    } catch {
+      throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+    }
+
+    // On client-side, try refreshing once when access token is expired.
+    if (
+      response.status === 401 &&
+      typeof window !== "undefined" &&
+      !endpoint.startsWith("/auth/")
+    ) {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+      if (refreshToken) {
+        try {
+          const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          if (refreshResponse.ok) {
+            const refreshed = (await refreshResponse.json()) as LoginResponse;
+
+            localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
+            localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
+            localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
+
+            const retryHeaders = new Headers(fetchOptions.headers || undefined);
+            retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
+            if (
+              fetchOptions.body &&
+              !(fetchOptions.body instanceof FormData) &&
+              !retryHeaders.has("Content-Type")
+            ) {
+              retryHeaders.set("Content-Type", "application/json");
+            }
+
+            response = await fetch(url, {
+              ...fetchOptions,
+              cache: cache ?? undefined,
+              headers: retryHeaders,
+            });
+          } else {
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          }
+        } catch {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+        }
+      }
+    }
+
+    if (!response.ok) {
+      if (response.status >= 500) {
+        throw new ApiError(API_UNAVAILABLE_MESSAGE, {
+          status: response.status,
+          code: "unavailable",
+        });
+      }
+
+      const message = await getErrorMessage(response);
+      throw new ApiError(message, { status: response.status, code: "http" });
+    }
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const contentType = response.headers.get("Content-Type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    const text = await response.text();
+    return text as T;
   } finally {
     clearTimeout(timeoutId);
-    signal?.removeEventListener("abort", abortFromCaller);
-  }
-
-  // On client-side, try refreshing once when access token is expired.
-  if (
-    response.status === 401 &&
-    typeof window !== "undefined" &&
-    !endpoint.startsWith("/auth/")
-  ) {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-
-    if (refreshToken) {
-      try {
-        const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ refreshToken }),
-        });
-
-        if (refreshResponse.ok) {
-          const refreshed = (await refreshResponse.json()) as LoginResponse;
-
-          localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
-          localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
-          localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
-
-          const retryHeaders = new Headers(fetchOptions.headers || undefined);
-          retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
-          if (
-            fetchOptions.body &&
-            !(fetchOptions.body instanceof FormData) &&
-            !retryHeaders.has("Content-Type")
-          ) {
-            retryHeaders.set("Content-Type", "application/json");
-          }
-
-          response = await fetch(url, {
-            ...fetchOptions,
-            cache: cache ?? undefined,
-            headers: retryHeaders,
-          });
-        } else {
-          localStorage.removeItem(ACCESS_TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
-        }
-      } catch {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-      }
+    if (signal) {
+      signal.removeEventListener("abort", abortFromCaller);
     }
   }
-
-  // On client-side, try refreshing once when access token is expired.
-  if (
-    response.status === 401 &&
-    typeof window !== "undefined" &&
-    !endpoint.startsWith("/auth/")
-  ) {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-
-    if (refreshToken) {
-      try {
-        const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ refreshToken }),
-        });
-
-        if (refreshResponse.ok) {
-          const refreshed = (await refreshResponse.json()) as LoginResponse;
-
-          localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
-          localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
-          localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
-
-          const retryHeaders = new Headers(fetchOptions.headers || undefined);
-          retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
-          if (
-            fetchOptions.body &&
-            !(fetchOptions.body instanceof FormData) &&
-            !retryHeaders.has("Content-Type")
-          ) {
-            retryHeaders.set("Content-Type", "application/json");
-          }
-
-          response = await fetch(url, {
-            ...fetchOptions,
-            cache: cache ?? undefined,
-            headers: retryHeaders,
-          });
-        } else {
-          localStorage.removeItem(ACCESS_TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
-        }
-      } catch {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-      }
-    }
-  }
-
-  if (!response.ok) {
-    if (response.status >= 500) {
-      throw new ApiError(API_UNAVAILABLE_MESSAGE, {
-        status: response.status,
-        code: "unavailable",
-      });
-    }
-
-    const message = await getErrorMessage(response);
-    throw new ApiError(message, { status: response.status, code: "http" });
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  const contentType = response.headers.get("Content-Type") || "";
-  if (contentType.includes("application/json")) {
-    return response.json();
-  }
-
-  const text = await response.text();
-  return text as T;
 }
 
 export function getStoredAccessToken(): string | null {
@@ -293,12 +244,25 @@ export interface User {
 }
 
 // Category API calls
+export interface CategoryParent {
+  id: string;
+  slug: string;
+  nameDe: string;
+  nameEn: string;
+  icon: string;
+}
+
 export interface Category {
   id: string;
   slug: string;
   nameDe: string;
   nameEn: string;
   icon: string;
+  parentId?: string | null;
+  parent?: CategoryParent | null;
+  _count?: {
+    services?: number;
+  };
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -630,11 +594,13 @@ export interface UpdateRequestData {
 }
 
 export interface RequestsQuery {
-  category?: string;
-  city?: string;
+  categorySlug?: string;
+  postalCode?: string;
   status?: string;
   page?: number;
   limit?: number;
+  category?: string;
+  city?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -655,8 +621,11 @@ export const requestsApi = {
 
   getAll: (query?: RequestsQuery) => {
     const params = new URLSearchParams();
-    if (query?.category) params.append("category", query.category);
-    if (query?.city) params.append("city", query.city);
+    const categorySlug = query?.categorySlug ?? query?.category;
+
+    if (categorySlug) params.append("categorySlug", categorySlug);
+    if (query?.postalCode) params.append("postalCode", query.postalCode);
+    else if (query?.city) params.append("city", query.city);
     if (query?.status) params.append("status", query.status);
     if (query?.page) params.append("page", query.page.toString());
     if (query?.limit) params.append("limit", query.limit.toString());
@@ -942,6 +911,12 @@ export const providerApi = {
       { token },
     );
   },
+
+  getRequestById: (token: string, requestId: string) =>
+    apiRequest<ServiceRequest>(`/providers/me/requests/${requestId}`, {
+      token,
+      cache: "no-store",
+    }),
 
   getBookings: (
     token: string,
