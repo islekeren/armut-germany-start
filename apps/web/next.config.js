@@ -6,6 +6,8 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const apiOrigin =
+  process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
