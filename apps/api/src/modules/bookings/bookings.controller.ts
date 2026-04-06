@@ -97,6 +97,11 @@ export class BookingsController {
     @Req() req: any,
     @Body() replyDto: ProviderReplyDto
   ) {
-    return this.bookingsService.addProviderReply(id, req.user.id, replyDto.reply);
+    return this.bookingsService.addProviderReply(
+      id,
+      req.user.id,
+      replyDto.reply,
+      replyDto.replyImages,
+    );
   }
 }

@@ -15,7 +15,7 @@ export function FormLabel({
 
   return (
     <label
-      className={`mb-2 block font-medium ${sizeClass} ${className}`.trim()}
+      className={`mb-2 block font-semibold uppercase tracking-wide ${sizeClass} ${className}`.trim()}
       {...props}
     />
   );

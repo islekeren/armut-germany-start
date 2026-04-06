@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -19,6 +19,12 @@ import {
   providerApi,
   type Category,
 } from "@/lib/api";
+import {
+  PROVIDER_SERVICE_BRANCHES,
+  PROVIDER_SERVICE_SECTORS,
+  type ProviderServiceBranch as ServiceBranch,
+  type ProviderServiceSector as ServiceSector,
+} from "@/lib/provider-service-taxonomy";
 
 type ProviderOnboardingData = {
   categories: string[];
@@ -40,6 +46,9 @@ type ProviderOnboardingData = {
   confirmPassword: string;
   gdprConsent: boolean;
 };
+
+const SERVICE_SECTORS: ServiceSector[] = PROVIDER_SERVICE_SECTORS;
+const SERVICE_BRANCHES: ServiceBranch[] = PROVIDER_SERVICE_BRANCHES;
 
 export default function ProviderOnboardingPage() {
   const t = useTranslations("providerOnboarding");
@@ -74,6 +83,9 @@ export default function ProviderOnboardingPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [categoriesError, setCategoriesError] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [selectedSectorId, setSelectedSectorId] = useState<ServiceSector["id"] | null>(null);
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
 
   const steps = [
     { id: "category", title: t("steps.category") },
@@ -124,6 +136,29 @@ export default function ProviderOnboardingPage() {
   }, [searchParams]);
 
   const progressPercent = Math.round(((currentStep + 1) / steps.length) * 100);
+  const normalizedSearch = serviceSearch.trim().toLowerCase();
+  const availableCategorySlugs = useMemo(
+    () => new Set(categories.map((item) => item.slug)),
+    [categories],
+  );
+
+  const branchesForSelectedSector = useMemo(() => {
+    if (!selectedSectorId) return [];
+    return SERVICE_BRANCHES.filter(
+      (branch) =>
+        branch.sectorId === selectedSectorId &&
+        availableCategorySlugs.has(branch.categorySlug),
+    );
+  }, [selectedSectorId, availableCategorySlugs]);
+
+  const filteredBranches = useMemo(() => {
+    if (!normalizedSearch) return branchesForSelectedSector;
+    return branchesForSelectedSector.filter((branch) =>
+      (locale === "de" ? branch.labelDe : branch.labelEn)
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [branchesForSelectedSector, normalizedSearch, locale]);
 
   const validateStep = () => {
     setError("");
@@ -189,6 +224,17 @@ export default function ProviderOnboardingPage() {
     if (!validateStep()) return;
     setIsSubmitting(true);
     try {
+      const selectedBranchLabels = selectedBranchIds
+        .map((branchId) =>
+          SERVICE_BRANCHES.find((branch) => branch.id === branchId),
+        )
+        .filter((branch): branch is ServiceBranch => Boolean(branch))
+        .map((branch) => getBranchLabel(branch));
+
+      const descriptionWithSpecialties = selectedBranchLabels.length
+        ? `${formData.description}\n\nSpecialties: ${selectedBranchLabels.join(", ")}`
+        : formData.description;
+
       await register({
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -206,7 +252,7 @@ export default function ProviderOnboardingPage() {
 
       await providerApi.createProfile(token, {
         companyName: formData.companyName || undefined,
-        description: formData.description,
+        description: descriptionWithSpecialties,
         experienceYears: formData.experienceYears
           ? parseInt(formData.experienceYears, 10)
           : 0,
@@ -232,9 +278,41 @@ export default function ProviderOnboardingPage() {
     }
   };
 
-  const getCategoryName = (category: Category) => {
-    return locale === 'de' ? category.nameDe : category.nameEn;
+  const handleSectorSelect = (sectorId: ServiceSector["id"]) => {
+    setSelectedSectorId(sectorId);
+    setSelectedBranchIds([]);
+    setServiceSearch("");
+    setFormData((prev) => ({ ...prev, categories: [] }));
   };
+
+  const toggleBranch = (branchId: string) => {
+    setSelectedBranchIds((prev) => {
+      const next = prev.includes(branchId)
+        ? prev.filter((item) => item !== branchId)
+        : [...prev, branchId];
+
+      const mappedCategorySlugs = Array.from(
+        new Set(
+          next
+            .map((selectedId) =>
+              SERVICE_BRANCHES.find((branch) => branch.id === selectedId)?.categorySlug,
+            )
+            .filter((value): value is string => Boolean(value)),
+        ),
+      );
+
+      setFormData((current) => ({ ...current, categories: mappedCategorySlugs }));
+      return next;
+    });
+  };
+
+  function getSectorLabel(sector: ServiceSector) {
+    return locale === "de" ? sector.labelDe : sector.labelEn;
+  }
+
+  function getBranchLabel(branch: ServiceBranch) {
+    return locale === "de" ? branch.labelDe : branch.labelEn;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
@@ -292,72 +370,84 @@ export default function ProviderOnboardingPage() {
             {currentStep === 0 && (
               <div className="space-y-4">
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.serviceCategories")}</FormLabel>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    {t("serviceSelection.title")}
+                  </h2>
+                  <p className="mt-2 text-muted">{t("serviceSelection.subtitle")}</p>
+                </div>
+                <div>
+                  <FormLabel className="text-foreground">{t("labels.category")}</FormLabel>
                   {loadingCategories ? (
                     <div className="text-sm text-muted">Loading categories...</div>
                   ) : categoriesError ? (
                     <AlertBanner>{categoriesError}</AlertBanner>
                   ) : (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {categories.map((category) => (
-                        <label
-                          key={category.id}
-                          className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 hover:border-secondary"
+                    <div className="flex flex-wrap gap-2">
+                      {SERVICE_SECTORS.map((sector) => {
+                        const isSelected = selectedSectorId === sector.id;
+                        return (
+                        <button
+                          key={sector.id}
+                          type="button"
+                          onClick={() => handleSectorSelect(sector.id)}
+                          className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                            isSelected
+                              ? "border-secondary bg-secondary/10 text-foreground"
+                              : "border-border hover:border-secondary"
+                          }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={formData.categories.includes(category.slug)}
-                            onChange={(e) => {
-                              setFormData((prev) => ({
-                                ...prev,
-                                categories: e.target.checked
-                                  ? [...prev.categories, category.slug]
-                                  : prev.categories.filter((c) => c !== category.slug),
-                              }));
-                            }}
-                            className="rounded border-border"
-                          />
-                          <span>{category.icon} {getCategoryName(category)}</span>
-                        </label>
-                      ))}
+                          <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${sector.colorClass}`} />
+                          {getSectorLabel(sector)}
+                        </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-3">
+                {selectedSectorId && (
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.experience")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("serviceSelection.searchLabel")}
+                    </FormLabel>
                     <FormInput
-                      type="number"
-                      value={formData.experienceYears}
-                      onChange={(e) =>
-                        setFormData({ ...formData, experienceYears: e.target.value })
-                      }
+                      type="text"
+                      value={serviceSearch}
+                      onChange={(e) => setServiceSearch(e.target.value)}
+                      placeholder={t("serviceSelection.searchPlaceholder")}
                       accent="secondary"
                     />
                   </div>
+                )}
+                {selectedSectorId && (
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.priceMin")}</FormLabel>
-                    <FormInput
-                      type="number"
-                      value={formData.priceMin}
-                      onChange={(e) =>
-                        setFormData({ ...formData, priceMin: e.target.value })
-                      }
-                      accent="secondary"
-                    />
+                    <FormLabel className="text-foreground">
+                      {t("serviceSelection.additionalServices")}
+                    </FormLabel>
+                    <p className="mb-3 text-sm text-muted">{t("serviceSelection.additionalServicesHint")}</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {filteredBranches.map((branch) => {
+                        const isChecked = selectedBranchIds.includes(branch.id);
+                        return (
+                          <label
+                            key={branch.id}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 hover:border-secondary"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleBranch(branch.id)}
+                              className="rounded border-border"
+                            />
+                            <span>{getBranchLabel(branch)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {filteredBranches.length === 0 && (
+                      <p className="mt-2 text-sm text-muted">{t("serviceSelection.noMatch")}</p>
+                    )}
                   </div>
-                  <div>
-                    <FormLabel className="text-foreground">{t("labels.priceMax")}</FormLabel>
-                    <FormInput
-                      type="number"
-                      value={formData.priceMax}
-                      onChange={(e) =>
-                        setFormData({ ...formData, priceMax: e.target.value })
-                      }
-                      accent="secondary"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -515,6 +605,41 @@ export default function ProviderOnboardingPage() {
                     accent="secondary"
                     required
                   />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <FormLabel className="text-foreground">{t("labels.experience")}</FormLabel>
+                    <FormInput
+                      type="number"
+                      value={formData.experienceYears}
+                      onChange={(e) =>
+                        setFormData({ ...formData, experienceYears: e.target.value })
+                      }
+                      accent="secondary"
+                    />
+                  </div>
+                  <div>
+                    <FormLabel className="text-foreground">{t("labels.priceMin")}</FormLabel>
+                    <FormInput
+                      type="number"
+                      value={formData.priceMin}
+                      onChange={(e) =>
+                        setFormData({ ...formData, priceMin: e.target.value })
+                      }
+                      accent="secondary"
+                    />
+                  </div>
+                  <div>
+                    <FormLabel className="text-foreground">{t("labels.priceMax")}</FormLabel>
+                    <FormInput
+                      type="number"
+                      value={formData.priceMax}
+                      onChange={(e) =>
+                        setFormData({ ...formData, priceMax: e.target.value })
+                      }
+                      accent="secondary"
+                    />
+                  </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>

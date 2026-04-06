@@ -6,10 +6,14 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateQuoteDto, UpdateQuoteDto } from "./dto/quote.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class QuotesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async create(userId: string, createQuoteDto: CreateQuoteDto) {
     // Get provider by user ID
@@ -50,7 +54,7 @@ export class QuotesService {
       throw new BadRequestException("You have already quoted this request");
     }
 
-    return this.prisma.quote.create({
+    const createdQuote = await this.prisma.quote.create({
       data: {
         requestId: createQuoteDto.requestId,
         providerId: provider.id,
@@ -79,6 +83,19 @@ export class QuotesService {
         },
       },
     });
+
+    await this.notificationsService.create(request.customerId, {
+      type: "quote_received",
+      title: "New offer received",
+      message: `You received a new offer for "${request.title}".`,
+      metadata: {
+        requestId: request.id,
+        quoteId: createdQuote.id,
+        providerId: provider.id,
+      },
+    });
+
+    return createdQuote;
   }
 
   async findByRequest(requestId: string, userId: string) {
@@ -352,6 +369,23 @@ export class QuotesService {
           data: { status: "in_progress" },
         }),
       ]);
+
+      const providerUser = await this.prisma.provider.findUnique({
+        where: { id: quote.providerId },
+        select: { userId: true },
+      });
+
+      if (providerUser) {
+        await this.notificationsService.create(providerUser.userId, {
+          type: "quote_accepted",
+          title: "Your offer was accepted",
+          message: `Your offer for "${quote.request.title}" has been accepted.`,
+          metadata: {
+            requestId: quote.requestId,
+            quoteId: quote.id,
+          },
+        });
+      }
 
       return this.findOne(id, userId);
     }

@@ -45,7 +45,8 @@ export function formatRelativeTime(date: Date): string {
 
   if (diffSecs < 60) return "gerade eben";
   if (diffMins < 60) return `vor ${diffMins} Minute${diffMins > 1 ? "n" : ""}`;
-  if (diffHours < 24) return `vor ${diffHours} Stunde${diffHours > 1 ? "n" : ""}`;
+  if (diffHours < 24)
+    return `vor ${diffHours} Stunde${diffHours > 1 ? "n" : ""}`;
   if (diffDays < 7) return `vor ${diffDays} Tag${diffDays > 1 ? "en" : ""}`;
 
   return formatDate(date);
@@ -65,7 +66,7 @@ export function calculateDistance(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
 ): number {
   const R = 6371; // Earth's radius in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;

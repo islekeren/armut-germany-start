@@ -14,7 +14,7 @@ export function ProviderRatingStars({
 
   return (
     <span
-      className={`font-medium text-amber-500 ${sizeClassName}`.trim()}
+      className={`whitespace-nowrap font-medium text-amber-500 ${sizeClassName}`.trim()}
       aria-hidden
     >
       {stars.join("")}

@@ -1,61 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   FormInput,
   FormLabel,
-  FormSelect,
   FormTextarea,
   PanelCard,
+  ProviderRatingStars,
   ProviderSubpageShell,
 } from "@/components";
 import { useAuth } from "@/contexts";
-import { providerApi, type ProviderProfile } from "@/lib/api";
+import {
+  providerApi,
+  type ProviderOpeningHour,
+  type ProviderProfile,
+  type ProviderReview,
+} from "@/lib/api";
+
+const DAY_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
 
 const EMPTY_FORM_DATA = {
   companyName: "",
   contactName: "",
   email: "",
   phone: "",
+  headline: "",
   description: "",
-  categories: [] as string[],
+  bio: "",
+  highlightsText: "",
+  languagesText: "",
   streetAddress: "",
   postalCode: "",
   city: "",
   serviceRadius: "25",
+  experienceYears: "0",
   priceMin: "",
   priceMax: "",
-  experienceYears: "",
   website: "",
 };
 
-function mapProfileToFormData(profile: ProviderProfile) {
-  const categoryList = Array.from(
-    new Set(profile.services.map((service) => service.category.slug)),
-  );
-  const firstService = profile.services[0];
-
-  return {
-    companyName: profile.companyName || "",
-    contactName:
-      `${profile.user.firstName} ${profile.user.lastName}`.trim() ||
-      profile.user.firstName,
-    email: profile.user.email,
-    phone: profile.user.phone || "",
-    description: profile.description,
-    categories: categoryList,
-    streetAddress: profile.profile?.addressLine1 || "",
-    postalCode: profile.profile?.postalCode || "",
-    city: profile.profile?.city || "",
-    serviceRadius: profile.serviceAreaRadius.toString(),
-    priceMin: firstService?.priceMin?.toString() || "",
-    priceMax: firstService?.priceMax?.toString() || "",
-    experienceYears: profile.experienceYears.toString(),
-    website: profile.profile?.website || "",
-  };
-}
+type FormData = typeof EMPTY_FORM_DATA;
 
 function splitContactName(contactName: string) {
   const trimmed = contactName.trim();
@@ -70,39 +64,128 @@ function splitContactName(contactName: string) {
   };
 }
 
+function toCsv(value: string[] | null | undefined) {
+  if (!value || !value.length) return "";
+  return value.join(", ");
+}
+
+function parseCsv(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeOpeningHours(
+  openingHours: ProviderOpeningHour[] | null | undefined,
+) {
+  const byDay = new Map(
+    (openingHours || []).map((item) => [item.day.toLowerCase(), item]),
+  );
+
+  return DAY_ORDER.map((day) => {
+    const existing = byDay.get(day);
+    if (!existing) {
+      return { day, closed: false, open: "08:00", close: "18:00" };
+    }
+    return {
+      day,
+      closed: !!existing.closed,
+      open: existing.open || "08:00",
+      close: existing.close || "18:00",
+    };
+  });
+}
+
+function mapProfileToFormData(profile: ProviderProfile): FormData {
+  const firstService = profile.services[0];
+
+  return {
+    companyName: profile.companyName || "",
+    contactName:
+      `${profile.user.firstName} ${profile.user.lastName}`.trim() ||
+      profile.user.firstName,
+    email: profile.user.email,
+    phone: profile.user.phone || "",
+    headline: profile.profile?.headline || "",
+    description: profile.description || "",
+    bio: profile.profile?.bio || "",
+    highlightsText: toCsv(profile.profile?.highlights),
+    languagesText: toCsv(profile.profile?.languages),
+    streetAddress: profile.profile?.addressLine1 || "",
+    postalCode: profile.profile?.postalCode || "",
+    city: profile.profile?.city || "",
+    serviceRadius: String(profile.serviceAreaRadius || 25),
+    experienceYears: String(profile.experienceYears || 0),
+    priceMin: firstService?.priceMin?.toString() || "",
+    priceMax: firstService?.priceMax?.toString() || "",
+    website: profile.profile?.website || "",
+  };
+}
+
 export default function ProviderProfilePage() {
   const t = useTranslations("provider.profile");
   const tNav = useTranslations("provider.dashboard.navigation");
-  const tCat = useTranslations("categories");
-  const tOnboardingLabels = useTranslations("providerOnboarding.labels");
+  const tPublic = useTranslations("providerPublicProfile");
   const { refreshAuth } = useAuth();
 
-  const [formData, setFormData] = useState(EMPTY_FORM_DATA);
+  const [profile, setProfile] = useState<ProviderProfile | null>(null);
+  const [reviews, setReviews] = useState<ProviderReview[]>([]);
+  const [formData, setFormData] = useState<FormData>(EMPTY_FORM_DATA);
+  const [openingHours, setOpeningHours] = useState<ProviderOpeningHour[]>(
+    normalizeOpeningHours(null),
+  );
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
     "idle",
   );
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem("armut_access_token");
-        if (token) {
-          const profile = await providerApi.getProfile(token);
-          setFormData(mapProfileToFormData(profile));
-          setProfileImage(profile.user.profileImage);
-        }
+        if (!token) return;
+
+        const [profileData, reviewsData] = await Promise.all([
+          providerApi.getProfile(token),
+          providerApi.getReviews(token, { page: 1, limit: 5 }),
+        ]);
+
+        setProfile(profileData);
+        setReviews(reviewsData.data || []);
+        setFormData(mapProfileToFormData(profileData));
+        setOpeningHours(normalizeOpeningHours(profileData.profile?.openingHours));
       } catch (error) {
-        console.error("Failed to fetch profile", error);
+        console.error("Failed to fetch provider profile data", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    fetchData();
   }, []);
+
+  const companyDisplayName = useMemo(() => {
+    if (formData.companyName.trim()) return formData.companyName.trim();
+    return formData.contactName.trim() || "Provider";
+  }, [formData.companyName, formData.contactName]);
+
+  const updateOpeningHour = (
+    index: number,
+    key: "open" | "close" | "closed",
+    value: string | boolean,
+  ) => {
+    setOpeningHours((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        if (key === "closed") {
+          return { ...item, closed: Boolean(value) };
+        }
+        return { ...item, [key]: String(value) };
+      }),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,13 +200,15 @@ export default function ProviderProfilePage() {
       }
 
       const { firstName, lastName } = splitContactName(formData.contactName);
-      const updatedProfile = await providerApi.updateProfile(token, {
+      const payload = {
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         companyName: formData.companyName || undefined,
-        description: formData.description,
+        headline: formData.headline || undefined,
+        description: formData.description || undefined,
+        bio: formData.bio || undefined,
         experienceYears: Number(formData.experienceYears) || 0,
         serviceAreaRadius: Number(formData.serviceRadius) || 25,
         priceMin: formData.priceMin ? Number(formData.priceMin) : undefined,
@@ -132,15 +217,27 @@ export default function ProviderProfilePage() {
         city: formData.city || undefined,
         postalCode: formData.postalCode || undefined,
         website: formData.website || undefined,
-      });
+        highlights: parseCsv(formData.highlightsText),
+        languages: parseCsv(formData.languagesText),
+        openingHours: openingHours.map((item) => ({
+          day: item.day,
+          closed: !!item.closed,
+          open: item.closed ? null : item.open || null,
+          close: item.closed ? null : item.close || null,
+        })),
+      };
 
+      const updatedProfile = await providerApi.updateProfile(token, payload);
+      setProfile(updatedProfile);
       setFormData(mapProfileToFormData(updatedProfile));
-      setProfileImage(updatedProfile.user.profileImage);
+      setOpeningHours(normalizeOpeningHours(updatedProfile.profile?.openingHours));
+
       try {
         await refreshAuth();
       } catch (refreshError) {
         console.error("Failed to refresh auth context", refreshError);
       }
+
       setSaveStatus("success");
     } catch (error) {
       console.error("Failed to update provider profile", error);
@@ -160,278 +257,382 @@ export default function ProviderProfilePage() {
 
   return (
     <ProviderSubpageShell title={t("title")} backLabel={tNav("overview")}>
-      <div className="mx-auto max-w-4xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Company Info */}
-          <PanelCard>
-            <h2 className="mb-4 text-lg font-semibold">{t("companyInfo")}</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <FormLabel>
-                  {t("companyName")} {t("required")}
-                </FormLabel>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-8 text-white">
+          <div className="absolute inset-0 bg-primary/80" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-start gap-4">
+              {profile?.user.profileImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.user.profileImage}
+                  alt={companyDisplayName}
+                  className="h-20 w-20 rounded-2xl border border-white/30 object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 text-3xl font-semibold">
+                  {companyDisplayName.charAt(0)}
+                </div>
+              )}
+
+              <div className="min-w-0">
                 <FormInput
-                  type="text"
                   value={formData.companyName}
                   onChange={(e) =>
-                    setFormData({ ...formData, companyName: e.target.value })
+                    setFormData((prev) => ({ ...prev, companyName: e.target.value }))
                   }
+                  placeholder={t("companyName")}
+                  className="h-auto border-white/30 bg-white/10 px-0 py-0 text-3xl font-bold text-white placeholder:text-white/70 focus:border-white/70 md:text-4xl"
                   accent="primary"
-                  required
                 />
-              </div>
-              <div>
-                <FormLabel>
-                  {t("contactName")} {t("required")}
-                </FormLabel>
                 <FormInput
-                  type="text"
-                  value={formData.contactName}
+                  value={formData.headline}
                   onChange={(e) =>
-                    setFormData({ ...formData, contactName: e.target.value })
+                    setFormData((prev) => ({ ...prev, headline: e.target.value }))
                   }
+                  placeholder={tPublic("about")}
+                  className="mt-2 border-white/20 bg-white/10 text-white placeholder:text-white/70"
                   accent="primary"
-                  required
                 />
-              </div>
-              <div>
-                <FormLabel>
-                  {t("email")} {t("required")}
-                </FormLabel>
-                <FormInput
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  accent="primary"
-                  required
-                />
-              </div>
-              <div>
-                <FormLabel>
-                  {t("phone")} {t("required")}
-                </FormLabel>
-                <FormInput
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  accent="primary"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <FormLabel>
-                {t("description")} {t("required")}
-              </FormLabel>
-              <FormTextarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={4}
-                accent="primary"
-                required
-              />
-              <p className="mt-1 text-sm text-muted">{t("descriptionHint")}</p>
-            </div>
-          </PanelCard>
-
-          {/* Services */}
-          <PanelCard>
-            <h2 className="mb-4 text-lg font-semibold">{t("services")}</h2>
-            <div>
-              <FormLabel>Your selected category {t("required")}</FormLabel>
-              <p className="mb-2 text-sm text-muted">
-                You can&apos;t change your selected category. For more info, go
-                to Help.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {formData.categories.map((key) => (
-                  <span
-                    key={key}
-                    className="rounded-full border border-border px-3 py-1 text-sm"
-                  >
-                    {tCat(`${key}.name`)}
+                <div className="mt-3 flex items-center gap-2">
+                  <ProviderRatingStars value={profile?.ratingAvg || 0} sizeClassName="text-lg" />
+                  <span className="font-semibold">
+                    {(profile?.ratingAvg || 0).toFixed(1)}
                   </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <div>
-                <FormLabel>{t("experienceYears")}</FormLabel>
-                <FormInput
-                  type="number"
-                  value={formData.experienceYears}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      experienceYears: e.target.value,
-                    })
-                  }
-                  accent="primary"
-                />
-              </div>
-              <div>
-                <FormLabel>{t("priceFrom")}</FormLabel>
-                <FormInput
-                  type="number"
-                  value={formData.priceMin}
-                  onChange={(e) =>
-                    setFormData({ ...formData, priceMin: e.target.value })
-                  }
-                  accent="primary"
-                />
-              </div>
-              <div>
-                <FormLabel>{t("priceTo")}</FormLabel>
-                <FormInput
-                  type="number"
-                  value={formData.priceMax}
-                  onChange={(e) =>
-                    setFormData({ ...formData, priceMax: e.target.value })
-                  }
-                  accent="primary"
-                />
-              </div>
-            </div>
-          </PanelCard>
-
-          {/* Location */}
-          <PanelCard>
-            <h2 className="mb-4 text-lg font-semibold">{t("serviceArea")}</h2>
-            <div className="space-y-4">
-              <div>
-                <FormLabel>
-                  {tOnboardingLabels("streetAddress")} {t("required")}
-                </FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.streetAddress}
-                  onChange={(e) =>
-                    setFormData({ ...formData, streetAddress: e.target.value })
-                  }
-                  accent="primary"
-                  required
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <FormLabel>
-                    {t("postalCode")} {t("required")}
-                  </FormLabel>
-                  <FormInput
-                    type="text"
-                    value={formData.postalCode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, postalCode: e.target.value })
-                    }
-                    accent="primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <FormLabel>
-                    {t("city")} {t("required")}
-                  </FormLabel>
-                  <FormInput
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) =>
-                      setFormData({ ...formData, city: e.target.value })
-                    }
-                    accent="primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <FormLabel>{t("serviceRadius")}</FormLabel>
-                  <FormSelect
-                    value={formData.serviceRadius}
-                    onChange={(e) =>
-                      setFormData({ ...formData, serviceRadius: e.target.value })
-                    }
-                    accent="primary"
-                  >
-                    <option value="10">10 km</option>
-                    <option value="25">25 km</option>
-                    <option value="50">50 km</option>
-                    <option value="100">100 km</option>
-                  </FormSelect>
+                  <span className="text-white/80">
+                    {tPublic("reviewsCount", { count: profile?.totalReviews || 0 })}
+                  </span>
                 </div>
               </div>
             </div>
-          </PanelCard>
 
-          {/* Profile Photo & Gallery */}
-          <PanelCard>
-            <h2 className="mb-4 text-lg font-semibold">{t("images")}</h2>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <FormLabel>{t("profilePicture")}</FormLabel>
-                <div className="flex items-center gap-4">
-                  {profileImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={profileImage}
-                      alt="Profile"
-                      className="h-20 w-20 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-white">
-                      {formData.contactName.charAt(0) || "P"}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background"
-                  >
-                    {t("changeImage")}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <FormLabel>{t("gallery")}</FormLabel>
-                <div className="rounded-lg border-2 border-dashed border-border p-4 text-center">
-                  <p className="text-sm text-muted">{t("dragImages")}</p>
-                </div>
-              </div>
-            </div>
-          </PanelCard>
-
-          {/* Submit */}
-          <div className="flex justify-end gap-4">
-            {saveStatus === "success" ? (
-              <p className="self-center text-sm text-success">
-                Profile updated successfully.
-              </p>
-            ) : null}
-            {saveStatus === "error" ? (
-              <p className="self-center text-sm text-error">
-                Failed to update profile.
-              </p>
-            ) : null}
-            <Link
-              href="/dashboard"
-              className="rounded-lg border border-border px-6 py-3 font-medium hover:bg-background"
-            >
-              {t("cancel")}
-            </Link>
             <button
               type="submit"
               disabled={isSaving}
-              className="rounded-lg bg-primary px-6 py-3 font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+              className="rounded-lg bg-secondary px-5 py-2.5 font-semibold text-white hover:bg-secondary/90 disabled:opacity-60"
             >
               {isSaving ? t("saving") : t("saveChanges")}
             </button>
           </div>
-        </form>
-      </div>
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="space-y-6">
+            <PanelCard>
+              <h2 className="text-xl font-semibold">{tPublic("about")}</h2>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <FormLabel>{t("description")}</FormLabel>
+                  <FormTextarea
+                    rows={4}
+                    value={formData.bio}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, bio: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{tPublic("highlights")}</FormLabel>
+                  <FormInput
+                    value={formData.highlightsText}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        highlightsText: e.target.value,
+                      }))
+                    }
+                    placeholder="Verified Provider, Fast Response"
+                    accent="primary"
+                  />
+                  <p className="mt-1 text-xs text-muted">Comma separated</p>
+                </div>
+                <div>
+                  <FormLabel>{tPublic("languages")}</FormLabel>
+                  <FormInput
+                    value={formData.languagesText}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        languagesText: e.target.value,
+                      }))
+                    }
+                    placeholder="German, English"
+                    accent="primary"
+                  />
+                  <p className="mt-1 text-xs text-muted">Comma separated</p>
+                </div>
+              </div>
+            </PanelCard>
+
+            <PanelCard>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">{tPublic("services")}</h2>
+                <span className="text-sm text-muted">{profile?.services.length || 0}</span>
+              </div>
+              <div className="space-y-3">
+                {(profile?.services || []).map((service) => (
+                  <article key={service.id} className="rounded-lg border border-border p-4">
+                    <p className="text-sm text-muted">
+                      {service.category.nameEn}
+                    </p>
+                    <h3 className="font-semibold">{service.title}</h3>
+                    <p className="mt-1 text-sm text-muted">{service.description}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <FormLabel>{t("experienceYears")}</FormLabel>
+                  <FormInput
+                    type="number"
+                    value={formData.experienceYears}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        experienceYears: e.target.value,
+                      }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("priceFrom")}</FormLabel>
+                  <FormInput
+                    type="number"
+                    value={formData.priceMin}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, priceMin: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("priceTo")}</FormLabel>
+                  <FormInput
+                    type="number"
+                    value={formData.priceMax}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, priceMax: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+              </div>
+            </PanelCard>
+
+            <PanelCard>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">{tPublic("reviews")}</h2>
+                <span className="text-sm text-muted">
+                  {tPublic("reviewsCount", { count: profile?.totalReviews || 0 })}
+                </span>
+              </div>
+              {reviews.length ? (
+                <ul className="space-y-3">
+                  {reviews.map((review) => (
+                    <li key={review.id} className="rounded-lg border border-border p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-medium">{review.customer}</p>
+                        <p className="text-sm text-muted">
+                          {new Date(review.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-sm text-muted">
+                        {review.comment || tPublic("noComment")}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted">{tPublic("noReviews")}</p>
+              )}
+            </PanelCard>
+          </div>
+
+          <div className="space-y-6">
+            <PanelCard>
+              <h2 className="text-lg font-semibold">{tPublic("contact")}</h2>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <FormLabel>{t("contactName")}</FormLabel>
+                  <FormInput
+                    value={formData.contactName}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, contactName: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("email")}</FormLabel>
+                  <FormInput
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("phone")}</FormLabel>
+                  <FormInput
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("companyAddress")}</FormLabel>
+                  <FormInput
+                    value={formData.streetAddress}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        streetAddress: e.target.value,
+                      }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <FormLabel>{t("postalCode")}</FormLabel>
+                    <FormInput
+                      value={formData.postalCode}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          postalCode: e.target.value,
+                        }))
+                      }
+                      accent="primary"
+                    />
+                  </div>
+                  <div>
+                    <FormLabel>{t("city")}</FormLabel>
+                    <FormInput
+                      value={formData.city}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, city: e.target.value }))
+                      }
+                      accent="primary"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FormLabel>{t("serviceRadius")}</FormLabel>
+                  <FormInput
+                    type="number"
+                    value={formData.serviceRadius}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        serviceRadius: e.target.value,
+                      }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+                <div>
+                  <FormLabel>{t("website")}</FormLabel>
+                  <FormInput
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, website: e.target.value }))
+                    }
+                    accent="primary"
+                  />
+                </div>
+              </div>
+            </PanelCard>
+
+            <PanelCard>
+              <h2 className="mb-4 text-lg font-semibold">{tPublic("businessHours")}</h2>
+              <div className="space-y-3 text-sm">
+                {openingHours.map((item, index) => (
+                  <div key={item.day} className="grid grid-cols-[1fr_auto] items-center gap-3">
+                    <div className="font-medium capitalize">{tPublic(`days.${item.day}`)}</div>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1 text-xs text-muted">
+                        <input
+                          type="checkbox"
+                          checked={item.closed}
+                          onChange={(e) =>
+                            updateOpeningHour(index, "closed", e.target.checked)
+                          }
+                        />
+                        {tPublic("closed")}
+                      </label>
+                      <input
+                        type="time"
+                        value={item.open || "08:00"}
+                        disabled={item.closed}
+                        onChange={(e) => updateOpeningHour(index, "open", e.target.value)}
+                        className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                      />
+                      <span className="text-muted">-</span>
+                      <input
+                        type="time"
+                        value={item.close || "18:00"}
+                        disabled={item.closed}
+                        onChange={(e) => updateOpeningHour(index, "close", e.target.value)}
+                        className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </PanelCard>
+
+            <PanelCard>
+              <h2 className="text-lg font-semibold">{tPublic("quickFacts")}</h2>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li className="flex items-center justify-between gap-3">
+                  <span className="text-muted">{tPublic("experience")}</span>
+                  <span className="font-medium">
+                    {formData.experienceYears} {tPublic("years", { count: Number(formData.experienceYears) || 0 })}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-3">
+                  <span className="text-muted">{tPublic("completedJobs")}</span>
+                  <span className="font-medium">-</span>
+                </li>
+                <li className="flex items-center justify-between gap-3">
+                  <span className="text-muted">{tPublic("acceptanceRate")}</span>
+                  <span className="font-medium">-</span>
+                </li>
+              </ul>
+            </PanelCard>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-4">
+          {saveStatus === "success" ? (
+            <p className="self-center text-sm text-success">Profile updated successfully.</p>
+          ) : null}
+          {saveStatus === "error" ? (
+            <p className="self-center text-sm text-error">Failed to update profile.</p>
+          ) : null}
+          <Link
+            href="/dashboard"
+            className="rounded-lg border border-border px-6 py-3 font-medium hover:bg-background"
+          >
+            {t("cancel")}
+          </Link>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="rounded-lg bg-primary px-6 py-3 font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+          >
+            {isSaving ? t("saving") : t("saveChanges")}
+          </button>
+        </div>
+      </form>
     </ProviderSubpageShell>
   );
 }

@@ -179,7 +179,7 @@ export default function ProviderMessagesPage() {
           {error}
         </AlertBanner>
       )}
-      <div className="h-[70vh] overflow-hidden rounded-xl border border-border bg-white">
+      <div className="h-[72dvh] overflow-hidden rounded-xl border border-border bg-white sm:h-[70vh]">
         <MessagesWorkspace
           title={t("title")}
           loadingLabel={t("loading")}
@@ -206,7 +206,7 @@ export default function ProviderMessagesPage() {
           getConversationLabel={getConversationLabel}
           formatListTime={formatListTime}
           formatTime={formatTime}
-          wrapperClassName="flex h-full overflow-hidden"
+          wrapperClassName="flex h-full min-h-0 overflow-hidden"
         />
       </div>
     </ProviderSubpageShell>

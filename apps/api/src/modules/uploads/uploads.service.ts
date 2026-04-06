@@ -11,7 +11,7 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 export enum UploadFolder {
   PROFILES = "profiles",
@@ -65,7 +65,7 @@ export class UploadsService {
 
     // Generate unique filename
     const ext = file.originalname.split(".").pop();
-    const filename = `${uuidv4()}.${ext}`;
+    const filename = `${randomUUID()}.${ext}`;
     const key = `${folder}/${userId}/${filename}`;
 
     // Upload to S3/R2
@@ -139,7 +139,7 @@ export class UploadsService {
     contentType: string
   ): Promise<{ uploadUrl: string; key: string; publicUrl: string }> {
     const ext = filename.split(".").pop();
-    const uniqueFilename = `${uuidv4()}.${ext}`;
+    const uniqueFilename = `${randomUUID()}.${ext}`;
     const key = `${folder}/${userId}/${uniqueFilename}`;
 
     const command = new PutObjectCommand({

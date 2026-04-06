@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { PanelCard, ProviderSubpageShell } from "@/components";
-import { providerApi, ProviderReview } from "@/lib/api";
+import { providerApi, ProviderReview, uploadsApi } from "@/lib/api";
 
 interface ReviewStats {
   average: number;
@@ -24,6 +24,7 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -48,13 +49,23 @@ export default function ReviewsPage() {
     try {
       const token = localStorage.getItem("armut_access_token");
       if (token && replyText.trim()) {
-        await providerApi.replyToReview(token, reviewId, replyText);
+        let replyImages: string[] = [];
+        if (replyFiles.length > 0) {
+          const uploaded = await uploadsApi.uploadRequestImages(token, replyFiles);
+          replyImages = uploaded.map((item) => item.url);
+        }
+
+        await providerApi.replyToReview(token, reviewId, {
+          reply: replyText,
+          replyImages,
+        });
         // Update local state
         setReviews(reviews.map(r => 
-          r.id === reviewId ? { ...r, reply: replyText } : r
+          r.id === reviewId ? { ...r, reply: replyText, replyImages } : r
         ));
         setReplyingTo(null);
         setReplyText("");
+        setReplyFiles([]);
       }
     } catch (error) {
       console.error("Failed to reply to review", error);
@@ -146,7 +157,9 @@ export default function ReviewsPage() {
                       </div>
                       <div>
                         <div className="font-semibold">{review.customer}</div>
-                        <div className="text-sm text-muted">{review.service}</div>
+                        <div className="text-sm text-muted">
+                          {t("reviewedJob")}: {review.job?.title || review.service}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -158,7 +171,32 @@ export default function ReviewsPage() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-muted">{review.comment}</p>
+                  <div className="mt-4">
+                    <div className="text-sm font-medium">{t("customerComment")}</div>
+                    <p className="mt-1 text-muted">
+                      {review.customerComment || review.comment || t("noComment")}
+                    </p>
+                  </div>
+                  {review.images && review.images.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {review.images.map((imageUrl) => (
+                        <a
+                          key={imageUrl}
+                          href={imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block overflow-hidden rounded-lg border border-border"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imageUrl}
+                            alt="review"
+                            className="h-24 w-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
                   {review.reply && (
                     <div className="mt-4 rounded-lg bg-background p-4">
@@ -166,6 +204,26 @@ export default function ReviewsPage() {
                         <span className="text-sm font-medium">{t("yourReply")}</span>
                       </div>
                       <p className="text-sm text-muted">{review.reply}</p>
+                      {review.replyImages && review.replyImages.length > 0 && (
+                        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                          {review.replyImages.map((imageUrl) => (
+                            <a
+                              key={imageUrl}
+                              href={imageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block overflow-hidden rounded-lg border border-border"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imageUrl}
+                                alt="provider-reply"
+                                className="h-24 w-full object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -187,6 +245,20 @@ export default function ReviewsPage() {
                         className="w-full rounded-lg border border-border p-3 text-sm focus:border-primary focus:outline-none"
                         rows={3}
                       />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(event) =>
+                          setReplyFiles(Array.from(event.target.files || []))
+                        }
+                        className="w-full rounded-lg border border-border p-3 text-sm"
+                      />
+                      {replyFiles.length > 0 && (
+                        <p className="text-xs text-muted">
+                          {t("imagesSelected", { count: replyFiles.length })}
+                        </p>
+                      )}
                       <div className="flex gap-2">
                         <button 
                           onClick={() => handleReply(review.id)}
@@ -195,7 +267,11 @@ export default function ReviewsPage() {
                           {t("send") || "Send"}
                         </button>
                         <button 
-                          onClick={() => { setReplyingTo(null); setReplyText(""); }}
+                          onClick={() => {
+                            setReplyingTo(null);
+                            setReplyText("");
+                            setReplyFiles([]);
+                          }}
                           className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background"
                         >
                           {t("cancel") || "Cancel"}

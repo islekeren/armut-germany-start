@@ -7,6 +7,7 @@ import {
   Header,
   PageContainer,
   PanelCard,
+  RequestOfferModal,
   ProviderOpeningHours,
   ProviderRatingStars,
   ProviderReviewCard,
@@ -109,17 +110,14 @@ export default async function ProviderProfilePage({
   const displayHours = Array.isArray(profile.profile.openingHours)
     ? profile.profile.openingHours
     : [];
-  const firstCategorySlug = profile.services[0]?.category.slug;
-  const requestHref = firstCategorySlug
-    ? `/create-request?category=${firstCategorySlug}`
-    : "/create-request";
+  const firstCategoryId = profile.services[0]?.category.id;
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <section className="relative overflow-hidden bg-primary py-10 text-white">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-dark/70 to-primary/60" />
+        <div className="absolute inset-0 bg-primary/80" />
         <PageContainer className="relative">
           <nav className="mb-4 text-sm text-white/80">
             <Link href="/" className="hover:text-white">
@@ -173,12 +171,13 @@ export default async function ProviderProfilePage({
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href={requestHref}
-                className="rounded-lg bg-secondary px-5 py-2.5 font-semibold text-white hover:bg-secondary/90"
-              >
-                {t("requestQuote")}
-              </Link>
+              <RequestOfferModal
+                categoryId={firstCategoryId}
+                providerName={companyName}
+                serviceName={profile.services[0]?.title}
+                defaultPostalCode={profile.profile.postalCode || ""}
+                defaultCity={profile.profile.city || ""}
+              />
               {profile.profile.website ? (
                 <a
                   href={profile.profile.website}

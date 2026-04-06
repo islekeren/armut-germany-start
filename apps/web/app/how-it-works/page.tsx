@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Header, Footer } from "@/components";
+import { Header, Footer, RequestCtaLink } from "@/components";
 
 export default async function HowItWorksPage() {
   const t = await getTranslations();
@@ -72,12 +71,12 @@ export default async function HowItWorksPage() {
           <p className="mx-auto mt-2 max-w-xl text-white/90">
             {t("cta.createFirstRequest")}
           </p>
-          <Link
+          <RequestCtaLink
             href="/create-request"
             className="mt-6 inline-block rounded-lg bg-white px-8 py-3 font-semibold text-secondary hover:bg-white/90"
           >
             {t("cta.createRequestNow")}
-          </Link>
+          </RequestCtaLink>
         </div>
       </section>
 

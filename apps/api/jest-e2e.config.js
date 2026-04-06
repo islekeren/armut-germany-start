@@ -6,8 +6,11 @@ module.exports = {
   transform: {
     "^.+\\.(t|j)s$": "ts-jest",
   },
+  transformIgnorePatterns: ["/node_modules/(?!(uuid)/)"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
+  setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
   testTimeout: 60000,
+  watchman: false,
 };

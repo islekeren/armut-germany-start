@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { AdminService } from "./admin.service";
 
 describe("AdminService", () => {
@@ -165,22 +169,84 @@ describe("AdminService", () => {
 
   it("gets, creates and updates categories", async () => {
     prisma.category.findMany.mockResolvedValue([{ id: "c1" }]);
+    prisma.category.findUnique
+      .mockResolvedValueOnce({
+        id: "sector-1",
+        slug: "home-repair",
+        parentId: null,
+      })
+      .mockResolvedValueOnce({
+        id: "c1",
+        slug: "electrician",
+      });
     prisma.category.create.mockResolvedValue({ id: "c2" });
-    prisma.category.update.mockResolvedValue({ id: "c1", nameDe: "Neu" });
+    prisma.category.update.mockResolvedValue({
+      id: "c1",
+      nameDe: "Elektriker",
+    });
 
     await expect(service.getCategories()).resolves.toEqual([{ id: "c1" }]);
     await expect(
       service.createCategory({
-        slug: "cleaning",
-        nameDe: "Reinigung",
-        nameEn: "Cleaning",
-        icon: "broom",
+        slug: "electrician",
+        nameDe: "Elektriker",
+        nameEn: "Electrician",
+        icon: "⚡",
+        parentId: "sector-1",
       })
     ).resolves.toEqual({ id: "c2" });
-    await expect(service.updateCategory("c1", { nameDe: "Neu" })).resolves.toEqual({
-      id: "c1",
-      nameDe: "Neu",
+    expect(prisma.category.findUnique).toHaveBeenCalledWith({
+      where: { id: "sector-1" },
+      select: {
+        id: true,
+        slug: true,
+        parentId: true,
+      },
     });
+    expect(prisma.category.create).toHaveBeenCalledWith({
+      data: {
+        slug: "electrician",
+        nameDe: "Elektriker",
+        nameEn: "Electrician",
+        icon: "⚡",
+        parentId: "sector-1",
+        isActive: true,
+      },
+    });
+    await expect(
+      service.updateCategory("c1", { nameDe: "Elektriker" })
+    ).resolves.toEqual({
+      id: "c1",
+      nameDe: "Elektriker",
+    });
+  });
+
+  it("rejects taxonomy drift in category creation", async () => {
+    prisma.category.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.createCategory({
+        slug: "custom-cleaning",
+        nameDe: "Custom",
+        nameEn: "Custom",
+        icon: "🧪",
+      })
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.category.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects taxonomy drift in category updates", async () => {
+    prisma.category.findUnique.mockResolvedValue({
+      id: "c1",
+      slug: "electrician",
+    });
+
+    await expect(
+      service.updateCategory("c1", { nameDe: "Neu" })
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.category.update).not.toHaveBeenCalled();
   });
 
   it("deletes category and enforces service/request constraints", async () => {

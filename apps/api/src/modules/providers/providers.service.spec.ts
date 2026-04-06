@@ -1,7 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ProvidersService } from "./providers.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { NotFoundException, ForbiddenException } from "@nestjs/common";
+import {
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from "@nestjs/common";
 
 describe("ProvidersService", () => {
   let service: ProvidersService;
@@ -66,13 +70,21 @@ describe("ProvidersService", () => {
       },
       category: {
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      serviceRequest: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        count: jest.fn(),
       },
       quote: {
         count: jest.fn(),
+        findMany: jest.fn(),
       },
       booking: {
         count: jest.fn(),
         aggregate: jest.fn(),
+        findMany: jest.fn(),
       },
       review: {
         findMany: jest.fn(),
@@ -93,6 +105,130 @@ describe("ProvidersService", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("create", () => {
+    const providerUser = {
+      id: "user-1",
+      firstName: "Max",
+      lastName: "Mustermann",
+      email: "max@example.com",
+      userType: "provider",
+    };
+
+    beforeEach(() => {
+      prisma.provider.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(providerUser);
+      prisma.provider.create.mockResolvedValue({ id: "provider-1" });
+    });
+
+    it("creates services for valid leaf categories", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "cat-1",
+          slug: "home-cleaning",
+          nameEn: "Home Cleaning",
+          isActive: true,
+          parentId: "sector-1",
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["home-cleaning"],
+        } as any),
+      ).resolves.toEqual({ id: "provider-1" });
+
+      expect(prisma.category.findMany).toHaveBeenCalledWith({
+        where: { slug: { in: ["home-cleaning"] } },
+      });
+      expect(prisma.provider.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            services: {
+              create: [
+                expect.objectContaining({
+                  categoryId: "cat-1",
+                  title: "Home Cleaning",
+                  description: "Reliable cleaning",
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+    });
+
+    it("rejects unknown category slugs", async () => {
+      prisma.category.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["missing-category"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.provider.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects inactive categories", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "cat-1",
+          slug: "home-cleaning",
+          nameEn: "Home Cleaning",
+          isActive: false,
+          parentId: "sector-1",
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["home-cleaning"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects root categories that are not leaf branches", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "sector-1",
+          slug: "cleaning",
+          nameEn: "Cleaning",
+          isActive: true,
+          parentId: null,
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["cleaning"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects duplicate submitted slugs when the resolved count mismatches", async () => {
+      prisma.category.findMany.mockResolvedValue([
+        {
+          id: "cat-1",
+          slug: "home-cleaning",
+          nameEn: "Home Cleaning",
+          isActive: true,
+          parentId: "sector-1",
+        },
+      ]);
+
+      await expect(
+        service.create("user-1", {
+          description: "Reliable cleaning",
+          categories: ["home-cleaning", "home-cleaning"],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe("findAll", () => {
@@ -306,6 +442,128 @@ describe("ProvidersService", () => {
       prisma.provider.findUnique.mockResolvedValue(null);
 
       await expect(service.getStats("other-user")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("getDashboard", () => {
+    it("counts completion_pending bookings as active orders", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.count.mockResolvedValue(2);
+      prisma.booking.count.mockResolvedValueOnce(3).mockResolvedValueOnce(7);
+      prisma.serviceRequest.findMany.mockResolvedValue([]);
+      prisma.booking.findMany.mockResolvedValue([]);
+      prisma.quote.findMany.mockResolvedValue([]);
+
+      await service.getDashboard("user-1");
+
+      expect(prisma.booking.count).toHaveBeenCalledWith({
+        where: {
+          providerId: "provider-1",
+          status: {
+            in: ["pending", "confirmed", "in_progress", "completion_pending"],
+          },
+        },
+      });
+    });
+  });
+
+  describe("getRequests", () => {
+    it("limits provider requests to the provider's active service categories", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.findMany.mockResolvedValue([]);
+      prisma.serviceRequest.count.mockResolvedValue(0);
+
+      await service.getRequests("user-1", { page: 1, limit: 10 });
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            categoryId: { in: ["category-1"] },
+            status: "open",
+          }),
+        }),
+      );
+    });
+
+    it("returns an empty page when the requested category is outside the provider scope", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.category.findUnique.mockResolvedValue({
+        id: "category-2",
+        slug: "plumbing",
+      });
+
+      const result = await service.getRequests("user-1", {
+        category: "plumbing",
+        page: 2,
+        limit: 5,
+      });
+
+      expect(result).toEqual({
+        data: [],
+        meta: {
+          total: 0,
+          page: 2,
+          limit: 5,
+          totalPages: 0,
+        },
+      });
+      expect(prisma.serviceRequest.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getRequestById", () => {
+    it("returns a matching open request for the provider's active categories", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.findFirst.mockResolvedValue({
+        id: "request-1",
+        categoryId: "category-1",
+        status: "open",
+      });
+
+      const result = await service.getRequestById("user-1", "request-1");
+
+      expect(result).toEqual({
+        id: "request-1",
+        categoryId: "category-1",
+        status: "open",
+      });
+      expect(prisma.serviceRequest.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: "request-1",
+          categoryId: { in: ["category-1"] },
+          status: "open",
+        },
+        include: {
+          category: true,
+          _count: {
+            select: { quotes: true },
+          },
+        },
+      });
+    });
+
+    it("throws when the request is outside the provider scope", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      prisma.serviceRequest.findFirst.mockResolvedValue(null);
+
+      await expect(service.getRequestById("user-1", "request-2")).rejects.toThrow(
         NotFoundException,
       );
     });

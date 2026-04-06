@@ -2,8 +2,11 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { UploadFolder, UploadsService } from "./uploads.service";
 
-jest.mock("uuid", () => ({
-  v4: jest.fn(() => "uuid-123"),
+const mockUuid = "11111111-1111-4111-8111-111111111111";
+
+jest.mock("crypto", () => ({
+  ...jest.requireActual("crypto"),
+  randomUUID: jest.fn(() => "11111111-1111-4111-8111-111111111111"),
 }));
 
 jest.mock("@aws-sdk/s3-request-presigner", () => ({
@@ -46,8 +49,8 @@ describe("UploadsService", () => {
     await expect(
       service.uploadFile(file, UploadFolder.PROFILES, "user-1")
     ).resolves.toEqual({
-      key: "profiles/user-1/uuid-123.png",
-      url: "https://cdn.example.com/profiles/user-1/uuid-123.png",
+      key: `profiles/user-1/${mockUuid}.png`,
+      url: `https://cdn.example.com/profiles/user-1/${mockUuid}.png`,
       filename: "avatar.png",
       mimetype: "image/png",
       size: 1024,
@@ -151,8 +154,8 @@ describe("UploadsService", () => {
       )
     ).resolves.toEqual({
       uploadUrl: "https://signed/upload",
-      key: "documents/user-1/uuid-123.pdf",
-      publicUrl: "https://cdn.example.com/documents/user-1/uuid-123.pdf",
+      key: `documents/user-1/${mockUuid}.pdf`,
+      publicUrl: `https://cdn.example.com/documents/user-1/${mockUuid}.pdf`,
     });
   });
 
@@ -164,8 +167,6 @@ describe("UploadsService", () => {
 
     const result = await service.uploadFile(file, UploadFolder.PROFILES, "user-1");
     expect(sendSpy).toHaveBeenCalledTimes(1);
-    expect(result.url).toBe(
-      "https://armut-test.s3.amazonaws.com/profiles/user-1/uuid-123.png"
-    );
+    expect(result.url).toBe(`https://armut-test.s3.amazonaws.com/profiles/user-1/${mockUuid}.png`);
   });
 });

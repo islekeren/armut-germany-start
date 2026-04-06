@@ -2,30 +2,48 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { CreateRequestDto, UpdateRequestDto, RequestQueryDto } from "./dto/request.dto";
+import {
+  CreateRequestDto,
+  UpdateRequestDto,
+  RequestQueryDto,
+} from "./dto/request.dto";
+import { NotificationsService } from "../notifications/notifications.service";
+import {
+  getRequestBranchById,
+  getRequestBranchesByCategorySlug,
+  getRequestSectorById,
+  resolveRequestTaxonomy,
+} from "../../common/request-taxonomy";
 
 @Injectable()
 export class RequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // Helper to check if a string is a valid UUID
   private isUUID(str: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   }
 
   async create(
     customerId: string,
     createRequestDto: CreateRequestDto,
-    userType: "customer" | "provider" | "admin" = "customer"
+    userType: "customer" | "provider" | "admin" = "customer",
   ) {
     if (userType !== "customer") {
-      throw new ForbiddenException("Only customers can create service requests");
+      throw new ForbiddenException(
+        "Only customers can create service requests",
+      );
     }
 
-    // Look up category by ID or slug
+    // Look up category by ID or slug.
     let category;
     if (this.isUUID(createRequestDto.categoryId)) {
       category = await this.prisma.category.findUnique({
@@ -38,18 +56,73 @@ export class RequestsService {
       });
     }
 
-    if (!category) {
+    if (!category || !category.isActive || !category.parentId) {
       throw new NotFoundException("Category not found");
     }
+
+    const matchingBranches = getRequestBranchesByCategorySlug(category.slug);
+    if (!matchingBranches.length) {
+      throw new BadRequestException(
+        "Category is not available in request taxonomy",
+      );
+    }
+
+    const branch = getRequestBranchById(createRequestDto.requestBranch);
+    if (createRequestDto.requestBranch && !branch) {
+      throw new BadRequestException("Invalid request branch");
+    }
+
+    const sector = getRequestSectorById(createRequestDto.requestSector);
+    if (createRequestDto.requestSector && !sector) {
+      throw new BadRequestException("Invalid request sector");
+    }
+
+    if (branch && branch.categorySlug !== category.slug) {
+      throw new BadRequestException("Request branch does not match category");
+    }
+
+    if (branch && sector && branch.sectorId !== sector.id) {
+      throw new BadRequestException(
+        "Request sector does not match request branch",
+      );
+    }
+
+    if (
+      !branch &&
+      sector &&
+      !matchingBranches.some((item) => item.sectorId === sector.id)
+    ) {
+      throw new BadRequestException("Request sector does not match category");
+    }
+
+    const resolvedTaxonomy = resolveRequestTaxonomy({
+      requestSector: createRequestDto.requestSector,
+      requestBranch: createRequestDto.requestBranch,
+      categorySlug: category.slug,
+    });
+
+    if (!resolvedTaxonomy.branchId || !resolvedTaxonomy.sectorId) {
+      throw new BadRequestException(
+        "Category is not supported by the request taxonomy",
+      );
+    }
+
+    const {
+      categoryId: _categoryId,
+      preferredDate,
+      requestSector: _requestSector,
+      requestBranch: _requestBranch,
+      ...requestData
+    } = createRequestDto;
 
     return this.prisma.serviceRequest.create({
       data: {
         customerId,
-        ...createRequestDto,
-        categoryId: category.id, // Use the actual category ID
-        preferredDate: createRequestDto.preferredDate
-          ? new Date(createRequestDto.preferredDate)
-          : null,
+        ...requestData,
+        categoryId: category.id,
+        requestSector: resolvedTaxonomy.sectorId,
+        requestBranch: resolvedTaxonomy.branchId,
+        preferredDate: preferredDate ? new Date(preferredDate) : null,
       },
       include: {
         customer: {
@@ -81,19 +154,34 @@ export class RequestsService {
   }
 
   async findAll(query: RequestQueryDto) {
-    const { categoryId, postalCode, lat, lng, radius, status, page = 1, limit = 10 } = query;
+    const {
+      categorySlug,
+      category,
+      postalCode,
+      city,
+      lat,
+      lng,
+      radius,
+      status,
+      page = 1,
+      limit = 10,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {
       status: status || "open",
     };
 
-    if (categoryId) {
-      where.categoryId = categoryId;
+    const resolvedCategorySlug = categorySlug || category;
+
+    if (resolvedCategorySlug) {
+      where.category = { slug: resolvedCategorySlug };
     }
 
     if (postalCode) {
       where.postalCode = { startsWith: postalCode.substring(0, 2) };
+    } else if (city) {
+      where.city = { contains: city, mode: "insensitive" };
     }
 
     let requests = await this.prisma.serviceRequest.findMany({
@@ -120,7 +208,12 @@ export class RequestsService {
     // Filter by distance if lat/lng provided
     if (lat && lng && radius) {
       requests = requests.filter((request) => {
-        const distance = this.calculateDistance(lat, lng, request.lat, request.lng);
+        const distance = this.calculateDistance(
+          lat,
+          lng,
+          request.lat,
+          request.lng,
+        );
         return distance <= radius;
       });
     }
@@ -238,6 +331,17 @@ export class RequestsService {
   async cancel(id: string, userId: string) {
     const request = await this.prisma.serviceRequest.findUnique({
       where: { id },
+      include: {
+        quotes: {
+          select: {
+            provider: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!request) {
@@ -252,10 +356,41 @@ export class RequestsService {
       throw new ForbiddenException("Can only cancel open requests");
     }
 
-    return this.prisma.serviceRequest.update({
+    const cancelledRequest = await this.prisma.serviceRequest.update({
       where: { id },
       data: { status: "cancelled" },
     });
+
+    const providerUserIds: string[] = [];
+    for (const quote of request.quotes ?? []) {
+      const providerUserId = quote.provider?.userId;
+      if (
+        typeof providerUserId === "string" &&
+        providerUserId.length > 0 &&
+        !providerUserIds.includes(providerUserId)
+      ) {
+        providerUserIds.push(providerUserId);
+      }
+    }
+
+    await Promise.all([
+      this.notificationsService.create(userId, {
+        type: "request_cancelled",
+        title: "Request cancelled",
+        message: `Your request "${request.title}" has been cancelled.`,
+        metadata: { requestId: request.id },
+      }),
+      ...providerUserIds.map((providerUserId) =>
+        this.notificationsService.create(providerUserId, {
+          type: "request_cancelled",
+          title: "Request cancelled",
+          message: `A customer cancelled the request "${request.title}".`,
+          metadata: { requestId: request.id },
+        }),
+      ),
+    ]);
+
+    return cancelledRequest;
   }
 
   async getForProvider(providerId: string, query: RequestQueryDto) {
@@ -314,7 +449,7 @@ export class RequestsService {
         provider.serviceAreaLat,
         provider.serviceAreaLng,
         request.lat,
-        request.lng
+        request.lng,
       );
       return distance <= provider.serviceAreaRadius;
     });
@@ -336,7 +471,7 @@ export class RequestsService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371;
     const dLat = this.toRad(lat2 - lat1);

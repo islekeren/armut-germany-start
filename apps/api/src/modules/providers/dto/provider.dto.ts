@@ -265,14 +265,17 @@ export class ApproveProviderDto {
 
 export class ProviderQueryDto {
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   lat?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   lng?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   radius?: number;
 
@@ -281,16 +284,19 @@ export class ProviderQueryDto {
   categoryId?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   @Max(5)
   minRating?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
@@ -301,20 +307,24 @@ export class ProviderRequestsQueryDto {
   category?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
 
 export class ProviderBookingsQueryDto {
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   month?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   year?: number;
 
@@ -325,10 +335,12 @@ export class ProviderBookingsQueryDto {
 
 export class ProviderReviewsQueryDto {
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
@@ -336,4 +348,9 @@ export class ProviderReviewsQueryDto {
 export class ReplyToReviewDto {
   @IsString()
   reply: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  replyImages?: string[];
 }

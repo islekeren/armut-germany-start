@@ -18,12 +18,28 @@
   "nav": {
     "home": "Home",
     "categories": "Categories",
+    "findProvider": "Find Provider",
+    "requests": "Requests",
+    "offers": "Requests",
     "howItWorks": "How it works",
+    "createRequest": "Create a Request",
     "dashboard": "Dashboard",
     "profile": "Profile",
     "myRequests": "My Requests",
     "bookings": "Bookings",
-    "messages": "Messages"
+    "messages": "Messages",
+    "notifications": "Notifications"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "{count} unread notifications",
+    "markAllRead": "Mark all as read",
+    "loading": "Loading notifications...",
+    "empty": "No notifications yet.",
+    "errors": {
+      "noToken": "Please sign in to view notifications.",
+      "loadFailed": "Failed to load notifications."
+    }
   },
   "categories": {
     "title": "Categories",
@@ -80,6 +96,44 @@
     "providersCount": "{count, plural, one {# provider} other {# providers}}",
     "categoriesUnavailable": "Categories are temporarily unavailable. Please try again shortly."
   },
+  "findProviders": {
+    "title": "Find Providers",
+    "subtitle": "Search verified providers and filter by your needs.",
+    "loading": "Loading providers...",
+    "loadError": "Failed to load providers.",
+    "noProviders": "No providers match your filters.",
+    "priceOnRequest": "Price on request",
+    "cityUnknown": "City not specified",
+    "viewProfile": "View Profile",
+    "filters": {
+      "title": "Filters",
+      "category": "Category",
+      "allCategories": "All categories",
+      "minRating": "Minimum rating",
+      "allRatings": "All ratings",
+      "city": "City",
+      "cityPlaceholder": "e.g. Berlin",
+      "priceMin": "Min price (€)",
+      "priceMax": "Max price (€)"
+    }
+  },
+  "requestsPage": {
+    "title": "Open Requests",
+    "subtitle": "Browse customer listings like providers do.",
+    "loading": "Loading requests...",
+    "loadError": "Failed to load requests.",
+    "noRequests": "No open requests found.",
+    "filters": {
+      "all": "All",
+      "cleaning": "Cleaning",
+      "renovation": "Renovation",
+      "garden": "Garden"
+    },
+    "postedAt": "Posted {time} ago",
+    "flexible": "Flexible",
+    "memberSince": "Member since {year}",
+    "budgetUpTo": "up to €{value}"
+  },
   "homePage": {
     "categoryCardDescription": "Find trusted professionals for {name}.",
     "categoriesUnavailable": "Categories are temporarily unavailable. Please try again shortly."
@@ -125,7 +179,7 @@
     "next": "Next"
   },
   "providerPublicProfile": {
-    "requestQuote": "Request quote",
+    "requestQuote": "Send Offer",
     "visitWebsite": "Visit website",
     "about": "About",
     "highlights": "Highlights",
@@ -167,6 +221,38 @@
       "friday": "Friday",
       "saturday": "Saturday",
       "sunday": "Sunday"
+    },
+    "offerModal": {
+      "trigger": "Create Request",
+      "title": "Create a Request",
+      "subtitle": "Create a request in this service category. Matching providers in your area can respond.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "submit": "Create Request",
+      "sending": "Creating...",
+      "done": "Done",
+      "goToRequests": "Go to My Requests",
+      "submitSuccess": "Your request has been created successfully.",
+      "submitError": "Failed to create your request. Please try again.",
+      "missingCategory": "This provider does not have a service category yet.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. Home cleaning request",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Describe what you need in detail.",
+      "postalCodeLabel": "Postal code",
+      "postalCodePlaceholder": "e.g. 10115",
+      "cityLabel": "City",
+      "cityPlaceholder": "e.g. Berlin",
+      "budgetMinLabel": "Budget min (€)",
+      "budgetMaxLabel": "Budget max (€)",
+      "serviceContext": "Request category based on this profile",
+      "sectionDetails": "Request details",
+      "sectionLocation": "Location",
+      "sectionBudget": "Budget",
+      "descriptionHint": "Please include scope, quantity, and any important constraints (minimum 20 characters).",
+      "budgetHint": "Optional. If both values are filled, min budget must be lower than or equal to max budget.",
+      "descriptionTooShort": "Please write at least 20 characters in the description.",
+      "budgetRangeError": "Minimum budget cannot be greater than maximum budget."
     }
   },
   "createRequest": {
@@ -175,6 +261,10 @@
     "step3": "Review",
     "whatDoYouNeed": "What do you need?",
     "selectCategory": "Select a category for your service request.",
+    "selectSector": "Select main sector",
+    "selectBranch": "Select service branch",
+    "branchSearchPlaceholder": "Search service branch",
+    "noBranchMatch": "No matching service branch found.",
     "loadingCategories": "Loading categories...",
     "categoriesUnavailable": "Categories are temporarily unavailable. Please try again shortly.",
     "describeYourNeed": "Describe your need",
@@ -188,7 +278,17 @@
     "city": "City",
     "cityPlaceholder": "e.g., Berlin",
     "preferredDate": "Preferred Date",
+    "preferredDays": "Preferred Days",
     "preferredTime": "Preferred Time",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
     "flexible": "Flexible",
     "morning": "Morning (8-12)",
     "afternoon": "Afternoon (12-17)",
@@ -209,6 +309,8 @@
     "descriptionLabel": "Description",
     "locationLabel": "Location",
     "appointmentLabel": "Appointment",
+    "dayPreferencesLabel": "Preferred Days",
+    "timePreferenceLabel": "Preferred Time",
     "budgetLabel": "Budget",
     "nextStepsTitle": "What happens next?",
     "nextStepsText": "After submitting, your request will be sent to qualified providers in your area. You'll receive quotes within 24 hours.",
@@ -452,7 +554,8 @@
         "all": "All",
         "active": "Active",
         "booked": "Booked",
-        "completed": "Completed"
+        "completed": "Completed",
+        "cancelled": "Cancelled"
       },
       "status": {
         "active": "Active",
@@ -471,6 +574,11 @@
       "bookingPending": "Booking details pending",
       "completedOn": "Completed on",
       "rate": "Rate",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "deleteConfirm": "Are you sure you want to delete this request?",
+      "deleteSuccess": "Request deleted successfully.",
+      "deleteError": "Failed to delete request.",
       "noRequests": "No requests found",
       "noRequestsHint": "Create a new request to receive quotes",
       "createRequest": "Create Request",
@@ -545,8 +653,10 @@
       },
       "status": {
         "pending": "Pending",
+        "booked": "Booked",
         "confirmed": "Confirmed",
         "in_progress": "In progress",
+        "completion_pending": "Waiting your confirmation",
         "completed": "Completed",
         "cancelled": "Cancelled"
       },
@@ -632,9 +742,12 @@
         "cancelBooking": "Cancel Booking",
         "reviewTitle": "Leave a review",
         "reviewHint": "Share how the service went after the booking is completed.",
+        "reviewAvailableAt": "Reviewing will be available after {datetime}.",
         "rating": "Rating",
         "comment": "Comment",
         "commentPlaceholder": "Tell others what went well and what could be better.",
+        "reviewImagesLabel": "Add photos (optional)",
+        "reviewImagesSelected": "{count} photo(s) selected",
         "submittingReview": "Submitting review...",
         "submitReview": "Submit Review",
         "yourReview": "Your review",
@@ -644,9 +757,15 @@
           "pending": "Waiting for provider confirmation.",
           "confirmed": "Your booking is confirmed.",
           "in_progress": "The service is currently in progress.",
+          "completion_pending": "Provider marked this job as completed. Please confirm if everything is done.",
           "completed": "This booking has been completed.",
           "cancelled": "This booking was cancelled."
-        }
+        },
+        "confirmCompletionTitle": "Confirm completion",
+        "confirmCompletionHint": "Your provider says the job is done. Confirm to finalize and move this booking to completed.",
+        "confirmCompletion": "Confirm job is completed",
+        "confirmCompletionSuccess": "Booking marked as completed.",
+        "confirmCompletionError": "Could not confirm completion."
       }
     },
     "messages": {
@@ -672,27 +791,35 @@
       "title": "Overview",
       "welcomeBack": "Welcome back, {name}! 👋",
       "activityOverview": "Here is an overview of your current activities.",
-      "noRequests": "No new requests.",
+      "noRequests": "No new listings.",
       "noAppointments": "No upcoming appointments.",
+      "noPendingOffers": "No pending offers.",
+      "pendingOfferValidUntil": "Valid until {date}",
+      "pendingOffersUntitled": "Untitled listing",
+      "pendingOffersUnknownCustomer": "Unknown customer",
       "loading": "Loading...",
       "stats": {
-        "newRequests": "New Requests",
+        "newRequests": "New Listings",
         "activeOrders": "Active Orders",
         "completed": "Completed",
         "rating": "Rating"
       },
       "sections": {
-        "newRequests": "New Requests",
+        "newRequests": "New Listings",
         "upcomingAppointments": "Upcoming Appointments",
+        "pendingOffers": "Pending Offers",
         "quickActions": "Quick Actions"
       },
       "viewAll": "View All",
       "calendar": "Calendar",
       "allOrders": "View All Orders",
+      "createRequest": "Post Listing",
       "sendOffer": "Send Offer",
       "status": {
         "confirmed": "Confirmed",
-        "pending": "Pending"
+        "pending": "Pending",
+        "in_progress": "In progress",
+        "completion_pending": "Awaiting customer confirmation"
       },
       "quickActionButtons": {
         "editProfile": "Edit Profile",
@@ -702,7 +829,9 @@
       },
       "navigation": {
         "overview": "Overview",
-        "requests": "Requests",
+        "requests": "Listings",
+        "offers": "Requests",
+        "pendingOffers": "Pending Offers",
         "orders": "Orders",
         "calendar": "Calendar",
         "messages": "Messages",
@@ -723,17 +852,20 @@
       }
     },
     "requests": {
-      "title": "Open Requests",
-      "subtitle": "{count} requests in your service area",
+      "title": "Open Listings",
+      "subtitle": "{count} listings in your service area",
       "loading": "Loading...",
-      "loadError": "Failed to load requests",
-      "noRequests": "No requests found",
+      "loadError": "Failed to load listings",
+      "noRequests": "No listings found",
       "filters": {
         "all": "All",
         "cleaning": "Cleaning",
         "renovation": "Renovation",
-        "garden": "Garden"
+        "garden": "Garden",
+        "searchLabel": "Search",
+        "searchPlaceholder": "Title, description, location..."
       },
+      "flexible": "Flexible",
       "postedAt": "Posted {time} ago",
       "memberSince": "Member since {year}",
       "sendOffer": "Send Offer",
@@ -756,6 +888,9 @@
         "tip4": "Ask follow-up questions if needed"
       },
       "acceptanceRate": "of your offers were accepted so far"
+    },
+    "placeholders": {
+      "comingSoon": "This section will be available soon."
     },
     "profile": {
       "title": "Edit Profile",
@@ -809,8 +944,30 @@
       "oclock": "o'clock",
       "status": {
         "confirmed": "Confirmed",
-        "pending": "Pending"
+        "pending": "Pending",
+        "in_progress": "In progress",
+        "completion_pending": "Awaiting confirmation",
+        "completed": "Completed"
       }
+    },
+    "orders": {
+      "tabs": {
+        "active": "Active Jobs",
+        "completed": "Completed"
+      },
+      "status": {
+        "pending": "Pending",
+        "booked": "Booked",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "loading": "Loading orders...",
+      "empty": "No orders found in this section.",
+      "selectOrder": "Select an order to view details.",
+      "markCompleted": "Mark as Completed",
+      "completing": "Sending...",
+      "awaitingCustomer": "Completion request sent to customer. Waiting for approval.",
+      "completeError": "Failed to update order status."
     },
     "reviews": {
       "title": "My Reviews",
@@ -822,9 +979,13 @@
       "yourReply": "Your Reply",
       "reply": "Reply",
       "replyPlaceholder": "Write your reply...",
+      "imagesSelected": "{count} image(s) selected",
       "send": "Send",
       "cancel": "Cancel",
-      "ratingBreakdown": "Rating Breakdown"
+      "ratingBreakdown": "Rating Breakdown",
+      "reviewedJob": "Reviewed job",
+      "customerComment": "Customer comment",
+      "noComment": "No written comment."
     },
     "messages": {
       "title": "Messages",
@@ -842,17 +1003,85 @@
       "send": "Send",
       "sending": "Sending...",
       "selectConversation": "Select a conversation from the list"
+    },
+    "offers": {
+      "title": "Requests",
+      "subtitle": "{count} requests in total",
+      "loading": "Loading requests...",
+      "loadError": "Failed to load requests",
+      "sectorUnknown": "Unknown sector",
+      "incomingTitle": "Requests From Customers",
+      "sentTitle": "Sent Requests",
+      "noIncoming": "No customer requests yet.",
+      "noSent": "You have not sent any requests yet.",
+      "noIncomingFiltered": "No customer requests match these filters.",
+      "noSentFiltered": "No sent requests match these filters.",
+      "untitledRequest": "Untitled listing",
+      "unknownCustomer": "Unknown customer",
+      "fromCustomer": "From: {name}",
+      "toCustomer": "To: {name}",
+      "validUntil": "Valid until {date}",
+      "filters": {
+        "title": "Filter Requests",
+        "sector": "Sector",
+        "allSectors": "All sectors",
+        "date": "Date",
+        "dateAll": "All dates",
+        "dateToday": "Today",
+        "dateLast7": "Last 7 days",
+        "dateThisMonth": "This month",
+        "priceMin": "Min price (€)",
+        "priceMax": "Max price (€)",
+        "sortBy": "Sort by",
+        "sortNewest": "Newest first",
+        "sortOldest": "Oldest first",
+        "sortPriceAsc": "Price low to high",
+        "sortPriceDesc": "Price high to low"
+      },
+      "status": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "expired": "Expired"
+      }
+    },
+    "requestDetail": {
+      "title": "Request Details",
+      "loading": "Loading request details...",
+      "loadError": "Failed to load request details",
+      "notFound": "Request not found.",
+      "detailsTitle": "Details",
+      "category": "Category",
+      "status": "Status",
+      "location": "Location",
+      "address": "Address",
+      "budget": "Budget",
+      "budgetFlexible": "Flexible",
+      "createdAt": "Created on",
+      "preferredDate": "Preferred date",
+      "notSpecified": "Not specified",
+      "quotes": "Quotes"
     }
   },
   "providerOnboarding": {
-    "title": "Provider Onboarding",
-    "subtitle": "Complete a few steps to set up your provider profile.",
+    "title": "Create Your Provider Profile",
+    "subtitle": "Tell us what services you provide and complete your profile.",
     "steps": {
-      "category": "Service Category",
+      "category": "Services",
       "name": "Name",
       "address": "Address",
       "contact": "Phone & Email",
-      "profile": "Provider Profile"
+      "profile": "Profile Details"
+    },
+    "serviceSelection": {
+      "title": "Which service do you provide?",
+      "subtitle": "Choose your main service first. You can add more services below.",
+      "searchLabel": "Search service",
+      "searchPlaceholder": "Search by service name",
+      "mainService": "Main service",
+      "additionalServices": "Additional services",
+      "additionalServicesHint": "Add more services to receive more matching job opportunities.",
+      "noMatch": "No matching service branch found."
     },
     "labels": {
       "serviceCategories": "Service Categories",
