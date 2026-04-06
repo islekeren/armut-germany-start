@@ -20,11 +20,11 @@ describe("CategoriesController", () => {
   });
 
   it("returns category by slug", async () => {
-    categoriesService.findBySlug.mockResolvedValue({ id: "c1", slug: "cleaning" });
-    await expect(controller.findBySlug("cleaning")).resolves.toEqual({
+    categoriesService.findBySlug.mockResolvedValue({ id: "c1", slug: "home-cleaning" });
+    await expect(controller.findBySlug("home-cleaning")).resolves.toEqual({
       id: "c1",
-      slug: "cleaning",
+      slug: "home-cleaning",
     });
-    expect(categoriesService.findBySlug).toHaveBeenCalledWith("cleaning");
+    expect(categoriesService.findBySlug).toHaveBeenCalledWith("home-cleaning");
   });
 });

@@ -348,4 +348,9 @@ export class ProviderReviewsQueryDto {
 export class ReplyToReviewDto {
   @IsString()
   reply: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  replyImages?: string[];
 }

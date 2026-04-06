@@ -133,6 +133,17 @@ describe("AppController (e2e)", () => {
             expect(res.body).toHaveProperty("meta");
           });
       });
+
+      it("should support category-slug filtered request listing", () => {
+        return request(app.getHttpServer())
+          .get("/api/requests?categorySlug=home-cleaning")
+          .expect(200)
+          .expect((res) => {
+            expect(res.body).toHaveProperty("data");
+            expect(res.body).toHaveProperty("meta");
+            expect(Array.isArray(res.body.data)).toBe(true);
+          });
+      });
     });
   });
 

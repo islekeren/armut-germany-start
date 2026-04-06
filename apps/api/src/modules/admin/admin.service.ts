@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { sanitizeUserResponse } from "../../common/security";
+import { getRequestTaxonomyCategoryBySlug } from "../../common/request-taxonomy";
 
 @Injectable()
 export class AdminService {
@@ -329,8 +335,70 @@ export class AdminService {
     icon: string;
     parentId?: string;
   }) {
+    const canonicalCategory = getRequestTaxonomyCategoryBySlug(data.slug);
+
+    if (!canonicalCategory) {
+      throw new BadRequestException(
+        "Category slug is not part of the canonical request taxonomy",
+      );
+    }
+
+    if (
+      canonicalCategory.labelDe !== data.nameDe ||
+      canonicalCategory.labelEn !== data.nameEn ||
+      canonicalCategory.icon !== data.icon
+    ) {
+      throw new BadRequestException(
+        "Category payload must match the canonical request taxonomy",
+      );
+    }
+
+    if (canonicalCategory.kind === "sector") {
+      if (data.parentId) {
+        throw new BadRequestException(
+          "Canonical sector categories cannot have a parent",
+        );
+      }
+
+      return this.prisma.category.create({
+        data: {
+          ...data,
+          parentId: null,
+          isActive: canonicalCategory.isActive,
+        },
+      });
+    }
+
+    if (!data.parentId) {
+      throw new BadRequestException(
+        "Canonical branch categories require a parent sector",
+      );
+    }
+
+    const parentCategory = await this.prisma.category.findUnique({
+      where: { id: data.parentId },
+      select: {
+        id: true,
+        slug: true,
+        parentId: true,
+      },
+    });
+
+    if (
+      !parentCategory ||
+      parentCategory.parentId !== null ||
+      parentCategory.slug !== canonicalCategory.sectorId
+    ) {
+      throw new BadRequestException(
+        "Parent category does not match the canonical request taxonomy",
+      );
+    }
+
     return this.prisma.category.create({
-      data,
+      data: {
+        ...data,
+        isActive: canonicalCategory.isActive,
+      },
     });
   }
 
@@ -343,6 +411,42 @@ export class AdminService {
       isActive?: boolean;
     }
   ) {
+    const existingCategory = await this.prisma.category.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        slug: true,
+      },
+    });
+
+    if (!existingCategory) {
+      throw new NotFoundException("Category not found");
+    }
+
+    const canonicalCategory = getRequestTaxonomyCategoryBySlug(
+      existingCategory.slug,
+    );
+
+    if (!canonicalCategory) {
+      throw new BadRequestException(
+        "Category slug is not part of the canonical request taxonomy",
+      );
+    }
+
+    if (
+      (data.nameDe !== undefined &&
+        data.nameDe !== canonicalCategory.labelDe) ||
+      (data.nameEn !== undefined &&
+        data.nameEn !== canonicalCategory.labelEn) ||
+      (data.icon !== undefined && data.icon !== canonicalCategory.icon) ||
+      (data.isActive !== undefined &&
+        data.isActive !== canonicalCategory.isActive)
+    ) {
+      throw new BadRequestException(
+        "Category updates must match the canonical request taxonomy",
+      );
+    }
+
     return this.prisma.category.update({
       where: { id },
       data,

@@ -19,6 +19,14 @@ export class CreateRequestDto {
   @IsString()
   categoryId: string;
 
+  @IsOptional()
+  @IsString()
+  requestSector?: string;
+
+  @IsOptional()
+  @IsString()
+  requestBranch?: string;
+
   @IsString()
   title: string;
 
@@ -59,6 +67,14 @@ export class CreateRequestDto {
 }
 
 export class UpdateRequestDto {
+  @IsOptional()
+  @IsString()
+  requestSector?: string;
+
+  @IsOptional()
+  @IsString()
+  requestBranch?: string;
+
   @IsOptional()
   @IsString()
   title?: string;
@@ -112,11 +128,19 @@ export class UpdateRequestDto {
 export class RequestQueryDto {
   @IsOptional()
   @IsString()
-  categoryId?: string;
+  categorySlug?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 
   @IsOptional()
   @IsString()
   postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
 
   @IsOptional()
   @Type(() => Number)

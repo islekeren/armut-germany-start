@@ -106,6 +106,7 @@ describe("ProvidersController", () => {
       "u1",
       "rev1",
       "Thanks!",
+      undefined,
     );
   });
 
@@ -170,8 +171,6 @@ describe("ProvidersController", () => {
       ProvidersController.prototype.approve,
     );
 
-    expect(guards).toEqual(
-      expect.arrayContaining([JwtAuthGuard, AdminGuard]),
-    );
+    expect(guards).toEqual(expect.arrayContaining([JwtAuthGuard, AdminGuard]));
   });
 });

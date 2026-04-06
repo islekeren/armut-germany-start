@@ -11,10 +11,71 @@ import {
   CreateReviewDto,
   BookingQueryDto,
 } from "./dto/booking.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class BookingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
+
+  private sanitizeImages(images?: string[]) {
+    if (!images?.length) return [];
+    return images
+      .map((image) => image.trim())
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+
+  private async notifyCustomerCompletionRequested(booking: {
+    customerId: string;
+    provider: { userId: string };
+    quote: { requestId: string };
+  }) {
+    const requestId = booking.quote.requestId;
+    const providerUserId = booking.provider.userId;
+    const customerId = booking.customerId;
+
+    const existingConversation = await this.prisma.conversation.findFirst({
+      where: {
+        requestId,
+        AND: [
+          { participants: { some: { userId: providerUserId } } },
+          { participants: { some: { userId: customerId } } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    const conversation =
+      existingConversation ||
+      (await this.prisma.conversation.create({
+        data: {
+          requestId,
+          participants: {
+            create: [{ userId: providerUserId }, { userId: customerId }],
+          },
+        },
+        select: { id: true },
+      }));
+
+    await this.prisma.$transaction([
+      this.prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: providerUserId,
+          content:
+            "I have completed this job. Please review and confirm completion.",
+          attachments: [],
+        },
+      }),
+      this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { lastMessageAt: new Date() },
+      }),
+    ]);
+  }
 
   async create(userId: string, createBookingDto: CreateBookingDto) {
     const quote = await this.prisma.quote.findUnique({
@@ -51,6 +112,9 @@ export class BookingsService {
         customerId: userId,
         providerId: quote.providerId,
         scheduledDate: new Date(createBookingDto.scheduledDate),
+        // Customer already accepted the quote before creating booking.
+        // New bookings should start as confirmed/booked.
+        status: "confirmed",
         totalPrice: quote.price,
       },
       include: {
@@ -357,23 +421,40 @@ export class BookingsService {
     // Validate status transitions
     const allowedTransitions: Record<string, string[]> = {
       pending: ["confirmed", "cancelled"],
-      confirmed: ["in_progress", "cancelled"],
-      in_progress: ["completed"],
+      confirmed: ["in_progress", "completion_pending", "cancelled"],
+      in_progress: ["completion_pending"],
+      completion_pending: ["completed"],
       completed: [],
       cancelled: [],
     };
 
     if (!allowedTransitions[booking.status]?.includes(status)) {
       throw new BadRequestException(
-        `Cannot transition from ${booking.status} to ${status}`
+        `Cannot transition from ${booking.status} to ${status}`,
       );
     }
 
-    // Only provider can confirm/start/complete
-    if (["confirmed", "in_progress", "completed"].includes(status) && !isProvider) {
+    // Provider-driven states
+    if (
+      ["confirmed", "in_progress", "completion_pending"].includes(status) &&
+      !isProvider
+    ) {
       throw new ForbiddenException("Only provider can update to this status");
     }
 
+    // Customer approves final completion
+    if (status === "completed") {
+      if (!isCustomer) {
+        throw new ForbiddenException("Only customer can confirm completion");
+      }
+      if (booking.status !== "completion_pending") {
+        throw new BadRequestException(
+          "Booking must be marked as completion pending before customer confirmation",
+        );
+      }
+    }
+
+    const previousStatus = booking.status;
     const updateData: any = { status };
     if (status === "completed") {
       updateData.completedAt = new Date();
@@ -385,10 +466,20 @@ export class BookingsService {
       });
     }
 
-    return this.prisma.booking.update({
+    const updatedBooking = await this.prisma.booking.update({
       where: { id },
       data: updateData,
       include: {
+        quote: {
+          include: {
+            request: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
+        },
         provider: {
           include: {
             user: {
@@ -409,6 +500,107 @@ export class BookingsService {
         },
       },
     });
+
+    if (status === "completion_pending") {
+      const requestId =
+        updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
+      const requestTitle =
+        updatedBooking.quote?.request?.title ?? "service request";
+      await this.notifyCustomerCompletionRequested(updatedBooking);
+      if (updatedBooking.customer?.id) {
+        await this.notificationsService.create(updatedBooking.customer.id, {
+          type: "booking_completion_pending",
+          title: "Completion confirmation required",
+          message: `Provider marked "${requestTitle}" as completed. Please confirm.`,
+          metadata: {
+            bookingId: updatedBooking.id,
+            requestId,
+          },
+        });
+      }
+    }
+
+    if (status === "completed") {
+      const requestId =
+        updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
+      const requestTitle =
+        updatedBooking.quote?.request?.title ?? "service request";
+      const customerUserId = updatedBooking.customer?.id;
+      const providerUserId = updatedBooking.provider?.user?.id;
+      const tasks: Promise<unknown>[] = [];
+
+      if (customerUserId) {
+        tasks.push(
+          this.notificationsService.create(customerUserId, {
+            type: "booking_completed",
+            title: "Job completed",
+            message: `Booking "${requestTitle}" is marked as completed.`,
+            metadata: {
+              bookingId: updatedBooking.id,
+              requestId,
+            },
+          }),
+        );
+      }
+      if (providerUserId) {
+        tasks.push(
+          this.notificationsService.create(providerUserId, {
+            type: "booking_completed",
+            title: "Job completed",
+            message: `Booking "${requestTitle}" has been confirmed as completed.`,
+            metadata: {
+              bookingId: updatedBooking.id,
+              requestId,
+            },
+          }),
+        );
+      }
+
+      await Promise.all(tasks);
+    }
+
+    if (status === "cancelled") {
+      const requestId =
+        updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
+      const requestTitle =
+        updatedBooking.quote?.request?.title ?? "service request";
+      const customerUserId = updatedBooking.customer?.id;
+      const providerUserId = updatedBooking.provider?.user?.id;
+      const actorLabel = isProvider ? "provider" : "customer";
+      const message = `Booking "${requestTitle}" was cancelled by the ${actorLabel}.`;
+      const tasks: Promise<unknown>[] = [];
+      if (customerUserId) {
+        tasks.push(
+          this.notificationsService.create(customerUserId, {
+            type: "booking_cancelled",
+            title: "Booking cancelled",
+            message,
+            metadata: {
+              bookingId: updatedBooking.id,
+              requestId,
+              previousStatus,
+            },
+          }),
+        );
+      }
+      if (providerUserId) {
+        tasks.push(
+          this.notificationsService.create(providerUserId, {
+            type: "booking_cancelled",
+            title: "Booking cancelled",
+            message,
+            metadata: {
+              bookingId: updatedBooking.id,
+              requestId,
+              previousStatus,
+            },
+          }),
+        );
+      }
+      await Promise.all(tasks);
+    }
+
+    return updatedBooking;
   }
 
   async reschedule(id: string, userId: string, scheduledDate: string) {
@@ -440,7 +632,7 @@ export class BookingsService {
   async createReview(
     bookingId: string,
     userId: string,
-    createReviewDto: CreateReviewDto
+    createReviewDto: CreateReviewDto,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -473,6 +665,7 @@ export class BookingsService {
         revieweeId: booking.provider.userId,
         rating: createReviewDto.rating,
         comment: createReviewDto.comment,
+        images: this.sanitizeImages(createReviewDto.images),
       },
     });
 
@@ -495,7 +688,12 @@ export class BookingsService {
     return review;
   }
 
-  async addProviderReply(bookingId: string, userId: string, reply: string) {
+  async addProviderReply(
+    bookingId: string,
+    userId: string,
+    reply: string,
+    replyImages?: string[],
+  ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
@@ -518,7 +716,10 @@ export class BookingsService {
 
     return this.prisma.review.update({
       where: { id: booking.review.id },
-      data: { providerReply: reply },
+      data: {
+        providerReply: reply,
+        providerReplyImages: this.sanitizeImages(replyImages),
+      },
     });
   }
 

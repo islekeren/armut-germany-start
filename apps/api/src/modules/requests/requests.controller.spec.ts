@@ -36,7 +36,7 @@ describe("RequestsController", () => {
   });
 
   it("returns all requests", async () => {
-    const query: any = { page: 2 };
+    const query: any = { categorySlug: "home-cleaning", postalCode: "10115", page: 2 };
     requestsService.findAll.mockResolvedValue({ data: [] });
     await expect(controller.findAll(query)).resolves.toEqual({ data: [] });
     expect(requestsService.findAll).toHaveBeenCalledWith(query);

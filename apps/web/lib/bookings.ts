@@ -1,4 +1,4 @@
-import type { CustomerBooking, Quote } from "./api";
+import type { BookingStatus, CustomerBooking, ProviderBooking, Quote } from "./api";
 
 type ProviderLike =
   | CustomerBooking["provider"]
@@ -72,4 +72,39 @@ export function formatEuroAmount(value: number, locale: string) {
     currency: "EUR",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+export type BookingDisplayStatus =
+  | "pending"
+  | "booked"
+  | "completed"
+  | "cancelled";
+
+export function toBookingDisplayStatus(
+  status: BookingStatus | ProviderBooking["status"] | string,
+): BookingDisplayStatus {
+  if (status === "completed") return "completed";
+  if (status === "cancelled") return "cancelled";
+  if (
+    status === "confirmed" ||
+    status === "in_progress" ||
+    status === "completion_pending"
+  ) {
+    return "booked";
+  }
+
+  return "pending";
+}
+
+export function getBookingDisplayStatusClass(status: BookingDisplayStatus) {
+  switch (status) {
+    case "booked":
+      return "bg-blue-100 text-blue-800";
+    case "completed":
+      return "bg-emerald-100 text-emerald-800";
+    case "cancelled":
+      return "bg-rose-100 text-rose-700";
+    default:
+      return "bg-amber-100 text-amber-800";
+  }
 }

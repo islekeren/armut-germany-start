@@ -15,6 +15,13 @@ import {
   type Quote,
   type ServiceRequest,
 } from "@/lib/api";
+import {
+  getBranchById,
+  getBranchLabel,
+  getFallbackBranchByCategorySlug,
+  getSectorById,
+  getSectorLabel,
+} from "@/lib/request-taxonomy";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 type SortOption = "priceAsc" | "priceDesc" | "bestRating" | "newest";
@@ -23,6 +30,9 @@ interface RequestViewModel {
   id: string;
   title: string;
   category: string;
+  categorySlug?: string;
+  requestSector?: string | null;
+  requestBranch?: string | null;
   status: DisplayRequestStatus;
   createdAt: string;
   location: string;
@@ -50,6 +60,9 @@ const transformRequest = (request: ServiceRequest): RequestViewModel => ({
   id: request.id,
   title: request.title,
   category: request.category?.nameEn || request.category?.slug || request.categoryId,
+  categorySlug: request.category?.slug,
+  requestSector: request.requestSector,
+  requestBranch: request.requestBranch,
   status: mapApiStatus(request.status),
   createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
     month: "long",
@@ -300,9 +313,34 @@ export default function RequestDetailPage() {
           <aside className="lg:col-span-1">
             <div className="sticky top-8 rounded-xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
-                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-                  {tRequests(`status.${request.status}`)}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(() => {
+                    const branch =
+                      getBranchById(request.requestBranch) ||
+                      getFallbackBranchByCategorySlug(request.categorySlug);
+                    const sector =
+                      getSectorById(request.requestSector) ||
+                      getSectorById(branch?.sectorId);
+
+                    return (
+                      <>
+                        {sector && (
+                          <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+                            {getSectorLabel(sector)}
+                          </span>
+                        )}
+                        {branch && (
+                          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                            {getBranchLabel(branch)}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                    {tRequests(`status.${request.status}`)}
+                  </span>
+                </div>
                 <span className="text-sm text-muted">{request.category}</span>
               </div>
 

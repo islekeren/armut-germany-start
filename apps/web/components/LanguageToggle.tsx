@@ -21,7 +21,7 @@ export function LanguageToggle() {
     <button
       onClick={toggleLanguage}
       disabled={isPending}
-      className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted hover:border-primary hover:text-foreground transition-colors disabled:opacity-50"
+      className="flex h-12 items-center gap-2 rounded-md border-2 border-border px-4 text-sm font-semibold tracking-wide text-foreground hover:scale-105 hover:border-primary hover:bg-gray-100 disabled:opacity-50"
       aria-label={locale === 'de' ? 'Switch to English' : 'Zu Deutsch wechseln'}
     >
       <span className="text-base">{locale === 'de' ? '🇩🇪' : '🇬🇧'}</span>
