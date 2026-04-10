@@ -28,6 +28,7 @@ build
 dist
 .expo
 .expo-shared
+.expo/*
 
 
 # Debug

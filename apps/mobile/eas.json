@@ -9,10 +9,18 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://armut-germany-start-production.up.railway.app",
+        "EXPO_PUBLIC_WEB_URL": "https://armut-germany-start-web-islekerens-projects.vercel.app"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://armut-germany-start-production.up.railway.app",
+        "EXPO_PUBLIC_WEB_URL": "https://armut-germany-start-web-islekerens-projects.vercel.app"
+      }
     }
   },
   "submit": {
