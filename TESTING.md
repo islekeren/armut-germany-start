@@ -1,239 +1,158 @@
 # Testing
 
-## Validation Philosophy
+Audited against the repository on April 10, 2026.
 
-This repository does not currently have a fully green validation baseline.
+## Current Command Matrix
 
-Observed on 2026-03-21:
+| Command | Scope | Status | Notes |
+| --- | --- | --- | --- |
+| `npm run lint` | whole repo | Pass | exits cleanly; API lint still emits 15 warnings |
+| `npm run build` | whole repo | Pass | builds both `web` and `api` successfully |
+| `npm run check-types` | whole repo | Fail | blocked by `packages/shared` NodeNext export-path errors |
+| `cd apps/web && npm run lint` | web | Pass | clean in current workspace |
+| `cd apps/web && npm run build` | web | Pass | Next.js production build succeeds |
+| `cd apps/web && npm run check-types` | web | Pass with caveat | passed after `.next/types` existed; on a fresh checkout it can fail until `cache-life.d.ts` is generated |
+| `cd apps/api && npm run lint` | api | Pass with warnings | 15 warnings, 0 errors |
+| `cd apps/api && npm run check-types` | api | Pass | no current TypeScript failures |
+| `cd apps/api && npm run build` | api | Pass | Nest build succeeds |
+| `cd apps/api && npm run test -- --watchman=false` | api unit tests | Pass | 27 suites, 248 tests passed |
+| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e | Pass with environment caveat | passed outside the sandbox; in a restricted sandbox it failed with `EPERM` while binding a local server |
 
-- Some commands pass.
-- Some commands fail because of real repository issues.
-- One build failure was initially sandbox-related, but the build still fails outside the sandbox because of an actual TypeScript error.
-
-Use this document to separate baseline failures from regressions introduced by your work.
-
-## Command Matrix
-
-| Command                                               | Scope                | Observed Status             | Notes                                                                                                                                  |
-| ----------------------------------------------------- | -------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run lint`                                        | whole monorepo       | Fails                       | `apps/web` treats warnings as fatal; current failure is unused `getApiBaseUrl` in `apps/web/lib/api.ts`. API lint also emits warnings. |
-| `npm run check-types`                                 | whole monorepo       | Fails                       | `packages/shared` fails under `NodeNext` because internal exports omit file extensions.                                                |
-| `cd apps/api && npm run check-types`                  | API only             | Passes                      | Useful fast validation for backend-only changes.                                                                                       |
-| `cd apps/api && npm run build`                        | API only             | Passes                      | Confirms Nest production build.                                                                                                        |
-| `cd apps/api && npm run test`                         | API unit tests       | Fails in sandbox by default | Default Jest tries to use Watchman in restricted environments.                                                                         |
-| `cd apps/api && npm run test -- --watchman=false`     | API unit tests       | Mostly passes               | 223 tests pass, 1 stale categories service assertion fails.                                                                            |
-| `cd apps/api && npm run test:e2e -- --watchman=false` | API e2e tests        | Fails                       | `supertest` import style is wrong and tests reference a non-existent search module.                                                    |
-| `cd apps/web && npm run lint`                         | web only             | Fails                       | Same unused-function warning as root lint.                                                                                             |
-| `cd apps/web && npm run check-types`                  | web only             | Fails                       | `tsconfig` includes `.next/types/**/*.ts`, but `cache-life.d.ts` is missing after `next typegen`.                                      |
-| `cd apps/web && npm run build`                        | web production build | Fails                       | Real TypeScript error: `API_URL` is undefined in `apps/web/lib/api.ts`.                                                                |
-
-## Observed Failures In Detail
-
-### Root lint
-
-Observed failure:
-
-- `apps/web/lib/api.ts` defines `getApiBaseUrl` but does not use it.
-
-Observed warning-only issues in API lint:
-
-- undeclared env warnings from Turborepo for API env vars
-- unused args/imports in several API files
-- CommonJS `module` warnings in Jest config files
-
-Practical meaning:
-
-- Root lint is not a reliable "green or red" gate for unrelated work right now.
+## Current Failures
 
 ### Root type-check
 
 Observed failure:
 
-- `packages/shared/src/index.ts` and `packages/shared/src/types/index.ts` use extensionless relative exports while the package is configured with `moduleResolution: NodeNext`.
+- `packages/shared/src/index.ts` and `packages/shared/src/types/index.ts` re-export extensionless relative paths
+- with NodeNext resolution, TypeScript now requires explicit file extensions
 
-Practical meaning:
+Current effect:
 
-- Root type-check does not currently measure the health of `apps/web` or `apps/api` reliably, because it fails earlier in a shared package that the apps are not actively importing.
+- root `npm run check-types` fails before it becomes a reliable repo-wide gate
 
-### API unit tests
+### Web clean-checkout caveat
 
-Observed baseline:
+Observed sequence on April 10, 2026:
 
-- Default `npm run test` can fail in restricted environments because Jest uses Watchman.
-- `npm run test -- --watchman=false` is the more dependable command.
+1. `cd apps/web && npm run check-types` failed because `.next/types/cache-life.d.ts` was missing
+2. `cd apps/web && npm run build` succeeded
+3. `cd apps/web && npm run check-types` then passed
 
-Observed failing test:
+Current interpretation:
 
-- `apps/api/src/modules/categories/categories.service.spec.ts` expects `findMany()` to be called without the `_count.services` include that the service now uses.
+- this is not a proven code failure in `apps/web`
+- it is a generated-types ordering issue worth knowing about on a fresh checkout
 
-Practical meaning:
+### API e2e caveat in restricted environments
 
-- The unit suite is close to usable, but not fully trustworthy until that stale assertion is updated.
+Observed sequence on April 10, 2026:
 
-### API e2e tests
+1. `cd apps/api && npm run test:e2e -- --watchman=false` failed in the sandbox with `listen EPERM: operation not permitted 0.0.0.0`
+2. the same command passed outside the sandbox
 
-Observed failures:
+Current interpretation:
 
-- `apps/api/test/app.e2e-spec.ts` imports `supertest` as `import * as request`, which is not callable with the current TypeScript setup.
-- The same file references `/api/search/providers` and `/api/search/requests`, but no search module is registered in `AppModule`.
+- the e2e suite itself is green
+- some restricted environments need elevated execution to let Supertest bind a local server
 
-Practical meaning:
+## Current Warning Baseline
 
-- Do not rely on the current e2e suite as a reflection of the live API surface.
+`cd apps/api && npm run lint` currently exits successfully but reports warnings in these areas:
 
-### Web type-check and build
+- CommonJS `module` usage in Jest config files
+- unused args/imports in cache, auth, bookings, messages, and requests code
+- `turbo/no-undeclared-env-vars` warnings for `CORS_ORIGINS` and `PORT` in `apps/api/src/main.ts`
 
-Observed failures:
+These warnings do not currently fail lint.
 
-- `apps/web` type-check expects `.next/types/cache-life.d.ts`, but it is missing after `next typegen`.
-- `apps/web` production build fails with `Cannot find name 'API_URL'` in `apps/web/lib/api.ts`.
-
-Practical meaning:
-
-- Frontend validation currently has a real blocker in the shared API client file.
-
-## Fastest Safe Validation Paths
+## Recommended Validation Strategy
 
 ### Docs-only changes
 
-Run:
+Minimum:
 
 ```bash
 git diff --stat
 ```
 
-Practical note:
+### Frontend-only changes
 
-- For documentation-only changes, repository code validation is optional, but you should still avoid editing docs that contradict the current code.
-
-### Backend-only changes in `apps/api`
-
-Minimum:
-
-```bash
-cd apps/api
-npm run check-types
-npm run build
-```
-
-Recommended when touching service or controller logic:
-
-```bash
-cd apps/api
-npm run test -- --watchman=false
-```
-
-### Frontend-only changes in `apps/web`
-
-Minimum:
+Recommended order:
 
 ```bash
 cd apps/web
 npm run lint
-```
-
-Recommended:
-
-```bash
-cd apps/web
-npm run check-types
 npm run build
+npm run check-types
 ```
 
-Important:
+If `check-types` fails on a fresh checkout with a missing `.next/types` file, run the build first and retry.
 
-- At the time of writing, `check-types` and `build` already fail for known baseline reasons. If your change does not touch `apps/web/lib/api.ts` or frontend tsconfig behavior, report those failures as pre-existing unless you fixed them intentionally.
+### Backend-only changes
 
-### Schema or state-machine changes
-
-Run:
+Recommended order:
 
 ```bash
 cd apps/api
-npm run db:generate
+npm run lint
 npm run check-types
 npm run build
 npm run test -- --watchman=false
 ```
 
-Also perform manual QA on the affected flow. See below.
+When the change touches controller wiring or bootstrapping, also run:
 
-## Manual QA Flows
+```bash
+cd apps/api
+npm run test:e2e -- --watchman=false
+```
 
-### Customer flow
+### Cross-cutting changes
 
-Use the seeded customer account:
+Recommended order:
 
-- Email: `customer@test.com`
-- Password: `12345678`
+```bash
+npm run lint
+npm run build
+npm run check-types
+```
+
+Then add the relevant app-level checks if your change touches business logic, schema, auth, or messaging.
+
+## Manual QA Accounts
+
+Seeded development accounts:
+
+- Provider: `provider@test.com` / `12345678`
+- Customer: `customer@test.com` / `12345678`
 
 Suggested manual checks:
 
-1. Log in.
-2. Create a service request.
-3. Visit `/my-requests`.
-4. Open a request detail page.
-5. Accept a quote if test data allows.
-6. Open customer messages.
-
-### Provider flow
-
-Use the seeded provider account:
-
-- Email: `provider@test.com`
-- Password: `12345678`
-
-Suggested manual checks:
-
-1. Log in.
-2. Open `/dashboard`.
-3. Review provider requests, profile, reviews, and messages.
-4. Open a public provider profile page.
-
-### API smoke checks
-
-Suggested local checks:
-
-- Open Swagger at `http://localhost:4000/api/docs`
-- Verify `/api/categories`
-- Verify `/api/providers`
-- Verify authenticated `/api/auth/me`
+1. log in as the customer and create or inspect a request
+2. accept a quote and verify the flow moves to `/bookings/new`
+3. create or inspect a booking
+4. open customer messages and notifications
+5. log in as the provider and inspect dashboard requests, orders, reviews, and messages
 
 ## CI Reality
 
 Observed in `.github/workflows/ci.yml`:
 
-- CI runs lint, API tests, web build, API build, e2e, and placeholder deploy jobs.
-- CI installs Playwright browsers and tries Playwright tests.
-
-Observed repository mismatch:
-
-- No Playwright config or frontend test files were found.
-- API e2e tests are stale.
+- API unit tests run in CI
+- API e2e tests run in CI
+- web builds run in CI
+- Playwright is skipped automatically unless config and tests are present
+- deploy jobs are still placeholders
 
 Practical meaning:
 
-- The checked-in CI pipeline is aspirational in places. Treat it as a signal of intent, not as proven truth.
+- CI is useful for lint, build, and API coverage
+- root type-check is still not a dependable gate until `packages/shared` is fixed
 
-## Known Gaps In Verification
+## Reporting Guidance
 
-- No frontend unit test suite found
-- No Playwright tests found
-- API e2e suite is stale
-- Root lint/type-check are not green
-- Web build is not green
-- Root validation is not a dependable merge gate without first fixing existing baseline failures
+When you finish a task, report validation in two parts:
 
-## Recommended Validation Checklist For Agents
-
-Before editing:
-
-- Read this file and identify which checks are already failing on baseline.
-
-After editing:
-
-- Re-run the smallest relevant passing checks first.
-- Only run broader checks when your change touches shared or cross-cutting code.
-- Report validation in two parts:
-  - what you ran
-  - whether any failures were new or pre-existing
+1. what you ran
+2. whether any failures were real regressions, known repo issues, or environment-specific caveats

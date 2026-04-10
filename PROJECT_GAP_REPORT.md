@@ -1,108 +1,80 @@
-# Project Gap Report (Web + API)
+# Project Gap Report
 
-## Not implemented routes:
-
-- `/dashboard/orders`
-- `/dashboard/finances`
-- `/dashboard/settings`
-- `/dashboard/services`
-- `/help`
-- `/pricing`
-- `/success-stories`
+Observed and updated on April 10, 2026.
 
 ## Scope
-- Repository: `armut-germany-start`
-- Focus: frontend mock data, missing functionality, and practical missing pieces
-- Date: 2026-03-01
 
-## Current State Summary
-- Core modules exist and many screens are API-connected.
-- Several user journeys are still partial due to mock fallback behavior, dead links, and placeholder actions.
-- A few backend issues should be treated as high priority (security + authorization).
+This is not a full product audit.
 
-## Key Gaps
+It is a repo-grounded gap report based on:
 
-### 1) Frontend Mock/Hardcoded Data
-- Customer requests page still uses fallback mock cards when unauthenticated/API error.
-- Create-request category source is hardcoded in UI instead of fetched dynamically.
-- Provider dashboard message badge is hardcoded.
-- Root README still documents customer pages as “mock data”.
+- current routes in `apps/web`
+- current modules in `apps/api`
+- current validation results
+- current config and workflow files
 
-### 2) Missing or Incomplete Functionalities
-- Multiple links point to missing pages (`/dashboard/orders`, `/dashboard/finances`, `/dashboard/settings`, `/dashboard/services`, etc.).
-- Quote acceptance does not complete booking creation flow in UI.
-- Provider onboarding/profile forms collect data that is not fully persisted.
-- Geolocation flow is incomplete (`lat/lng` sent as `0`).
-- Category filters/sorting UI is present but not wired to real filtering logic.
-- Homepage search box is visual only (no behavior).
-- Some UI actions are placeholders (edit request, set availability, add appointment, details buttons).
-- Realtime messaging backend exists, but frontend uses REST-only flow and no live socket updates.
-- Payments domain exists in schema, but no payment module/API flow is implemented.
+## Current Snapshot
 
-### 3) Backend Risks
-- User data exposure risk: user fetch routes/services can return full user objects.
-- Provider approve endpoint lacks admin-only guard.
-- Provider distance filtering is applied after pagination, causing inconsistent totals/pages.
-- Empty placeholder modules still present (`ServicesModule`, `ReviewsModule`).
+- the web app has broad route coverage for customer and provider flows
+- the API now includes notifications and passes unit and e2e tests
+- root lint and build are green
+- the biggest remaining repo-wide tooling issue is the root type-check failure from `packages/shared`
 
-## TODO List (Prioritized)
+## Active Gaps
 
-### P0 (Do First)
-- [ ] Fix all broken/dead route links and typos in frontend navigation.
-- [ ] Align provider list pagination/meta with distance filtering logic.
+### 1. Validation and tooling gaps
 
-### P1 (Core Product Completion)
-- [ ] Persist all provider onboarding/profile fields (address, phone, website, etc.).
-- [ ] Replace hardcoded create-request categories with API-driven categories.
-- [ ] Replace request mock fallback strategy with explicit empty/error states.
+- Root `npm run check-types` still fails because `packages/shared` uses extensionless exports under NodeNext.
+- Web `npm run check-types` can still be order-sensitive on a fresh checkout until `.next/types/cache-life.d.ts` exists.
+- API lint still passes with 15 warnings instead of a clean warning-free baseline.
 
-### P2 (Feature Depth)
-- [ ] Implement homepage search behavior and category page real filters/sorting.
-- [ ] Wire provider profile image/gallery upload to uploads API.
-- [ ] Wire provider calendar action buttons (availability, appointment actions).
-- [ ] Add realtime socket integration to messaging UI (new message, typing, read events).
-- [ ] Implement payments module/API (charge, status updates, payout-ready data).
+### 2. Product and UX gaps
 
-### P3 (Cleanup & Quality)
-- [ ] Remove or implement placeholder backend modules (`ServicesModule`, `ReviewsModule`).
-- [ ] Add frontend tests for key flows (auth, request creation, quote acceptance, messaging).
-- [ ] Update README to reflect current non-mock behavior and real test flows.
-- [ ] Standardize locale-safe routes for auth/help/legal pages.
+- Public routes like `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to a generic coming-soon page instead of final content.
+- Provider `services` and `finances` pages exist, but they still render placeholder content.
+- Quote acceptance still requires an explicit follow-up booking creation step.
+- Messaging has a realtime backend gateway, but the current frontend experience is still primarily REST-driven.
 
-## Suggested Delivery Order
-- Sprint 1: P0 security + broken links.
-- Sprint 2: P1 booking lifecycle + onboarding/profile persistence.
-- Sprint 3: P2 search/filters + realtime messaging + uploads polish.
-- Sprint 4: P2 payments + P3 cleanup/testing/docs.
+### 3. Backend domain gaps
 
+- `ServicesModule` is still an empty shell.
+- `ReviewsModule` is still an empty shell.
+- A `Payment` model exists in Prisma, but there is still no payments controller or service module.
 
+### 4. Platform and configuration gaps
 
-1) Frontend mock/hardcoded data still present DONE
+- Upload env names are inconsistent between `apps/api/.env.example` and `UploadsService`.
+- The repo has no checked-in real deployment manifest such as `railway.json` or `vercel.json`.
+- GitHub Actions deploy jobs are placeholders only.
+- `apps/mobile` is still dormant scaffolding rather than a real workspace.
+- the root `tsconfig.json` still extends Expo config even though the mobile workspace is not active.
 
-- Customer requests still fallback to hardcoded mock cards (mockRequests) when token is missing or API fails in my-requests/page.tsx:25, my-requests/page.tsx:116, my-requests/page.tsx:129.
-- Create-request categories are hardcoded in UI instead of loaded from API in create-request/page.tsx:22.
-- Provider dashboard message badge is hardcoded 3 in dashboard/page.tsx:88.
-- Root README still documents “Customer Mock Data” in README.md:15.
+### 5. Shared-package gaps
 
-2) Missing or incomplete functionality
+- `packages/shared` exists but is not serving as a stable, integrated contract layer yet.
+- `packages/ui` exists, but the actual app UI still lives in `apps/web/components`.
 
-- Route/link integrity is incomplete: app links to routes that do not exist under apps/web/app, e.g. /dashboard/orders, /dashboard/finances, /dashboard/settings, /dashboard/services in dashboard/page.tsx:132, dashboard/page.tsx:164, dashboard/page.tsx:180, dashboard/page.tsx:333, 
-plus /dashboard/profil typo in Header.tsx:89(Done), /passwort-vergessen in login/page.tsx:100(done but missing forgot password route), /anmelden in register/page.tsx:244(done), /hilfe /preise /erfolgsgeschichten in app/page.tsx:142, app/page.tsx:149, app/page.tsx:150(done but not implemented).
+## Suggested Priority Order
 
+### P0
 
+- Fix `packages/shared` export paths so root type-check becomes a trustworthy gate.
+- Reconcile upload env names between code and example config.
 
-- Quote acceptance does not create a booking lifecycle step: frontend accepts quote in request-detail/page.tsx:153, backend only updates quote/request status in quotes.service.ts:304, while full booking endpoints exist in bookings.controller.ts:27.
-- Provider onboarding/profile data loss: onboarding collects address/phone etc in provider-onboarding/page.tsx:17 but submit payload omits most of it in provider-onboarding/page.tsx:190; profile form edits contact/email/phone in provider-profile/page.tsx:21 but save payload in provider-profile/page.tsx:97 does not persist those user fields.
-- Geo/location flow is unfinished: request creation sends lat/lng = 0 in create-request/page.tsx:102, create-request/page.tsx:103.
-Provider profile image/gallery UI is placeholder (“Change image” button no upload action) in provider-profile/page.tsx:340.
-Category page filters/sorting UI is present but not wired to query state in category/[slug]/page.tsx:155, category/[slug]/page.tsx:185, category/[slug]/page.tsx:197.
-- Homepage search UI has no search behavior attached in app/page.tsx:30.
-- Calendar and request detail contain placeholder actions (no handlers): calendar/page.tsx:122, calendar/page.tsx:251, calendar/page.tsx:268, request-detail/page.tsx:299.
-- Realtime messaging exists in backend websocket gateway messages.gateway.ts:19, but frontend uses REST polling only customer-messages/page.tsx:70, and composer is text-only (no attachments) in MessagesWorkspace.tsx:178.
-- ServicesModule and ReviewsModule are empty placeholders in services.module.ts:3, reviews.module.ts:3.
-- Payments are modeled in DB (schema.prisma:270) but there is no payments module/controller in app.module.ts:20.
+### P1
 
-3) Important backend risks DONE
-Sensitive user exposure risk: findById returns full user record in users.service.ts:8, and controller exposes it from /users/profile and /users/:id in users.controller.ts:20, users.controller.ts:35.
-Provider approval endpoint lacks admin guard in providers.controller.ts:121.
-Provider listing pagination/meta accuracy issue: distance filtering happens after DB pagination in providers.service.ts:224 and providers.service.ts:254, but total is counted pre-distance in providers.service.ts:268.
+- Decide whether placeholder public pages should stay as coming-soon routes or become real content pages.
+- Replace provider `services` and `finances` placeholders with real product flows or relabel them more explicitly as beta.
+- Decide whether the explicit quote-to-booking handoff is the intended product behavior.
+
+### P2
+
+- Decide whether to formalize deployment config in-repo or document the external release process properly.
+- Decide whether to keep or remove dormant mobile scaffolding.
+- Decide whether `packages/shared` and `packages/ui` should become real integration points or stay scaffold-only.
+
+## Recommended Use Of This File
+
+Use this report as a planning aid, not as a promise that every other area of the product has been exhaustively reviewed.
+
+If you close one of these gaps, update this file along with the relevant technical docs so the repo stays self-describing.

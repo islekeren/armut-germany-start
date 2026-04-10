@@ -1,22 +1,19 @@
 # Agent Guide
 
-## Purpose
-
-This file is a practical operating manual for autonomous coding agents working in this repository.
-
-Use it to reduce ambiguity, avoid broad edits, and report work honestly.
+Updated for the repository state audited on April 10, 2026.
 
 ## Start Here
 
-Before making changes:
+Before editing:
 
-1. Read [README.md](./README.md).
-2. Read [ARCHITECTURE.md](./ARCHITECTURE.md).
-3. Read [TESTING.md](./TESTING.md).
-4. Read [ENVIRONMENT.md](./ENVIRONMENT.md) if the task touches env, runtime, uploads, or deployment.
-5. Inspect the exact feature files involved.
+1. read [README.md](./README.md)
+2. read [ARCHITECTURE.md](./ARCHITECTURE.md)
+3. read [TESTING.md](./TESTING.md)
+4. read [ENVIRONMENT.md](./ENVIRONMENT.md) if the task touches runtime, env, uploads, or local setup
+5. read [DEPLOYMENT.md](./DEPLOYMENT.md) if the task touches CI or release behavior
+6. inspect the exact code paths involved
 
-Then check repository state:
+Then check the worktree:
 
 ```bash
 git status --short
@@ -24,29 +21,40 @@ git status --short
 
 Do not overwrite unrelated user changes.
 
+## Current Repo Facts You Should Know
+
+- root `npm run lint` passes
+- root `npm run build` passes
+- root `npm run check-types` fails because `packages/shared` uses NodeNext-incompatible export paths
+- API `lint`, `check-types`, `build`, `test -- --watchman=false`, and `test:e2e -- --watchman=false` all pass
+- API e2e can fail in a restricted sandbox with `EPERM`; the suite passed outside the sandbox on April 10, 2026
+- web `lint` and `build` pass
+- web `check-types` passed after `.next/types` existed; on a fresh checkout, build-first may be necessary
+- `apps/mobile` is not an active npm workspace even though the folder exists
+
 ## What To Read First By Task Type
 
-### Frontend page or UI issue
+### Frontend task
 
 Read:
 
-- `apps/web/app/...` route file
-- `apps/web/components/...` used by that route
+- relevant route file in `apps/web/app/...`
+- related components in `apps/web/components/...`
 - `apps/web/lib/api.ts` if the page talks to the backend
 - `apps/web/messages/en.json`
 - `apps/web/messages/de.json`
 
-### Backend endpoint or business logic issue
+### Backend task
 
 Read:
 
 - matching controller in `apps/api/src/modules/*`
 - matching service in `apps/api/src/modules/*`
-- matching DTO file
+- matching DTO
 - `apps/api/src/app.module.ts`
 - `apps/api/prisma/schema.prisma` if persistence is involved
 
-### Auth, permissions, or user data issue
+### Auth or user-data task
 
 Read:
 
@@ -56,56 +64,31 @@ Read:
 - `apps/api/src/common/security/*`
 - `apps/web/contexts/AuthContext.tsx`
 
-### Messaging issue
+### Messaging or notifications task
 
 Read:
 
-- `apps/api/src/modules/messages/messages.controller.ts`
-- `apps/api/src/modules/messages/messages.service.ts`
-- `apps/api/src/modules/messages/messages.gateway.ts`
+- `apps/api/src/modules/messages/*`
+- `apps/api/src/modules/notifications/*`
 - `apps/web/components/messages/MessagesWorkspace.tsx`
-- relevant messages page in `apps/web/app/.../messages/page.tsx`
+- relevant pages in `apps/web/app/.../messages/...`
+- `apps/web/app/notifications/page.tsx`
 
 ## Planning Rules
 
-- Plan from the code that exists, not from assumptions.
-- Prefer the smallest change that satisfies the task.
-- Trace the full flow before changing shared types, auth, or state transitions.
-- If a task touches multiple layers, identify the narrowest seam first.
+- plan from code, not from stale docs or assumptions
+- prefer the smallest safe change
+- trace shared flows before touching auth, schema, quotes, bookings, messaging, uploads, or notifications
+- keep docs aligned when the task changes observable behavior
 
 Good plan shape:
 
 1. inspect the local flow
 2. edit the smallest relevant files
 3. run targeted validation
-4. report what changed and what is still unknown
+4. report what changed and any remaining caveats
 
-## Minimal Edit Rules
-
-- Do not broad-refactor unrelated files.
-- Do not rename modules, routes, or env vars casually.
-- Do not move frontend API calls out of `apps/web/lib/api.ts` unless you are intentionally restructuring the data layer.
-- Do not invent shared abstractions in `packages/ui` or `packages/shared` unless the current app code is actually using them.
-- Keep translation updates paired across German and English message files.
-
-## Validation Rules
-
-Use [TESTING.md](./TESTING.md) as the source of truth.
-
-Key repository-specific rules:
-
-- In restricted environments, API Jest runs are more reliable with `--watchman=false`.
-- Root lint and root type-check are already failing on baseline.
-- Web build currently has a real TypeScript failure in `apps/web/lib/api.ts`.
-- API e2e tests are stale and should not be treated as authoritative.
-
-When validating, prefer:
-
-- app-level checks over root-level checks when your change is isolated
-- passing checks before broken global checks
-- explicit reporting of baseline failures
-
-## Danger Zones
+## Current Danger Zones
 
 Treat these areas as high-risk:
 
@@ -118,65 +101,65 @@ Treat these areas as high-risk:
 - `apps/api/src/modules/bookings/*`
 - `apps/api/src/modules/messages/*`
 - `apps/api/src/modules/uploads/*`
-
-Reasons:
-
-- These files connect multiple flows.
-- Small mistakes here create broad regressions.
-- Several already have known mismatches or incomplete behavior.
+- `apps/api/src/modules/notifications/*`
 
 ## Assumptions You Must Not Silently Change
 
-- Accepted quotes do not automatically create bookings today.
-- Locale is cookie-based, not route-based.
-- Auth tokens are stored in browser `localStorage`.
-- Public provider pages depend on backend-composed profile payloads.
-- API routes live under `/api`.
-- Uploads are intended for S3-compatible storage, but the env contract is not fully settled.
+- accepted quotes still require a separate booking-creation step
+- API routes live under `/api`
+- auth tokens are stored in browser `localStorage`
+- the frontend messaging UI is not fully socket-driven yet
+- uploads are meant for S3-compatible storage, but env naming is still inconsistent
+- the repo does not encode a real production deployment topology
 
-If your task would change any of the above, stop and call it out explicitly.
+If your task changes any of those, call it out explicitly.
+
+## Validation Rules
+
+Use [TESTING.md](./TESTING.md) as the current source of truth.
+
+Default guidance:
+
+- frontend-only: `cd apps/web && npm run lint && npm run build`
+- frontend data-layer or type-sensitive change: add `npm run check-types`
+- backend-only: `cd apps/api && npm run lint && npm run check-types && npm run build`
+- backend logic change: add `npm run test -- --watchman=false`
+- routing or bootstrap change in API: add `npm run test:e2e -- --watchman=false`
+- cross-cutting change: `npm run lint && npm run build && npm run check-types`
+
+Environment caveat:
+
+- if API e2e fails with `EPERM` in a restricted sandbox, rerun it outside the sandbox before declaring the suite broken
 
 ## When To Ask For Human Clarification
 
 Stop and ask when:
 
-- the task implies changing auth semantics
-- the task implies changing billing or payment behavior
-- the task implies changing public API contracts used by multiple pages
+- the task changes auth semantics
+- the task changes payment behavior
+- the task changes public API contracts used by multiple screens
 - a schema change requires guessing business rules
-- the checked-in code and docs disagree and both interpretations seem plausible
-- deployment behavior needs to change, especially if it affects the `deployment` branch flow, Vercel frontend setup, or Railway backend setup
+- deployment behavior needs to change beyond the placeholder CI jobs
+- the repo and outside-of-repo deployment reality disagree
 
 ## When To Avoid Cleanup
 
 Do not opportunistically fix these unless the task requires it:
 
-- stale `dev:mobile` script
-- stale Expo root tsconfig
-- placeholder deploy steps
-- placeholder backend modules
-- broken global validation unrelated to the task
-
-These are real repository issues, but broad cleanup can easily become unrelated churn.
+- dormant `apps/mobile` scaffolding
+- root Expo-based `tsconfig.json`
+- `packages/shared` export-path issue
+- placeholder `ServicesModule` and `ReviewsModule`
+- placeholder provider `services` and `finances` pages
+- placeholder deploy jobs in GitHub Actions
 
 ## Reporting Template
 
 When you finish, report:
 
 1. what you changed
-2. which validations you ran
-3. which failures were pre-existing versus introduced
-4. any important unknowns or follow-up work
+2. what you validated
+3. which issues were pre-existing, environment-specific, or newly introduced
+4. any important follow-up or unknowns
 
-Good example:
-
-- Changed provider dashboard request card rendering in `apps/web/app/(provider)/dashboard/page.tsx`
-- Ran `cd apps/web && npm run lint`
-- Did not run `npm run build` because current baseline still fails in `apps/web/lib/api.ts`
-- No changes to auth, schema, or API contracts
-
-## Final Rule
-
-Be honest about uncertainty.
-
-In this repository, a precise report with explicit unknowns is more useful than a confident but guessed explanation.
+Honesty about caveats is more useful in this repo than pretending everything is fully encoded and green.

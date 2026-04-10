@@ -1,49 +1,29 @@
 # API App
 
+Updated for the repository state audited on April 10, 2026.
+
 ## Purpose
 
-`apps/api` is the NestJS backend for the marketplace.
+`apps/api` is the NestJS 11 backend for the marketplace.
 
 Observed responsibilities:
 
 - auth and user identity
-- provider profiles and provider dashboard data
-- categories, service requests, quotes, bookings, and reviews
+- providers and public provider profiles
+- categories and service requests
+- quotes and bookings
 - customer/provider messaging
 - uploads
+- notifications
 - admin endpoints
 
-## Run Locally
+## Important Files
 
-From this directory:
-
-```bash
-npm run dev
-```
-
-Useful companion steps:
-
-```bash
-npm run db:generate
-npm run db:migrate
-npm run db:seed
-```
-
-## Build And Validate
-
-```bash
-npm run check-types
-npm run build
-npm run test -- --watchman=false
-npm run test:e2e -- --watchman=false
-```
-
-Important:
-
-- Unit tests are close to usable but currently have 1 stale failing assertion.
-- E2E tests are stale and do not match the current module surface.
-
-See `../../TESTING.md` for the exact baseline status.
+- `src/app.module.ts`: module registration
+- `src/main.ts`: bootstrap, CORS, validation, Swagger, and global prefix
+- `prisma/schema.prisma`: database schema
+- `prisma/seed.ts`: development seed data
+- `src/common/*`: Prisma, cache, throttle, and security helpers
 
 ## API Surface
 
@@ -59,27 +39,60 @@ Observed controller groups:
 - `/api/messages`
 - `/api/uploads`
 - `/api/admin`
+- `/api/notifications`
 
 Swagger:
 
 - `http://localhost:4000/api/docs`
 
-## Important Files
+## Run Locally
 
-- `src/app.module.ts`: module registration
-- `src/main.ts`: app bootstrap, CORS, validation, Swagger
-- `prisma/schema.prisma`: database schema
-- `prisma/seed.ts`: local test data
+From this directory:
+
+```bash
+npm run dev
+```
+
+Useful setup commands:
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+```
+
+## Validation
+
+Observed on April 10, 2026:
+
+- `npm run lint`: passes with 15 warnings
+- `npm run check-types`: passes
+- `npm run build`: passes
+- `npm run test -- --watchman=false`: passes
+- `npm run test:e2e -- --watchman=false`: passes outside the sandbox
+
+Environment caveat:
+
+- in restricted environments, the e2e suite can fail with `EPERM` when Supertest tries to bind a local server
+
+## Current Implementation Notes
+
+- all routes live under `/api`
+- JWT bearer auth is the default protection model
+- notifications are a real module, not scaffold-only
+- accepted quotes still require a separate booking creation call
+- cache currently uses in-memory Nest cache, not Redis
 
 ## Known Gaps
 
-- `ServicesModule` and `ReviewsModule` are placeholders.
-- Payments exist in the schema but not as an implemented backend module.
-- Search-related e2e tests exist, but no search module is registered.
-- Upload env vars in code and `.env.example` do not currently match.
+- `ServicesModule` is still an empty shell
+- `ReviewsModule` is still an empty shell
+- a `Payment` model exists in Prisma, but no payments module was found
+- upload env names in `.env.example` do not match the names expected by `UploadsService`
 
 ## Safe Change Notes
 
-- Preserve DTO validation and auth guards.
-- Sanitize user responses.
-- Treat schema changes as high-impact work that requires migration and seed updates.
+- Preserve DTO validation and guards
+- Sanitize user responses
+- Treat schema changes as high-impact work that requires migration and seed alignment
+- Re-run API tests when changing controller wiring, auth, or request/booking/quote state transitions

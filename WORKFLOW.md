@@ -1,117 +1,113 @@
----
-tracker:
-  kind: linear
-  project_slug: "armut-germany-659bbb0d01aa"
-  api_key: $LINEAR_API_KEY
+# Workflow
 
-workspace:
-  root: ~/symphony-workspaces
+Updated for the repository state audited on April 10, 2026.
 
-hooks:
-  after_create: |
-    git clone https://github.com/islekeren/armut-germany-start.git .
-    npm install
+## Purpose
 
-agent:
-  max_concurrent_agents: 1
-  max_turns: 20
+This file describes the safest default workflow for making changes in this repo.
 
-codex:
-  command: codex model_reasoning_effort=xhigh app-server
-  approval_policy: never
----
+It replaces older automation-specific instructions that no longer match the checked-in repository structure.
 
+## Default Change Flow
 
-You are working on a Linear issue: `{{ issue.identifier }}`
+1. Read [README.md](./README.md), [ARCHITECTURE.md](./ARCHITECTURE.md), and [TESTING.md](./TESTING.md).
+2. Check `git status --short`.
+3. Inspect the exact feature files involved.
+4. Reproduce the issue or verify the current behavior when possible.
+5. Make the smallest safe change.
+6. Run targeted validation for the touched surface area.
+7. Update docs if commands, env vars, routes, or workflows changed.
+8. Summarize what changed, what you validated, and any remaining caveats.
 
-Issue context:
-Identifier: {{ issue.identifier }}
-Title: {{ issue.title }}
-State: {{ issue.state }}
-URL: {{ issue.url }}
+## Branching
 
-Description:
-{% if issue.description %}
-{{ issue.description }}
-{% else %}
-No description provided.
-{% endif %}
+The repo does not currently encode a required branch naming scheme.
 
-## Goal
+Recommended approach:
 
-Resolve the issue with the smallest safe change, then create a branch, commit the work, push it, and open a pull request.
+- create a focused branch per task
+- use an issue ID in the branch name when one exists
+- avoid mixing unrelated cleanup into the same branch
 
-## Required workflow
+## Validation Matrix
 
-1. Read the issue carefully.
-2. Inspect the relevant code before editing.
-3. Read repository docs first:
-   - ARCHITECTURE.md
-   - TESTING.md
-   - AGENT_GUIDE.md
-4. Create a new branch before making changes.
+### Docs-only
 
-Branch naming format:
-`linear/{{ issue.identifier }}-short-description`
+```bash
+git diff --stat
+```
 
-5. Reproduce or identify the issue signal before changing code when possible.
-6. Make the smallest safe implementation that resolves the issue.
-7. Avoid unrelated refactors, renames, or cleanup.
-8. Run the smallest relevant validation for the changed surface area.
-9. If validation passes, commit the change.
+### Frontend-only
 
-Commit message format:
-`{{ issue.identifier }}: short summary`
+```bash
+cd apps/web
+npm run lint
+npm run build
+npm run check-types
+```
 
-10. Push the branch to origin.
-11. Open a pull request.
+If `check-types` fails with a missing `.next/types` file, run the build first and retry.
 
-PR title format:
-`{{ issue.identifier }}: short summary`
+### Backend-only
 
-12. In the final response, report only:
-   - what changed
-   - files changed
-   - validation run
-   - whether push succeeded
-   - PR URL if created
-   - blockers if any
+```bash
+cd apps/api
+npm run lint
+npm run check-types
+npm run build
+npm run test -- --watchman=false
+```
 
-## Guardrails
+Add e2e when controller wiring, guards, or bootstrap behavior changed:
 
-- Work only in the provided repository copy.
-- Do not modify unrelated parts of the codebase.
-- Do not change architecture unless required by the issue.
-- Do not merge directly to main.
-- Do not stop after coding if push and PR are possible.
-- If push or PR creation fails, report the exact command failure and reason.
-- If repository baseline checks are already failing, distinguish baseline failures from issue-specific failures.
+```bash
+cd apps/api
+npm run test:e2e -- --watchman=false
+```
 
-## Repository-specific notes
+### Cross-cutting
 
-- If you touch `apps/web/lib/api.ts`, re-check downstream impact carefully because it is a central coupling point.
-- Root lint and root type-check are not fully green on baseline.
-- Web build currently has a known TypeScript issue in `apps/web/lib/api.ts`.
-- API e2e tests are stale.
-- Separate pre-existing repository failures from new regressions introduced by this task.
+```bash
+npm run lint
+npm run build
+npm run check-types
+```
 
-## Validation guidance
+Remember:
 
-Use the smallest relevant validation:
+- root type-check currently fails because of `packages/shared`
+- root lint and root build are currently green
 
-- API service change:
-  `cd apps/api && npm run check-types && npm run build`
+## CI Workflow Reality
 
-- API logic change:
-  `cd apps/api && npm run test -- --watchman=false`
+Observed in `.github/workflows/ci.yml`:
 
-- frontend view change:
-  `cd apps/web && npm run lint`
+- CI runs on `main` and `develop`
+- API unit tests run
+- API e2e tests run
+- web build runs
+- Playwright only runs when config and tests exist
+- deploy jobs are placeholders
 
-- frontend data-layer change:
-  `cd apps/web && npm run check-types`
+Use CI as a real validation signal, but do not treat it as a real deployment system yet.
 
-- schema change:
-  Prisma generate plus API validation
+## Deployment Workflow Reality
 
-Do not claim success unless the relevant validation actually passed.
+The repository does not currently define:
+
+- a real production deployment branch
+- a checked-in Vercel config
+- a checked-in Railway config
+- a checked-in infrastructure manifest
+
+If your change affects deployment, read [DEPLOYMENT.md](./DEPLOYMENT.md) first and avoid inventing missing platform behavior.
+
+## Completion Checklist
+
+Before considering work complete, confirm:
+
+- the change stayed scoped
+- relevant validations ran
+- docs were updated if behavior changed
+- pre-existing quirks were separated from new regressions
+- no repo-external deployment assumptions were added without proof

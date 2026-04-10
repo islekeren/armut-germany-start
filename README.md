@@ -1,31 +1,51 @@
 # Armut Germany
 
-## Repository Summary
+Audited against the repository on April 10, 2026.
 
-Observed: this repository is a Turborepo monorepo with a Next.js web app in `apps/web`, a NestJS API in `apps/api`, and shared package scaffolding in `packages/*`.
+## Overview
 
-Inferred: the product is an Armut-style services marketplace for Germany where customers create service requests, providers send quotes, customers accept quotes, and both sides can message each other.
+This repository is a Turborepo monorepo for an Armut-style services marketplace.
 
-Observed on 2026-03-21: the repository is functional enough to inspect and run locally, but it is not in a fully green state. See [TESTING.md](./TESTING.md) for the exact failures that currently block a clean lint/typecheck/build/test run.
+Active application workspaces:
 
-## Repository Map
+- `apps/web`: Next.js 16 App Router frontend for public, customer, and provider flows
+- `apps/api`: NestJS 11 backend with Prisma, JWT auth, uploads, messaging, bookings, quotes, and notifications
 
-- `apps/web`: Next.js 16 App Router frontend for customers and providers
-- `apps/api`: NestJS 11 API with Prisma/PostgreSQL, JWT auth, uploads, messaging, and admin endpoints
-- `packages/shared`: Zod schemas and utility helpers; currently not heavily integrated and currently breaks root type-checking
-- `packages/ui`: small UI component package scaffold; currently not imported by the app code
-- `packages/eslint-config`, `packages/typescript-config`: shared config packages
-- `docker-compose.yml`: local Postgres and Redis only
-- `.github/workflows/ci.yml`: CI pipeline and placeholder deploy jobs
-- `PROJECT_GAP_REPORT.md`: product and implementation gaps tracked separately from this harness documentation
+Supporting packages:
+
+- `packages/shared`: shared types and utilities, but still the source of the current root type-check failure
+- `packages/ui`: small component package scaffold; no direct app imports were found during this audit
+- `packages/eslint-config`, `packages/typescript-config`: shared tooling config
+
+Dormant workspace state:
+
+- `apps/mobile` contains Expo leftovers (`.expo`, `.env`, `expo-env.d.ts`) but no `package.json`, so it is not an active npm workspace
+
+## Current Validation Snapshot
+
+Observed on April 10, 2026:
+
+- `npm run lint`: passes
+- `npm run build`: passes
+- `npm run check-types`: fails in `packages/shared` because NodeNext exports use extensionless relative paths
+- `cd apps/api && npm run check-types`: passes
+- `cd apps/api && npm run build`: passes
+- `cd apps/api && npm run test -- --watchman=false`: passes
+- `cd apps/api && npm run test:e2e -- --watchman=false`: passes outside the sandbox; in restricted environments it can fail with `EPERM` when Supertest tries to bind a local server
+- `cd apps/web && npm run lint`: passes
+- `cd apps/web && npm run build`: passes
+- `cd apps/web && npm run check-types`: passes in the current workspace after `.next/types` exists; on a fresh checkout it may fail until `cache-life.d.ts` has been generated
+
+Use [TESTING.md](./TESTING.md) for the detailed command matrix and caveats.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js `>=18` is declared in `package.json`
-- npm workspaces; the repo is pinned to `npm@10.9.2`
-- Docker Desktop or another local Docker runtime if you want the provided Postgres/Redis setup
+- Node.js `>=18` is declared in the root `package.json`
+- CI uses Node `20.x`, which is the safest local baseline
+- npm workspaces with `npm@10.9.2`
+- Docker if you want the provided local Postgres and Redis services
 
 ### Local Setup
 
@@ -35,20 +55,20 @@ Observed on 2026-03-21: the repository is functional enough to inspect and run l
    npm install
    ```
 
-2. Create local env files:
+2. Create env files:
 
    ```bash
    cp apps/api/.env.example apps/api/.env
    cp apps/web/.env.example apps/web/.env.local
    ```
 
-3. Start local infrastructure:
+3. Start local services:
 
    ```bash
    docker compose up -d postgres redis
    ```
 
-4. Generate Prisma client, run migrations, and seed test data:
+4. Prepare the database from `apps/api`:
 
    ```bash
    cd apps/api
@@ -57,17 +77,11 @@ Observed on 2026-03-21: the repository is functional enough to inspect and run l
    npm run db:seed
    ```
 
-5. Start the web and API apps from the repository root:
+5. Start the active apps from the repo root:
 
    ```bash
    cd ../..
    npm run dev
-   ```
-
-   If you also want the Expo app running, use:
-
-   ```bash
-   npm run dev:all
    ```
 
 ### Local URLs
@@ -82,41 +96,22 @@ From the repository root:
 
 ```bash
 npm run dev
-npm run dev:all
 npm run dev:web
 npm run dev:api
-npm run dev:mobile
 npm run lint
-npm run check-types
 npm run build
+npm run check-types
 npm run db:generate
 npm run db:migrate
 ```
 
-From `apps/api`:
+Important repo-specific notes:
 
-```bash
-npm run dev
-npm run build
-npm run test -- --watchman=false
-npm run test:e2e -- --watchman=false
-npm run db:generate
-npm run db:migrate
-npm run db:seed
-```
+- `npm run dev` targets `web` and `api`
+- `npm run dev:all` currently resolves to the same active workspaces because there is no mobile npm workspace
+- `npm run dev:mobile` is stale until `apps/mobile` becomes a real workspace
 
-From `apps/web`:
-
-```bash
-npm run dev
-npm run lint
-npm run check-types
-npm run build
-```
-
-Important: several of these commands currently fail for repository-specific reasons. Use [TESTING.md](./TESTING.md) before assuming a failure is caused by your change.
-
-## Seeded Test Accounts
+## Seeded Accounts
 
 Observed in `apps/api/prisma/seed.ts`:
 
@@ -127,54 +122,44 @@ Observed in `apps/api/prisma/seed.ts`:
   - Email: `customer@test.com`
   - Password: `12345678`
 
-The seed script also creates categories, multiple providers, sample requests, quotes, bookings, conversations, and reviews.
+The seed also creates request taxonomy categories, additional providers, quotes, bookings, reviews, conversations, and notifications-related data paths.
 
-## Architecture At A Glance
+## Repository Map
 
-- Frontend routing is in `apps/web/app` with route groups for `(auth)`, `(customer)`, and `(provider)`.
-- Frontend data access is centralized in `apps/web/lib/api.ts`.
-- Frontend auth state is managed in `apps/web/contexts/AuthContext.tsx` and stored in `localStorage`.
-- Backend modules are wired in `apps/api/src/app.module.ts`.
-- Database schema lives in `apps/api/prisma/schema.prisma`.
-- Uploads use S3-compatible storage through `apps/api/src/modules/uploads/uploads.service.ts`.
-- Realtime messaging support exists in `apps/api/src/modules/messages/messages.gateway.ts`, but the current frontend messaging UI uses REST only.
+- `apps/web/app`: App Router pages for public, auth, customer, and provider areas
+- `apps/web/components`: app-local UI building blocks
+- `apps/web/lib/api.ts`: frontend API client and typed request helpers
+- `apps/api/src/modules`: NestJS controllers and services by domain
+- `apps/api/prisma/schema.prisma`: database schema
+- `apps/api/prisma/seed.ts`: development seed data
+- `docker-compose.yml`: local Postgres and Redis only
+- `.github/workflows/ci.yml`: CI plus placeholder deploy jobs on `main` and `develop`
 
-## Current Reliability Notes
+## Current Product Notes
 
-Observed:
-
-- Root `README.md` and `apps/web/README.md` were previously too weak to support safe agent work and have been rewritten.
-- Root `dev` now starts only `web` and `api`; use `dev:all` when you also want the Expo app.
-- actual hosted deployment uses the `deployment` branch, Vercel for the frontend, and Railway for the backend, while `.github/workflows/ci.yml` still contains placeholder deploy jobs for `main` and `develop`.
-
-These are documented in more detail in:
-
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [TESTING.md](./TESTING.md)
-- [CONTRIBUTING.md](./CONTRIBUTING.md)
-- [AGENT_GUIDE.md](./AGENT_GUIDE.md)
-- [WORKFLOW.md](./WORKFLOW.md)
-- [ENVIRONMENT.md](./ENVIRONMENT.md)
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
+- Quote acceptance does not auto-create a booking. The frontend redirects the customer to `/bookings/new` after accepting a quote.
+- Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
+- Provider `services` and `finances` pages exist, but they are still placeholder experiences.
+- `ServicesModule` and `ReviewsModule` are still empty backend shells.
+- Notifications are now a real API module and frontend page.
 
 ## Documentation Index
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md): system structure, boundaries, data flow, and danger zones
-- [TESTING.md](./TESTING.md): validation commands, observed failures, and manual QA flows
-- [CONTRIBUTING.md](./CONTRIBUTING.md): repo-specific change strategy and coding expectations
-- [AGENT_GUIDE.md](./AGENT_GUIDE.md): operating manual for autonomous coding agents
-- [WORKFLOW.md](./WORKFLOW.md): issue-driven execution workflow for repository tasks
+- [ARCHITECTURE.md](./ARCHITECTURE.md): system shape, core flows, and danger zones
 - [ENVIRONMENT.md](./ENVIRONMENT.md): env vars, local services, and config mismatches
-- [DEPLOYMENT.md](./DEPLOYMENT.md): observed CI/deploy setup and unknowns
-- [apps/api/README.md](./apps/api/README.md): API-specific entry guide
-- [apps/web/README.md](./apps/web/README.md): web-specific entry guide
+- [TESTING.md](./TESTING.md): validated command status as of April 10, 2026
+- [DEPLOYMENT.md](./DEPLOYMENT.md): what is and is not encoded in the repo for deployment
+- [CONTRIBUTING.md](./CONTRIBUTING.md): repo-specific contribution guidance
+- [AGENT_GUIDE.md](./AGENT_GUIDE.md): operating instructions for coding agents
+- [WORKFLOW.md](./WORKFLOW.md): suggested change workflow for this repo
+- [PROJECT_GAP_REPORT.md](./PROJECT_GAP_REPORT.md): remaining product and platform gaps from this audit
+- [apps/web/README.md](./apps/web/README.md): frontend-specific guide
+- [apps/api/README.md](./apps/api/README.md): backend-specific guide
 
-## Known Gaps
+## Known Repository Quirks
 
-- Quote acceptance updates request and quote status, but does not automatically create a booking.
-- `services` and `reviews` backend modules are still placeholder modules.
-- Frontend tests are absent.
-- API e2e tests are stale and do not currently represent the actual module surface.
-- Some environment variables are documented but not wired, and some wired variables are not documented correctly.
-
-Use [PROJECT_GAP_REPORT.md](./PROJECT_GAP_REPORT.md) for product-facing feature gaps and [TESTING.md](./TESTING.md) for current verification gaps.
+- The root `tsconfig.json` still extends Expo config even though there is no active mobile workspace.
+- `packages/shared` breaks the root type-check because of NodeNext export-path rules.
+- `apps/web` type generation can be order-sensitive on a fresh checkout.
+- Upload env names in `apps/api/.env.example` do not match the names used by `UploadsService`.
+- The repo does not contain a checked-in production deployment manifest such as `railway.json` or `vercel.json`.
