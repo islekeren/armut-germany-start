@@ -29,6 +29,15 @@ describe("BookingsService", () => {
       findMany: jest.fn(),
       update: jest.fn(),
     },
+    conversation: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    message: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
   const notificationsService = {
     create: jest.fn(),
@@ -297,6 +306,94 @@ describe("BookingsService", () => {
       expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
         where: { id: "r1" },
         data: { status: "completed" },
+      });
+    });
+
+    it("notifies both parties when the customer confirms completion", async () => {
+      prisma.booking.findUnique.mockResolvedValue({
+        id: "b1",
+        status: "completion_pending",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+        quote: { requestId: "r1" },
+      });
+      prisma.booking.update.mockResolvedValue({
+        id: "b1",
+        status: "completed",
+        quote: {
+          requestId: "r1",
+          request: { id: "r1", title: "Deep cleaning" },
+        },
+        customer: { id: "customer-1" },
+        provider: { user: { id: "provider-user" } },
+      });
+      prisma.serviceRequest.update.mockResolvedValue({
+        id: "r1",
+        status: "completed",
+      });
+
+      await service.updateStatus("b1", "customer-1", "completed");
+
+      expect(notificationsService.create).toHaveBeenNthCalledWith(1, "customer-1", {
+        type: "booking_completed",
+        title: "Job completed",
+        message: 'Booking "Deep cleaning" is marked as completed.',
+        metadata: {
+          bookingId: "b1",
+          requestId: "r1",
+        },
+      });
+      expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
+        type: "booking_completed",
+        title: "Job completed",
+        message: 'Booking "Deep cleaning" has been confirmed as completed.',
+        metadata: {
+          bookingId: "b1",
+          requestId: "r1",
+        },
+      });
+    });
+
+    it("notifies both parties when a booking is cancelled", async () => {
+      prisma.booking.findUnique.mockResolvedValue({
+        id: "b2",
+        status: "confirmed",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+        quote: { requestId: "r2" },
+      });
+      prisma.booking.update.mockResolvedValue({
+        id: "b2",
+        status: "cancelled",
+        quote: {
+          requestId: "r2",
+          request: { id: "r2", title: "Window cleaning" },
+        },
+        customer: { id: "customer-1" },
+        provider: { user: { id: "provider-user" } },
+      });
+
+      await service.updateStatus("b2", "customer-1", "cancelled");
+
+      expect(notificationsService.create).toHaveBeenNthCalledWith(1, "customer-1", {
+        type: "booking_cancelled",
+        title: "Booking cancelled",
+        message: 'Booking "Window cleaning" was cancelled by the customer.',
+        metadata: {
+          bookingId: "b2",
+          requestId: "r2",
+          previousStatus: "confirmed",
+        },
+      });
+      expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
+        type: "booking_cancelled",
+        title: "Booking cancelled",
+        message: 'Booking "Window cleaning" was cancelled by the customer.',
+        metadata: {
+          bookingId: "b2",
+          requestId: "r2",
+          previousStatus: "confirmed",
+        },
       });
     });
   });

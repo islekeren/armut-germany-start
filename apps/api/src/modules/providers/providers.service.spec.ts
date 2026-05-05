@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from "@nestjs/common";
 
 describe("ProvidersService", () => {
@@ -357,6 +358,32 @@ describe("ProvidersService", () => {
     });
   });
 
+  describe("findByUserId", () => {
+    it("creates a default profile when one is missing", async () => {
+      prisma.provider.findUnique
+        .mockResolvedValueOnce({
+          ...mockProvider,
+          profile: null,
+        })
+        .mockResolvedValueOnce(mockProvider);
+      prisma.providerProfile.findUnique.mockResolvedValue(null);
+      prisma.providerProfile.create.mockResolvedValue({
+        id: "profile-created",
+        providerId: "provider-1",
+      });
+
+      const result = await service.findByUserId("user-1");
+
+      expect(prisma.providerProfile.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          providerId: "provider-1",
+          bio: "Test description",
+        }),
+      });
+      expect(result).toEqual(mockProvider);
+    });
+  });
+
   describe("update", () => {
     it("should update provider successfully", async () => {
       prisma.provider.findUnique.mockResolvedValue(mockProvider);
@@ -657,6 +684,17 @@ describe("ProvidersService", () => {
         NotFoundException,
       );
     });
+
+    it("rejects emails already used by another account", async () => {
+      prisma.provider.findUnique.mockResolvedValue(mockProvider);
+      prisma.user.findUnique.mockResolvedValue({ id: "other-user" });
+
+      await expect(
+        service.updateMyProfile("user-1", {
+          email: "taken@example.com",
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
   describe("getPublicProfile", () => {
@@ -709,6 +747,51 @@ describe("ProvidersService", () => {
       await expect(
         service.getPublicProfile("missing-provider"),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("getBookings", () => {
+    it("filters provider bookings by status and excludes cancelled by default", async () => {
+      prisma.provider.findUnique.mockResolvedValue({ id: "provider-1" });
+      prisma.booking.findMany.mockResolvedValue([
+        {
+          id: "booking-1",
+          scheduledDate: new Date("2026-04-20T09:00:00.000Z"),
+          status: "confirmed",
+          totalPrice: 150,
+          paymentStatus: "pending",
+          customer: {
+            firstName: "Ada",
+            lastName: "Customer",
+          },
+          quote: {
+            request: {
+              title: "Window cleaning",
+              address: "Torstrasse 1",
+            },
+          },
+        },
+      ]);
+
+      await service.getBookings("user-1", {});
+      expect(prisma.booking.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            providerId: "provider-1",
+            status: { not: "cancelled" },
+          },
+        }),
+      );
+
+      await service.getBookings("user-1", { status: "cancelled" });
+      expect(prisma.booking.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: {
+            providerId: "provider-1",
+            status: "cancelled",
+          },
+        }),
+      );
     });
   });
 });

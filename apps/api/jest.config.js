@@ -1,3 +1,5 @@
+/* global module */
+
 module.exports = {
   moduleFileExtensions: ["js", "json", "ts"],
   rootDir: "src",
@@ -11,7 +13,7 @@ module.exports = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
-  setupFilesAfterEnv: ["<rootDir>/../test/setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/../test/setup-unit.ts"],
   coveragePathIgnorePatterns: [
     "/node_modules/",
     ".module.ts$",

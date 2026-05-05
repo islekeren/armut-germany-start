@@ -141,7 +141,7 @@ export default async function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 md:grid-cols-4">
             <div>
-              <h3 className="mb-4 text-lg font-bold">Armut Germany</h3>
+              <h3 className="mb-4 text-lg font-bold">Elf Germany</h3>
               <p className="text-white/70">
                 {t("footer.description")}
               </p>
@@ -172,7 +172,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="mt-8 border-t-2 border-white/20 pt-8 text-center text-white/70">
-            <p>&copy; {new Date().getFullYear()} Armut Germany. {t("common.allRightsReserved")}</p>
+            <p>&copy; {new Date().getFullYear()} Elf Germany. {t("common.allRightsReserved")}</p>
           </div>
         </div>
       </footer>

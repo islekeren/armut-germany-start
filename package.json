@@ -9,6 +9,9 @@
     "dev:api": "turbo run dev --filter=api",
     "dev:mobile": "turbo run dev --filter=mobile",
     "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:e2e": "npm --workspace=api run test:e2e && npm --workspace=web run test:e2e",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "start:api": "npm run start:prod --workspace=api",
@@ -19,9 +22,17 @@
     "db:studio": "turbo run db:studio --filter=api"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^5.1.0",
+    "jsdom": "^27.0.1",
     "prettier": "^3.7.4",
     "turbo": "^2.7.2",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20.9.0"

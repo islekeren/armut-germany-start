@@ -1,7 +1,3 @@
-// Jest setup file
-import { PrismaClient } from "@prisma/client";
-
-// Mock Prisma Client for unit tests
 jest.mock("../src/common/prisma/prisma.service", () => {
   return {
     PrismaService: jest.fn().mockImplementation(() => ({
@@ -69,10 +65,4 @@ jest.mock("../src/common/prisma/prisma.service", () => {
   };
 });
 
-// Increase timeout for integration tests
 jest.setTimeout(30000);
-
-// Clean up after all tests
-afterAll(async () => {
-  // Any cleanup needed
-});

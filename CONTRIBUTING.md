@@ -1,26 +1,30 @@
 # Contributing
 
-## Purpose
+Updated for the repository state audited on April 10, 2026.
 
-This repository needs contributions to be small, explicit, and repository-aware.
+## Working Style
 
-The codebase contains working features, scaffolding, and stale validation/configuration in the same tree. A good contribution improves one thing without accidentally "fixing" or reshaping unrelated parts of the repository.
+This repo benefits from small, explicit changes.
 
-## Ground Rules
+The codebase mixes production-facing flows, dormant scaffolding, and a few known tooling gaps. The safest contribution style is:
 
-- Keep edits minimal and scoped to the task.
-- Do not refactor broadly unless the task is explicitly a refactor.
-- Do not treat currently stale scripts, CI steps, or scaffolding as safe cleanup unless cleanup is the task.
-- Preserve auth, request/quote/booking state transitions, and public API shapes unless the task explicitly changes them.
-- Update documentation when you change developer workflow, validation behavior, or environment requirements.
+1. inspect the exact files involved
+2. make the smallest change that solves the problem
+3. run targeted validation
+4. update docs when behavior, commands, or expectations changed
+
+## Current Baseline To Know Before Editing
+
+- root `npm run lint` passes
+- root `npm run build` passes
+- root `npm run check-types` fails in `packages/shared`
+- API unit and e2e suites pass
+- web build passes
+- web type-check can be order-sensitive on a fresh checkout until `.next/types` exists
+
+Use [TESTING.md](./TESTING.md) as the source of truth for current command behavior.
 
 ## Environment Expectations
-
-Observed:
-
-- Node `>=18` is declared.
-- CI uses Node `20.x`.
-- npm workspaces are the active package manager model.
 
 Recommended local baseline:
 
@@ -29,95 +33,113 @@ npm install
 docker compose up -d postgres redis
 ```
 
-Then configure env files as described in [ENVIRONMENT.md](./ENVIRONMENT.md).
+Then create:
 
-## Repository-Specific Conventions
+- `apps/api/.env` from `apps/api/.env.example`
+- `apps/web/.env.local` from `apps/web/.env.example`
+
+See [ENVIRONMENT.md](./ENVIRONMENT.md) for the full env contract and current mismatches.
+
+## Repo-Specific Conventions
 
 ### Frontend
 
-- Add or change API calls in `apps/web/lib/api.ts`.
-- Add or change auth behavior in `apps/web/contexts/AuthContext.tsx`.
-- Keep translation keys in sync across `apps/web/messages/en.json` and `apps/web/messages/de.json`.
-- Prefer app-local components in `apps/web/components` over inventing new shared abstractions in `packages/ui`.
+- Keep backend calls in `apps/web/lib/api.ts`
+- Keep auth state changes in `apps/web/contexts/AuthContext.tsx`
+- Update both locale files when UI text changes:
+  - `apps/web/messages/en.json`
+  - `apps/web/messages/de.json`
+- Prefer app-local components in `apps/web/components` over introducing new abstractions in `packages/ui`
 
 ### Backend
 
-- Follow DTO -> controller -> service -> Prisma patterns already used in `apps/api/src/modules/*`.
-- Keep validation in DTO classes where possible.
-- Return sanitized user data and avoid exposing password hashes or raw user records.
-- If you add or change database fields, update Prisma schema, migration, and seed data together.
+- Follow DTO -> controller -> service -> Prisma patterns already used in `apps/api/src/modules/*`
+- Preserve auth guards and user sanitization
+- Update Prisma schema, migrations, and seed data together when persistence changes
+- Treat quote, booking, message, provider, upload, and notification flows as high-impact areas
 
 ### Shared packages
 
-- Be cautious changing `packages/shared` and `packages/ui`.
-- They look like shared infrastructure, but the app code is not strongly coupled to them today.
-- `packages/shared` currently breaks root type-checking; do not assume it is battle-tested.
+- Be careful changing `packages/shared`
+- it currently blocks root type-checking and is not heavily integrated into the app code
+- `packages/ui` exists, but the app UI is still built directly in `apps/web/components`
 
-## Safe Change Strategy
+## Safe Validation By Change Type
 
-### Preferred approach
+### Docs-only changes
 
-1. Inspect the exact page, component, controller, service, or schema involved.
-2. Make the smallest edit that addresses the task.
-3. Validate only the relevant surface first.
-4. Document pre-existing failures separately from new failures.
+```bash
+git diff --stat
+```
 
-### Avoid this
+### Frontend-only changes
 
-- broad naming cleanups across many files
-- unrequested style churn
-- replacing app-local patterns with new abstractions
-- changing route structure casually
-- changing env var names without updating examples and docs
-- changing state-machine semantics without tracing all affected flows
+```bash
+cd apps/web
+npm run lint
+npm run build
+npm run check-types
+```
 
-## Validation Expectations
+If `check-types` fails because `.next/types/cache-life.d.ts` is missing, run the build first and retry.
 
-Use [TESTING.md](./TESTING.md) for the current command baseline.
+### Backend-only changes
 
-Minimum expectation per change:
+```bash
+cd apps/api
+npm run lint
+npm run check-types
+npm run build
+npm run test -- --watchman=false
+```
 
-- Backend-only change: API type-check and API build
-- Frontend-only change: web lint at minimum; type-check/build when relevant
-- Schema change: Prisma generate plus API validation and manual QA
-- Cross-cutting change: validate both apps
+Add e2e when routing, guards, or bootstrap code changed:
 
-When a baseline failure prevents a full green run, call it out explicitly instead of hiding it.
+```bash
+cd apps/api
+npm run test:e2e -- --watchman=false
+```
 
-## Branching And PR Expectations
+### Cross-cutting changes
 
-Observed:
+```bash
+npm run lint
+npm run build
+npm run check-types
+```
 
-- CI is configured for pushes and PRs to `main` and `develop`.
+Then add the relevant app-level checks.
 
-Unknown:
+## Current Quirks To Avoid “Cleaning Up” Accidentally
 
-- Branch naming rules
-- Commit message convention
-- Review policy
+- `apps/mobile` is not an active workspace, even though the folder exists
+- the root `tsconfig.json` still extends Expo config
+- `packages/shared` still needs explicit file extensions for NodeNext
+- provider `services` and `finances` pages are placeholder experiences
+- `ServicesModule` and `ReviewsModule` are empty backend shells
+- deploy jobs in `.github/workflows/ci.yml` are placeholders
+- upload env names in `.env.example` and `UploadsService` do not match
 
-Recommended contribution style:
+Unless your task is explicitly a cleanup pass, do not try to fix all of these at once.
 
-- Use small, reviewable branches and commits.
-- Keep each PR or task focused on one problem.
-- Include validation results and known residual risks in the summary.
+## Review Checklist
 
-## Manual Review Checklist
+Before calling a change done, check:
 
-Before considering a change complete, ask:
-
-- Did I edit only the files necessary for this task?
-- Did I preserve the intended auth and authorization behavior?
-- Did I keep translations in sync if UI copy changed?
-- Did I update docs if commands, env vars, or workflows changed?
+- Did I edit only the files needed for the task?
+- Did I preserve auth and authorization behavior?
+- Did I keep translations in sync if copy changed?
+- Did I update docs if commands, env vars, or workflow changed?
 - Did I run the smallest relevant validations?
-- Did I note any baseline failures that still remain?
+- Did I distinguish known repo issues from new regressions?
 
-## Known Repository Quirks
+## Branches, Commits, And PRs
 
-- `package.json` still contains a `dev:mobile` script, but no mobile app exists.
-- Root `tsconfig.json` still extends Expo config, but no Expo app exists.
-- CI references Playwright and deploy jobs that are not fully backed by checked-in repo assets.
-- Web build and root type-check are not green on baseline.
+The repo does not currently encode a hard branch naming or commit message policy.
 
-Do not "clean up everything" in the same change unless the task is specifically a cleanup pass.
+Recommended style:
+
+- use small, focused branches
+- keep commits reviewable
+- mention validation results and any caveats in the PR summary
+- if an issue ID exists, include it in the branch and commit names

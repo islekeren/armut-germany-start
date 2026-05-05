@@ -48,7 +48,7 @@ export default function LoginPage() {
         <div className="rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8 text-center">
             <Link href="/" className="text-2xl font-bold text-primary">
-              Armut
+              Elf
             </Link>
             <h1 className="mt-4 text-2xl font-bold text-foreground">
               {t("auth.login.title")}

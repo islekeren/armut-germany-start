@@ -176,7 +176,7 @@ export function Header() {
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex items-center justify-between gap-3">
           <Link href={logoHref} className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Armut</span>
+            <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Elf</span>
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-200 sm:text-sm">Germany</span>
           </Link>
 

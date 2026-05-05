@@ -1,52 +1,67 @@
 # Architecture
 
+Audited against the repository on April 10, 2026.
+
 ## System Shape
 
-Observed:
+This repository is a Turborepo monorepo with two active apps:
 
-- The repository is a Turborepo monorepo.
-- The web frontend lives in `apps/web`.
-- The backend API lives in `apps/api`.
-- Shared packages live in `packages/*`.
+- `apps/web`: Next.js 16 frontend
+- `apps/api`: NestJS 11 backend
 
-Inferred:
+There are also support packages in `packages/*` and a dormant `apps/mobile` folder that is not an active npm workspace.
 
-- The repository is intended to support a two-sided marketplace with customers and providers.
+## Frontend
 
-## Major Components
+### Core stack
 
-### `apps/web`
+- Next.js 16 App Router
+- React 19
+- `next-intl` for locale-aware UI
+- auth state in `apps/web/contexts/AuthContext.tsx`
+- centralized HTTP client in `apps/web/lib/api.ts`
 
-Observed:
+### Route groups and pages
 
-- Framework: Next.js 16 App Router
-- Internationalization: `next-intl`
-- State for auth: `apps/web/contexts/AuthContext.tsx`
-- API client: `apps/web/lib/api.ts`
-- Route groups:
-  - `(auth)` for login, register, provider onboarding
-  - `(customer)` for customer messages and request management
-  - `(provider)` for provider dashboard pages
+Observed route groups:
 
-Important files:
+- `(auth)`: `/login`, `/register`, `/provider-onboarding`
+- `(customer)`: `/customer-dashboard`, `/my-requests`, `/bookings`, `/messages`, `/settings`
+- `(provider)`: `/dashboard`, `/dashboard/requests`, `/dashboard/offers`, `/dashboard/orders`, `/dashboard/calendar`, `/dashboard/listings`, `/dashboard/profile`, `/dashboard/reviews`, `/dashboard/messages`, `/dashboard/settings`, `/dashboard/services`, `/dashboard/finances`
+- public routes: `/`, `/categories`, `/category/[slug]`, `/find-providers`, `/providers/[id]`, `/create-request`, `/become-provider`, `/how-it-works`, `/requests`, `/notifications`
 
-- `apps/web/app/layout.tsx`: global providers, fonts, locale-aware HTML wrapper
-- `apps/web/lib/api.ts`: all frontend HTTP calls and most frontend API types
-- `apps/web/components/*`: reusable UI pieces
-- `apps/web/messages/en.json`, `apps/web/messages/de.json`: translation dictionaries
+Observed fallback pages:
 
-### `apps/api`
+- `apps/web/app/[slug]/page.tsx` serves generic coming-soon states for `forgot-password`, `help`, `pricing`, `success-stories`, `imprint`, `privacy`, and `terms`
+- `apps/web/app/(provider)/dashboard/[slug]/page.tsx` is a generic provider-dashboard coming-soon fallback for unmatched dashboard slugs
 
-Observed:
+### Frontend boundaries
 
-- Framework: NestJS 11
-- ORM: Prisma
-- Database: PostgreSQL
-- Auth: JWT bearer tokens
-- API prefix: `/api`
-- API docs: Swagger at `/api/docs`
+- Keep backend calls inside `apps/web/lib/api.ts`
+- Keep auth token lifecycle inside `apps/web/contexts/AuthContext.tsx`
+- Update both `apps/web/messages/en.json` and `apps/web/messages/de.json` when UI copy changes
+- Respect App Router server/client boundaries when moving logic
 
-Observed backend modules registered in `apps/api/src/app.module.ts`:
+### Frontend current state
+
+- Auth tokens are stored in `localStorage`
+- The frontend supports customer bookings, messages, notifications, and request management
+- Provider `orders`, `calendar`, `profile`, `reviews`, `messages`, and `requests` have real route implementations
+- Provider `services` and `finances` routes exist but still render placeholder content
+
+## Backend
+
+### Core stack
+
+- NestJS 11
+- Prisma with PostgreSQL
+- JWT bearer auth
+- Swagger at `/api/docs`
+- app-wide prefix at `/api`
+
+### Registered modules
+
+Observed in `apps/api/src/app.module.ts`:
 
 - `AuthModule`
 - `UsersModule`
@@ -60,41 +75,37 @@ Observed backend modules registered in `apps/api/src/app.module.ts`:
 - `MessagesModule`
 - `QuotesModule`
 - `UploadsModule`
+- `NotificationsModule`
 
-Observed common infrastructure:
+Important nuance:
 
-- `apps/api/src/common/prisma`: Prisma provider and lifecycle
-- `apps/api/src/common/cache`: cache wrapper
+- `ServicesModule` and `ReviewsModule` are currently empty shells
+- `NotificationsModule` is active and used by request, quote, and booking flows
+
+### API surface
+
+Observed controller groups:
+
+- `/api/auth`
+- `/api/users`
+- `/api/providers`
+- `/api/categories`
+- `/api/requests`
+- `/api/quotes`
+- `/api/bookings`
+- `/api/messages`
+- `/api/uploads`
+- `/api/admin`
+- `/api/notifications`
+
+### Common infrastructure
+
+- `apps/api/src/common/prisma`: Prisma lifecycle and DB access
+- `apps/api/src/common/cache`: cache wrapper around Nest cache manager
 - `apps/api/src/common/throttle`: global throttling guard
 - `apps/api/src/common/security`: sanitization helpers
 
-### `packages/shared`
-
-Observed:
-
-- Exports Zod-based types and formatting helpers.
-- The package is configured as ESM and currently breaks root type-checking because internal exports use extensionless relative imports under `NodeNext`.
-
-Observed usage:
-
-- No direct imports from app code were found during repository search.
-
-Practical meaning:
-
-- Treat this package as partially scaffolded infrastructure, not a proven shared contract layer.
-
-### `packages/ui`
-
-Observed:
-
-- Contains a few sample components.
-- No application imports from `@repo/ui` were found during repository search.
-
-Practical meaning:
-
-- Do not assume `packages/ui` is the source of truth for frontend UI. The actual app UI currently lives under `apps/web/components`.
-
-## Domain Model
+## Data Model
 
 Observed in `apps/api/prisma/schema.prisma`:
 
@@ -111,210 +122,117 @@ Observed in `apps/api/prisma/schema.prisma`:
 - `Conversation`
 - `ConversationParticipant`
 - `Message`
+- `Notification`
 
-Core relationships:
+Key relationships:
 
-- A `User` is a `customer`, `provider`, or `admin`.
-- A provider user can own one `Provider` record and one `ProviderProfile`.
-- Providers can publish many `Service` records.
-- Customers create `ServiceRequest` records.
-- Providers send `Quote` records against service requests.
-- A `Booking` links to one accepted quote.
-- A `Review` links to one booking.
-- Messaging is conversation-based and can be attached to a service request.
+- a `User` can be a `customer`, `provider`, or `admin`
+- a provider user can own one `Provider` and one `ProviderProfile`
+- customers create `ServiceRequest` records
+- providers submit `Quote` records against requests
+- a `Booking` belongs to an accepted quote
+- a `Review` belongs to a booking
+- conversations and messages can be tied to a request
+- notifications belong to users and track read state
 
-## Primary Data Flows
+## Core Flows
 
-### Customer request lifecycle
+### Auth flow
 
-Observed:
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- frontend persists access and refresh tokens in `localStorage`
 
-1. Customer authenticates through `/api/auth/*`.
-2. Customer creates a request through `POST /api/requests`.
-3. Providers discover requests through provider endpoints.
-4. Providers submit quotes through `POST /api/quotes`.
-5. Customer accepts or rejects quotes through `POST /api/quotes/:id/respond`.
+Note:
 
-Important invariant:
+- `JWT_EXPIRES_IN` and `JWT_REFRESH_EXPIRES_IN` exist in the env example, but current auth code uses hardcoded expirations
 
-- Accepting a quote currently updates quote state and request state to `in_progress`, but it does not automatically create a `Booking`.
+### Request to quote to booking
 
-This is a critical repository-specific constraint. Do not assume accepted quote equals booking unless you implement that path explicitly.
+Observed behavior:
 
-### Provider profile lifecycle
-
-Observed:
-
-- Providers are created through `POST /api/providers`.
-- Public profile data is exposed through `GET /api/providers/:id/profile`.
-- Provider self-service profile updates use `PUT /api/providers/me/profile`.
-
-Important invariant:
-
-- Public provider pages compose data from `Provider`, `ProviderProfile`, `User`, services, and recent completed bookings/reviews.
-
-### Messaging lifecycle
-
-Observed:
-
-- REST endpoints live under `/api/messages/*`.
-- WebSocket namespace is `/messages`.
-- Frontend messaging pages currently use the REST controller and do not open socket connections.
-
-Practical meaning:
-
-- Backend realtime behavior exists, but frontend behavior is effectively request/response messaging today.
-- Be careful not to document or promise live updates without wiring the frontend socket client.
-
-### Upload lifecycle
-
-Observed:
-
-- Upload endpoints live under `/api/uploads/*`.
-- Upload folders are segregated by purpose and user ID.
-- Storage is implemented through an S3-compatible client.
+1. customer creates a service request
+2. provider submits a quote
+3. customer accepts or rejects the quote
+4. accepting a quote marks that quote as `accepted`, rejects the rest, and sets the request to `in_progress`
+5. the frontend then routes the customer to `/bookings/new`
+6. booking creation happens in a separate API call and requires an already accepted quote
 
 Important invariant:
 
-- File deletion is guarded by a path-prefix ownership check in `UploadsService`.
+- accepted quote does not automatically equal booking
 
-## External Dependencies
+### Booking lifecycle
 
-Observed and actively wired:
-
-- PostgreSQL through Prisma
-- JWT auth
-- Swagger
-- S3-compatible object storage for uploads
-
-Observed but only partially wired or not clearly active:
-
-- Redis is provisioned locally and in CI, but the cache module currently uses in-memory cache and does not use `REDIS_URL`.
-- Meilisearch environment variables and dependency exist, but no search module or active search integration was found.
-- Stripe fields exist in schema and env examples, but there is no payment module.
-- SendGrid vars exist in env examples, but no email flow was found.
-- Google Maps API key exists in env examples, but request creation currently sends `lat` and `lng` as `0`.
-
-## Frontend Boundaries
-
-Use these boundaries to keep changes safe:
-
-- Keep HTTP access in `apps/web/lib/api.ts` rather than scattering raw `fetch` calls.
-- Keep auth state changes inside `apps/web/contexts/AuthContext.tsx`.
-- When adding UI copy, update both `apps/web/messages/en.json` and `apps/web/messages/de.json`.
-- Respect App Router server/client boundaries. Many pages are async server components, but request creation, auth, dashboard pages, and messaging are client components.
-
-## Backend Boundaries
-
-Use these boundaries to keep changes safe:
-
-- Add new route contracts through DTO -> controller -> service -> Prisma flow.
-- Sanitize user-facing user objects. Existing code relies on select projections and `sanitizeUserResponse`.
-- Keep Prisma schema, migrations, and seed data aligned when changing persistence.
-- Treat `AuthModule`, `UsersModule`, `ProvidersModule`, `RequestsModule`, `QuotesModule`, `BookingsModule`, `MessagesModule`, and `UploadsModule` as high-impact modules.
-
-## Critical Invariants
-
-- All API routes are served under `/api`.
-- JWT bearer auth is the default protection model for authenticated endpoints.
-- The frontend stores auth tokens in `localStorage`.
-- Locale selection is cookie-based, not path-based.
-- Category and provider lists are expected to be locale-aware in presentation, but category records themselves store both German and English names.
-- Public provider profile pages rely on data aggregation in backend service methods; changing those queries changes frontend behavior broadly.
-
-## Danger Zones
-
-### `apps/web/lib/api.ts`
-
-Observed:
-
-- This file centralizes most frontend/backend coupling.
-- The current production build fails here because `API_URL` is referenced but not defined.
-
-Implication:
-
-- Seemingly small edits here can break large portions of the frontend.
-
-### Prisma schema and migrations
-
-Observed:
-
-- Business state transitions depend on schema enums and relations.
-- Seed data and many tests assume the current schema shape.
-
-Implication:
-
-- Schema changes are never "small". They require migration, seed, and verification updates.
-
-### Auth and admin boundaries
-
-Observed:
-
-- Auth is JWT-based and shared across many modules.
-- Admin routes are protected with `AdminGuard`.
-
-Implication:
-
-- Never silently change token semantics, guard application, or user response shape.
+- booking creation requires an accepted quote
+- bookings move through `pending`, `confirmed`, `in_progress`, `completion_pending`, `completed`, and `cancelled`
+- booking completion and other state changes can emit notifications
 
 ### Messaging
 
-Observed:
+- backend supports REST and a Socket.IO gateway
+- current frontend messaging UI uses REST-driven flows and refresh patterns
+- do not describe messaging as fully realtime unless the frontend socket client is added
 
-- There is a split between REST and WebSocket implementations.
+### Uploads
 
-Implication:
+- uploads are stored in S3-compatible storage
+- folders are segregated by purpose and user ID
+- deletion is guarded by a prefix ownership check
 
-- Changes can accidentally desynchronize message behavior between the API controller and gateway.
+### Notifications
 
-### Upload configuration
+- authenticated users can list notifications
+- unread count is exposed separately
+- users can mark one notification or all notifications as read
 
-Observed:
+## Shared Packages
 
-- Code expects `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and `S3_PUBLIC_URL`.
-- `apps/api/.env.example` documents different key names.
+### `packages/shared`
 
-Implication:
+- contains shared types and utility exports
+- currently blocks root `npm run check-types` because NodeNext exports need explicit file extensions
+- no direct app imports were found during this audit
 
-- Any upload-related work must confirm the intended env contract before rollout.
+### `packages/ui`
 
-## Safe Change Guidelines
+- small component scaffold package
+- no direct app imports were found during this audit
+- the actual frontend UI lives under `apps/web/components`
 
-Safe, lower-risk changes usually include:
+## External Dependencies
 
-- Isolated page presentation updates in `apps/web/components/*`
-- Translation-only updates when both locale files are updated together
-- New backend read-only endpoints that follow existing DTO/controller/service patterns
-- Small fixes inside a single domain service with matching test updates
+### Actively wired
 
-Higher-risk changes that should trigger deeper review:
+- PostgreSQL
+- Prisma
+- JWT auth
+- Swagger
+- S3-compatible object storage
+- `next-intl`
 
-- Anything in `apps/web/lib/api.ts`
-- Changes to auth, token storage, or route protection
-- Changes to Prisma enums or relations
-- Changes that alter request/quote/booking state transitions
-- Upload storage changes
-- Admin reporting or approval logic
-- Global config changes in root scripts, root tsconfig, or CI
+### Present but only partially wired or not used by current code
 
-## Architectural Entropy And Unknowns
+- Redis is available locally and in CI, but cache currently runs in memory
+- Stripe env variables and a `Payment` model exist, but there is no payments module
+- SendGrid env variables exist, but no email integration was found
+- Meilisearch dependency and env example exist, but no active search module was found
+- Google Maps env example exists, but no active Google Maps integration was found in current code
 
-Observed:
+## Danger Zones
 
-- Root `package.json` contains a `dev:mobile` script, but no mobile workspace exists.
-- Root `tsconfig.json` extends Expo config, but no Expo app exists.
-- `ServicesModule` and `ReviewsModule` are placeholder modules.
-- CI contains Playwright and deploy steps that do not match the current repository contents.
+Treat these files and areas as high-risk:
 
-Unknown:
+- `apps/web/lib/api.ts`
+- `apps/web/contexts/AuthContext.tsx`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/src/modules/auth/*`
+- `apps/api/src/modules/providers/*`
+- `apps/api/src/modules/quotes/*`
+- `apps/api/src/modules/bookings/*`
+- `apps/api/src/modules/messages/*`
+- `apps/api/src/modules/uploads/*`
+- `apps/api/src/modules/notifications/*`
 
-- Intended search architecture
-- Intended payments implementation
-- Intended email provider integration
-- Whether `packages/shared` and `packages/ui` are meant to become active dependencies soon or remain scaffolding
-
-Needs confirmation before making broad changes:
-
-- Whether to remove stale mobile/Expo scaffolding
-- Whether to fix CI to current reality or preserve it for a hidden roadmap
-- Whether uploads should target AWS S3, Cloudflare R2, or another compatible provider in production
+These areas connect multiple user flows and small changes can create wide regressions.

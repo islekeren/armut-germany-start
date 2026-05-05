@@ -336,7 +336,7 @@ export default function CreateRequestPage() {
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-primary">Armut</span>
+                <span className="text-2xl font-bold text-primary">Elf</span>
                 <span className="text-sm text-muted">Germany</span>
               </Link>
               <LanguageToggle />

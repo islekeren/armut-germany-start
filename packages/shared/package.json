@@ -21,6 +21,8 @@
   },
   "scripts": {
     "lint": "eslint .",
+    "test": "npm run test:unit",
+    "test:unit": "vitest run",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

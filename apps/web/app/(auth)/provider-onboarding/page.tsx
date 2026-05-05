@@ -321,7 +321,7 @@ export default function ProviderOnboardingPage() {
         <div className="rounded-2xl bg-white p-8 shadow-lg">
           <div className="mb-8">
             <Link href="/" className="text-2xl font-bold text-primary">
-              Armut
+              Elf
             </Link>
             <h1 className="mt-4 text-2xl font-bold text-foreground">
               {t("title")}

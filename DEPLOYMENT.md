@@ -1,209 +1,115 @@
 # Deployment
 
-## Current Deployment Structure
+Audited against the repository on April 10, 2026.
 
-User-confirmed:
+## What The Repository Actually Contains
 
-- deployments are driven from the `deployment` branch
-- frontend is deployed on Vercel
-- backend is deployed on Railway
-
-Observed in the repository:
-
-- root `railway.json` exists and targets the API workspace
-- there is no `vercel.json`
-- `.github/workflows/ci.yml` exists, but its deploy jobs are placeholders for `main` and `develop`
-- `docker-compose.yml` exists for local Postgres and Redis, not for production deployment
-
-Practical meaning:
-
-- the actual hosted deployment path is branch-based and external-platform managed
-- GitHub Actions is not currently the source of truth for production deployment
-
-## Branch-Based Deployment Flow
-
-User-confirmed deployment flow:
-
-1. changes intended for hosted environments are pushed or merged to the `deployment` branch
-2. Vercel deploys the frontend from that branch
-3. Railway deploys the backend from that branch
-
-Repository-specific implication:
-
-- `main` is not the deployment branch
-- `develop` is not the deployment branch
-- if a task affects production deployment behavior, inspect `deployment` branch assumptions first, not just the checked-in GitHub Actions workflow
-
-Practical meaning:
-
-- branch choice is part of the deploy contract in this repo
-- a change can be "code-correct" but still miss deployment if it is not integrated through the `deployment` branch workflow
-
-## Frontend Deployment
-
-User-confirmed:
-
-- frontend hosting is Vercel
-
-Observed:
-
-- there is no `vercel.json` in the repository
-- `apps/web` is the only frontend app
-- `apps/web/next.config.js` rewrites `/api/:path*` using `NEXT_PUBLIC_API_URL`
-
-Practical meaning:
-
-- Vercel project configuration is likely managed in the Vercel dashboard rather than in-repo
-- deployment-critical frontend env vars, especially `NEXT_PUBLIC_API_URL` and `API_URL`, must be configured in Vercel
-
-Needs confirmation before changing deployment behavior:
-
-- which branch Vercel is currently configured to watch inside the Vercel project settings
-- which root directory Vercel uses for the build
-- whether Vercel runs from the monorepo root or directly from `apps/web`
-
-## Backend Deployment
-
-User-confirmed:
-
-- backend hosting is Railway
-
-Observed in `railway.json`:
-
-- Railway uses `RAILPACK`
-- build command:
-
-  ```bash
-  npm run db:generate --workspace=api && npm run build --workspace=api
-  ```
-
-- start command:
-
-  ```bash
-  npm run start:prod --workspace=api
-  ```
-
-- pre-deploy command:
-
-  ```bash
-  npm run db:migrate:deploy --workspace=api && npm run db:seed --workspace=api
-  ```
-
-- healthcheck path:
-
-  ```text
-  /api/health
-  ```
-
-- watch patterns include:
-  - `/apps/api/**`
-  - `/packages/shared/**`
-  - `/package.json`
-  - `/package-lock.json`
-  - `/turbo.json`
-  - `/railway.json`
-
-Observed in backend code:
-
-- `apps/api/src/modules/health/health.module.ts` and `health.controller.ts` exist
-- the Railway healthcheck path is backed by real application code
-
-Practical meaning:
-
-- Railway is configured to deploy only the backend-relevant slice of the monorepo
-- backend deployments can be affected by changes in `apps/api`, `packages/shared`, root package metadata, Turborepo config, and `railway.json`
-
-## What Is Actually Present In-Repo
-
-Observed deployment-related assets:
+Checked-in deployment-related assets:
 
 - `.github/workflows/ci.yml`
-- `railway.json`
 - `docker-compose.yml`
 
-Observed missing deployment manifests:
+Not present in the repository:
 
-- no `vercel.json`
-- no `Dockerfile`
-- no Terraform, Pulumi, or Kubernetes manifests
+- `railway.json`
+- `vercel.json`
+- `Dockerfile`
+- Terraform, Pulumi, Helm, or Kubernetes manifests
 
-## CI Versus Real Deployment
+Practical meaning:
+
+- the repo does not encode a complete production deployment story
+- if the team is deploying through platform dashboards or another branch strategy, that knowledge is currently outside the repo
+
+## CI Workflow
 
 Observed in `.github/workflows/ci.yml`:
 
-1. lint
-2. API tests
-3. web build
-4. API build
-5. e2e tests
-6. deploy staging placeholder on `develop`
-7. deploy production placeholder on `main`
+- triggers on pushes and pull requests to `main` and `develop`
+- uses Node `20.x`
+- runs these jobs in sequence:
+  - `lint`
+  - `test-api`
+  - `test-web`
+  - `build-api`
+  - `e2e-tests`
+  - `deploy-staging`
+  - `deploy-production`
 
-Observed mismatch:
+### CI job details
 
-- the workflow still models `main` and `develop` deploy jobs
-- the real deploy branch is `deployment`
-- the deploy jobs only run `echo` and do not represent the live Vercel/Railway setup
+- `test-api` provisions Postgres 15 and Redis 7, runs Prisma generate and migrate deploy, then runs API unit tests with coverage
+- `test-web` runs `npm run test --if-present` in `apps/web` and then `npm run build`
+- `e2e-tests` runs API e2e tests and conditionally runs Playwright only if a Playwright config and tests are present in `apps/web`
+
+### Deploy jobs
+
+The deploy jobs are placeholders:
+
+- `deploy-staging` runs only on `develop`
+- `deploy-production` runs only on `main`
+- both jobs currently just `echo` deployment text and do not perform a real release
 
 Practical meaning:
 
-- treat GitHub Actions as CI only
-- do not treat `.github/workflows/ci.yml` as the active deployment definition
+- GitHub Actions is a real CI pipeline
+- GitHub Actions is not a real deployment pipeline yet
 
-Observed:
+## What A Real Deployment Would Need
 
-- API expects PostgreSQL
-- API exposes `/api/health` for Railway healthchecks
-- API can expose Swagger docs
-- uploads expect S3-compatible storage
-- web expects an API origin via env vars
+### Backend requirements
 
-Known hosting topology:
+From current code, the API needs:
 
-- frontend: Vercel
-- backend: Railway
-- deploy branch: `deployment`
+- PostgreSQL
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_REFRESH_SECRET`
+- optional `PORT`
+- S3-compatible storage config if uploads are used
 
-Unknown:
+Nice-to-know:
 
-- where secrets are managed
-- how migrations are applied in production
-- whether Redis is required in production or only planned
+- Redis is provisioned in CI and local docker compose, but runtime cache is currently in memory
+- Swagger is available at `/api/docs`
 
-## Deployment Risks
+### Frontend requirements
 
-- The web build is not currently green on repository baseline.
-- API e2e tests are stale.
-- Some env variables are documented without active code paths.
-- Upload env names in code and env example do not match.
+From current code, the web app needs:
 
-These are blockers for trustworthy deployment automation.
+- `API_URL`
+- `NEXT_PUBLIC_API_URL`
 
-## Safe Agent Behavior
+Optional:
 
-Do not invent deployment configuration casually.
+- `API_TIMEOUT_MS`
+- `NEXT_PUBLIC_API_TIMEOUT_MS`
 
-If a task asks for deployment work:
+## What The Repo Cannot Tell You Yet
 
-1. inspect `railway.json`
-2. inspect `.github/workflows/ci.yml`
-3. confirm whether the change affects Vercel settings, Railway settings, or only application code
-4. treat `deployment` branch behavior as the live deployment path unless the user says otherwise
-5. ask for clarification before inventing `vercel.json` or other new deployment manifests
+The repository alone does not confirm:
 
-## What Needs Human Confirmation
+- which hosting provider serves production
+- which branch is the real deployment branch
+- how production secrets are managed
+- where database migrations run in production
+- whether deployment config lives in Vercel, Railway, another platform, or manual steps
 
-- migration strategy
-- secret management strategy
-- whether GitHub Actions deploy placeholders should be rewritten to match the real `deployment` branch flow
-- whether Vercel configuration should stay dashboard-managed or be moved into repo configuration later
+Avoid writing docs or automation that pretend those details are known unless they are added to the repo or confirmed separately.
 
-## Practical Recommendation
+## Safe Change Guidance
 
-Treat deployment work in this repository as branch-aware platform work:
+If a task affects deployment:
 
-- Vercel is the frontend host
-- Railway is the backend host
-- `deployment` is the branch that matters for hosted rollout
+1. inspect `.github/workflows/ci.yml`
+2. confirm whether the work is only CI, only app code, or true deployment config
+3. do not invent `vercel.json`, `railway.json`, or branch-based deployment rules without explicit confirmation
+4. update this document when deployment knowledge becomes repo-visible
 
-When updating docs or automation, keep those three facts explicit so future agents do not mistake the placeholder GitHub workflow for the real deployment path.
+## Recommended Next Documentation Step
+
+If the team has a real production setup outside this repo, document it explicitly in one of these ways:
+
+- add checked-in platform config where possible
+- add a private/internal runbook that is referenced from this repo
+- replace the placeholder GitHub Actions deploy jobs with the actual release path
