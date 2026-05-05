@@ -127,7 +127,7 @@ export default function ProviderDashboard() {
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-xl font-bold text-primary sm:text-2xl">Armut</span>
+              <span className="text-xl font-bold text-primary sm:text-2xl">Elf</span>
               <span className="text-sm text-muted">Pro</span>
             </Link>
             <div className="flex items-center gap-2 sm:gap-4">

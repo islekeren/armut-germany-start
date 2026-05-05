@@ -28,10 +28,29 @@ jobs:
       - name: Run ESLint
         run: npm run lint --if-present
 
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checks
+        run: npm run check-types
+
   test-api:
     name: Test API
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, typecheck]
     services:
       postgres:
         image: postgres:15
@@ -97,7 +116,7 @@ jobs:
   test-web:
     name: Test Web
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, typecheck]
     steps:
       - uses: actions/checkout@v4
 
@@ -112,7 +131,7 @@ jobs:
 
       - name: Run web tests
         working-directory: apps/web
-        run: npm run test --if-present
+        run: npm run test
 
       - name: Build web app
         working-directory: apps/web
@@ -177,28 +196,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Detect Playwright setup
-        id: playwright
-        run: |
-          has_config="false"
-          has_tests="false"
-
-          if find apps/web -maxdepth 1 -type f \( -name 'playwright.config.ts' -o -name 'playwright.config.js' -o -name 'playwright.config.mjs' -o -name 'playwright.config.cjs' \) | grep -q .; then
-            has_config="true"
-          fi
-
-          if find apps/web \( -path 'apps/web/tests/*' -o -path 'apps/web/e2e/*' \) | grep -q .; then
-            has_tests="true"
-          fi
-
-          if [ "$has_config" = "true" ] && [ "$has_tests" = "true" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Install Playwright browsers
-        if: steps.playwright.outputs.enabled == 'true'
         run: npx playwright install --with-deps
 
       - name: Generate Prisma Client
@@ -211,6 +209,12 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
 
+      - name: Seed database
+        working-directory: apps/api
+        run: npm run db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
+
       - name: Run API E2E tests
         working-directory: apps/api
         run: npm run test:e2e
@@ -220,19 +224,17 @@ jobs:
           JWT_REFRESH_SECRET: test-refresh-secret
 
       - name: Run Playwright E2E tests
-        if: steps.playwright.outputs.enabled == 'true'
         working-directory: apps/web
-        run: npx playwright test
+        run: npm run test:e2e
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:4000
-
-      - name: Skip Playwright E2E tests
-        if: steps.playwright.outputs.enabled != 'true'
-        run: echo "Skipping Playwright E2E tests because no Playwright config and tests were found in apps/web."
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
+          JWT_SECRET: test-jwt-secret
+          JWT_REFRESH_SECRET: test-refresh-secret
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always() && steps.playwright.outputs.enabled == 'true'
+        if: always()
         with:
           name: playwright-report
           path: apps/web/playwright-report

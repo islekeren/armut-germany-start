@@ -8,16 +8,29 @@ describe("AppController (e2e)", () => {
   let app: INestApplication;
 
   beforeEach(async () => {
+    const prisma = {
+      category: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+      provider: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      serviceRequest: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      $connect: jest.fn(),
+      $disconnect: jest.fn(),
+    };
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
-
-    const prisma = moduleFixture.get(PrismaService) as any;
-    prisma.category.findMany.mockResolvedValue([]);
-    prisma.provider.findMany.mockResolvedValue([]);
-    prisma.provider.count.mockResolvedValue(0);
-    prisma.serviceRequest.findMany.mockResolvedValue([]);
-    prisma.serviceRequest.count.mockResolvedValue(0);
+    })
+      .overrideProvider(PrismaService)
+      .useValue(prisma)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(

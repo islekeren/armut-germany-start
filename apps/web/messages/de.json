@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "title": "Armut Germany - Finden Sie die besten Dienstleister",
-    "description": "Armut Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr."
+    "title": "Elf Germany - Finden Sie die besten Dienstleister",
+    "description": "Elf Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr."
   },
   "common": {
     "login": "Anmelden",
@@ -330,7 +330,7 @@
     "postalCode": "Postleitzahl"
   },
   "cta": {
-    "providerTitle": "Wachsen Sie mit Armut",
+    "providerTitle": "Wachsen Sie mit Elf",
     "providerSubtitle": "Schließen Sie sich tausenden Anbietern an und finden Sie neue Kunden in Ihrer Nähe.",
     "registerNow": "Jetzt registrieren",
     "readyToStart": "Bereit zu starten?",
@@ -339,7 +339,7 @@
   },
   "howItWorks": {
     "title": "So funktioniert es",
-    "pageTitle": "So funktioniert Armut Germany",
+    "pageTitle": "So funktioniert Elf Germany",
     "pageSubtitle": "Finden Sie qualifizierte Fachleute in wenigen einfachen Schritten. Kostenlos, schnell und sicher.",
     "step1": {
       "title": "Anfrage stellen",
@@ -399,7 +399,7 @@
   "faq": {
     "title": "Häufig gestellte Fragen",
     "q1": {
-      "question": "Wie viel kostet die Nutzung von Armut?",
+      "question": "Wie viel kostet die Nutzung von Elf?",
       "answer": "Für Kunden ist es völlig kostenlos! Sie können Anfragen stellen, Angebote erhalten und mit Anbietern kommunizieren, ohne etwas zu bezahlen. Sie zahlen nur den Anbieter für die Dienstleistung, wenn Sie sich für eine Buchung entscheiden."
     },
     "q2": {
@@ -433,7 +433,7 @@
     "privacy": "Datenschutz"
   },
   "becomeProvider": {
-    "title": "Werden Sie Dienstleister auf Armut",
+    "title": "Werden Sie Dienstleister auf Elf",
     "subtitle": "Erreichen Sie tausende potenzielle Kunden in Ihrer Nähe und erweitern Sie Ihr Geschäft.",
     "registerNow": "Jetzt registrieren",
     "howItWorks": "So funktioniert es",

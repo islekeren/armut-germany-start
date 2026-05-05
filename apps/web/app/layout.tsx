@@ -17,9 +17,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Armut Germany - Finden Sie die besten Dienstleister",
+  title: "Elf Germany - Finden Sie die besten Dienstleister",
   description:
-    "Armut Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr. Erhalten Sie kostenlose Angebote von verifizierten Dienstleistern.",
+    "Elf Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr. Erhalten Sie kostenlose Angebote von verifizierten Dienstleistern.",
   keywords: [
     "Dienstleister",
     "Handwerker",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "Deutschland",
   ],
   openGraph: {
-    title: "Armut Germany - Finden Sie die besten Dienstleister",
+    title: "Elf Germany - Finden Sie die besten Dienstleister",
     description:
       "Verbinden Sie sich mit qualifizierten Fachleuten für alle Ihre Dienstleistungsbedürfnisse.",
     locale: "de_DE",

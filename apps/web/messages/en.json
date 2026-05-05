@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "title": "Armut Germany - Find the Best Service Providers",
-    "description": "Armut Germany connects you with qualified professionals for cleaning, moving, renovation and more."
+    "title": "Elf Germany - Find the Best Service Providers",
+    "description": "Elf Germany connects you with qualified professionals for cleaning, moving, renovation and more."
   },
   "common": {
     "login": "Log in",
@@ -330,7 +330,7 @@
     "postalCode": "Postal code"
   },
   "cta": {
-    "providerTitle": "Grow your business with Armut",
+    "providerTitle": "Grow your business with Elf",
     "providerSubtitle": "Join thousands of providers and get matched with new customers in your area.",
     "registerNow": "Register now",
     "readyToStart": "Ready to Get Started?",
@@ -339,7 +339,7 @@
   },
   "howItWorks": {
     "title": "How It Works",
-    "pageTitle": "How Armut Germany Works",
+    "pageTitle": "How Elf Germany Works",
     "pageSubtitle": "Find qualified professionals in just a few simple steps. Free, fast, and secure.",
     "step1": {
       "title": "Submit Request",
@@ -399,7 +399,7 @@
   "faq": {
     "title": "Frequently Asked Questions",
     "q1": {
-      "question": "How much does it cost to use Armut?",
+      "question": "How much does it cost to use Elf?",
       "answer": "It's completely free for customers! You can submit requests, receive quotes, and communicate with providers at no cost. You only pay the provider for the service once you decide to book."
     },
     "q2": {
@@ -433,7 +433,7 @@
     "privacy": "Privacy Policy"
   },
   "becomeProvider": {
-    "title": "Become a Service Provider on Armut",
+    "title": "Become a Service Provider on Elf",
     "subtitle": "Reach thousands of potential customers in your area and grow your business.",
     "registerNow": "Register Now",
     "howItWorks": "How It Works",

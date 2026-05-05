@@ -4,9 +4,15 @@
   "globalEnv": [
     "API_TIMEOUT_MS",
     "API_URL",
+    "CI",
+    "CORS_ORIGINS",
+    "DATABASE_URL",
+    "JWT_REFRESH_SECRET",
+    "JWT_SECRET",
     "NEXT_PUBLIC_API_TIMEOUT_MS",
     "NEXT_PUBLIC_API_URL",
-    "NODE_ENV"
+    "NODE_ENV",
+    "PORT"
   ],
   "tasks": {
     "build": {
@@ -16,6 +22,15 @@
     },
     "lint": {
       "dependsOn": ["^lint"]
+    },
+    "test": {
+      "dependsOn": ["^test"]
+    },
+    "test:unit": {
+      "dependsOn": ["^test:unit"]
+    },
+    "test:e2e": {
+      "cache": false
     },
     "check-types": {
       "dependsOn": ["^check-types"]

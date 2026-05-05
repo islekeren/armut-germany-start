@@ -9,6 +9,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
+    "test": "npm run test:unit",
+    "test:unit": "vitest run",
+    "test:e2e:prepare": "node ./scripts/prepare-e2e.mjs",
+    "test:e2e": "npm run test:e2e:prepare && playwright test",
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {

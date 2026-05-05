@@ -1,3 +1,5 @@
+/* global module */
+
 module.exports = {
   moduleFileExtensions: ["js", "json", "ts"],
   rootDir: ".",
@@ -10,7 +12,8 @@ module.exports = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
-  setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/test/setup-e2e.ts"],
   testTimeout: 60000,
+  maxWorkers: 1,
   watchman: false,
 };
