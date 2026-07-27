@@ -112,8 +112,8 @@ export async function apiRequest<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  // The NestJS API has a global prefix of /api
-  const url = `${getApiBaseUrl(direct)}/api${endpoint}`;
+  const baseUrl = getApiBaseUrl(direct);
+  const url = `${baseUrl}/api${endpoint}`;
 
   if (signal) {
     if (signal.aborted) {
@@ -1397,6 +1397,7 @@ export const uploadsApi = {
     return apiRequest<UploadResult>("/uploads/profile", {
       method: "POST",
       body: formData,
+      direct: true,
       token,
     });
   },
@@ -1405,6 +1406,7 @@ export const uploadsApi = {
     apiRequest<UploadResult[]>("/uploads/request", {
       method: "POST",
       body: buildFilesFormData(files),
+      direct: true,
       token,
     }),
 
@@ -1412,6 +1414,7 @@ export const uploadsApi = {
     apiRequest<UploadResult[]>("/uploads/message", {
       method: "POST",
       body: buildFilesFormData(files),
+      direct: true,
       token,
     }),
 

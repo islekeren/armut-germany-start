@@ -15,6 +15,9 @@
     "test:e2e": "npm run test:e2e:prepare && playwright test",
     "check-types": "next typegen && tsc --noEmit"
   },
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "dependencies": {
     "@hookform/resolvers": "^4.0.0",
     "@repo/shared": "*",

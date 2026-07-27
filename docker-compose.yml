@@ -1,3 +1,5 @@
+# Local development infrastructure only.
+# Production should use managed services and set DATABASE_URL / REDIS_URL directly.
 version: "3.8"
 
 services:

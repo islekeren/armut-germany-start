@@ -15,6 +15,7 @@ import { ReviewsModule } from "./modules/reviews/reviews.module";
 import { MessagesModule } from "./modules/messages/messages.module";
 import { QuotesModule } from "./modules/quotes/quotes.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
+import { HealthModule } from "./modules/health/health.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 
 @Module({
@@ -37,6 +38,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     MessagesModule,
     QuotesModule,
     UploadsModule,
+    HealthModule,
     NotificationsModule,
   ],
 })
