@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import process from "node:process";
 
 const apiDir = path.resolve(process.cwd(), "../api");
 const databaseUrl =
