@@ -1,6 +1,6 @@
 # API App
 
-Updated for the repository state audited on April 10, 2026.
+Updated for the repository state audited on July 27, 2026.
 
 ## Purpose
 
@@ -63,9 +63,9 @@ npm run db:seed
 
 ## Validation
 
-Observed on April 10, 2026:
+Observed on July 27, 2026:
 
-- `npm run lint`: passes with 15 warnings
+- `npm run lint`: passes with 9 warnings
 - `npm run check-types`: passes
 - `npm run build`: passes
 - `npm run test -- --watchman=false`: passes

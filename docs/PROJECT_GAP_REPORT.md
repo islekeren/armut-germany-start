@@ -1,6 +1,6 @@
 # Project Gap Report
 
-Observed and updated on April 10, 2026.
+Observed and updated on July 27, 2026.
 
 ## Scope
 
@@ -17,16 +17,16 @@ It is a repo-grounded gap report based on:
 
 - the web app has broad route coverage for customer and provider flows
 - the API now includes notifications and passes unit and e2e tests
-- root lint and build are green
-- the biggest remaining repo-wide tooling issue is the root type-check failure from `packages/shared`
+- root build and type-check are green
+- the biggest remaining repo-wide tooling issue is the root lint failure from `apps/web/scripts/prepare-e2e.mjs`
 
 ## Active Gaps
 
 ### 1. Validation and tooling gaps
 
-- Root `npm run check-types` still fails because `packages/shared` uses extensionless exports under NodeNext.
+- Root `npm run lint` currently fails because `apps/web/scripts/prepare-e2e.mjs` uses `process` without a Node/global ESLint declaration.
 - Web `npm run check-types` can still be order-sensitive on a fresh checkout until `.next/types/cache-life.d.ts` exists.
-- API lint still passes with 15 warnings instead of a clean warning-free baseline.
+- API lint still passes with 9 warnings instead of a clean warning-free baseline.
 
 ### 2. Product and UX gaps
 
@@ -58,7 +58,7 @@ It is a repo-grounded gap report based on:
 
 ### P0
 
-- Fix `packages/shared` export paths so root type-check becomes a trustworthy gate.
+- Fix `apps/web/scripts/prepare-e2e.mjs` lint warnings so root lint becomes a trustworthy gate.
 - Reconcile upload env names between code and example config.
 
 ### P1

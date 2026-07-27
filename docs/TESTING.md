@@ -1,18 +1,18 @@
 # Testing
 
-Audited against the repository on April 10, 2026.
+Audited against the repository on July 27, 2026.
 
 ## Current Command Matrix
 
 | Command | Scope | Status | Notes |
 | --- | --- | --- | --- |
-| `npm run lint` | whole repo | Pass | exits cleanly; API lint still emits 15 warnings |
+| `npm run lint` | whole repo | Fail | web lint fails because `apps/web/scripts/prepare-e2e.mjs` has `process` no-undef warnings and web lint uses `--max-warnings 0`; API lint emits 9 warnings |
 | `npm run build` | whole repo | Pass | builds both `web` and `api` successfully |
-| `npm run check-types` | whole repo | Fail | blocked by `packages/shared` NodeNext export-path errors |
-| `cd apps/web && npm run lint` | web | Pass | clean in current workspace |
+| `npm run check-types` | whole repo | Pass | passes in the current workspace |
+| `cd apps/web && npm run lint` | web | Fail | `apps/web/scripts/prepare-e2e.mjs` uses `process` without a Node/global ESLint declaration |
 | `cd apps/web && npm run build` | web | Pass | Next.js production build succeeds |
 | `cd apps/web && npm run check-types` | web | Pass with caveat | passed after `.next/types` existed; on a fresh checkout it can fail until `cache-life.d.ts` is generated |
-| `cd apps/api && npm run lint` | api | Pass with warnings | 15 warnings, 0 errors |
+| `cd apps/api && npm run lint` | api | Pass with warnings | 9 warnings, 0 errors |
 | `cd apps/api && npm run check-types` | api | Pass | no current TypeScript failures |
 | `cd apps/api && npm run build` | api | Pass | Nest build succeeds |
 | `cd apps/api && npm run test -- --watchman=false` | api unit tests | Pass | 27 suites, 248 tests passed |
@@ -20,16 +20,16 @@ Audited against the repository on April 10, 2026.
 
 ## Current Failures
 
-### Root type-check
+### Root lint
 
-Observed failure:
+Observed failure on July 27, 2026:
 
-- `packages/shared/src/index.ts` and `packages/shared/src/types/index.ts` re-export extensionless relative paths
-- with NodeNext resolution, TypeScript now requires explicit file extensions
+- `apps/web/scripts/prepare-e2e.mjs` references `process`
+- the web lint command uses `--max-warnings 0`
 
 Current effect:
 
-- root `npm run check-types` fails before it becomes a reliable repo-wide gate
+- root `npm run lint` fails even though the issue is currently warnings only
 
 ### Web clean-checkout caveat
 
@@ -60,9 +60,7 @@ Current interpretation:
 
 `cd apps/api && npm run lint` currently exits successfully but reports warnings in these areas:
 
-- CommonJS `module` usage in Jest config files
 - unused args/imports in cache, auth, bookings, messages, and requests code
-- `turbo/no-undeclared-env-vars` warnings for `CORS_ORIGINS` and `PORT` in `apps/api/src/main.ts`
 
 These warnings do not currently fail lint.
 
@@ -142,13 +140,13 @@ Observed in `.github/workflows/ci.yml`:
 - API unit tests run in CI
 - API e2e tests run in CI
 - web builds run in CI
-- Playwright is skipped automatically unless config and tests are present
+- Playwright e2e is configured through `apps/web/playwright.config.ts`
 - deploy jobs are still placeholders
 
 Practical meaning:
 
 - CI is useful for lint, build, and API coverage
-- root type-check is still not a dependable gate until `packages/shared` is fixed
+- root lint is not a dependable gate until the web e2e preparation script lint warning is fixed
 
 ## Reporting Guidance
 

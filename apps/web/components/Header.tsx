@@ -177,7 +177,6 @@ export function Header() {
         <div className="flex items-center justify-between gap-3">
           <Link href={logoHref} className="flex min-w-0 items-center gap-2">
             <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Elf</span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-200 sm:text-sm">Germany</span>
           </Link>
 
           <nav className="hidden min-w-0 items-center gap-5 md:flex">

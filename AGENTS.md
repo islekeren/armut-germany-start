@@ -1,16 +1,16 @@
 # Agent Guide
 
-Updated for the repository state audited on April 10, 2026.
+Updated for the repository state audited on July 27, 2026.
 
 ## Start Here
 
 Before editing:
 
 1. read [README.md](./README.md)
-2. read [ARCHITECTURE.md](./ARCHITECTURE.md)
-3. read [TESTING.md](./TESTING.md)
-4. read [ENVIRONMENT.md](./ENVIRONMENT.md) if the task touches runtime, env, uploads, or local setup
-5. read [DEPLOYMENT.md](./DEPLOYMENT.md) if the task touches CI or release behavior
+2. read [ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+3. read [TESTING.md](./docs/TESTING.md)
+4. read [ENVIRONMENT.md](./docs/ENVIRONMENT.md) if the task touches runtime, env, uploads, or local setup
+5. read [DEPLOYMENT.md](./docs/DEPLOYMENT.md) if the task touches CI or release behavior
 6. inspect the exact code paths involved
 
 Then check the worktree:
@@ -23,10 +23,11 @@ Do not overwrite unrelated user changes.
 
 ## Current Repo Facts You Should Know
 
-- root `npm run lint` passes
+- root `npm run lint` currently fails because `apps/web/scripts/prepare-e2e.mjs` has `process` no-undef warnings and web lint uses `--max-warnings 0`
 - root `npm run build` passes
-- root `npm run check-types` fails because `packages/shared` uses NodeNext-incompatible export paths
-- API `lint`, `check-types`, `build`, `test -- --watchman=false`, and `test:e2e -- --watchman=false` all pass
+- root `npm run check-types` passes in the current workspace
+- API `check-types`, `build`, `test -- --watchman=false`, and `test:e2e -- --watchman=false` pass
+- API `lint` passes with warnings
 - API e2e can fail in a restricted sandbox with `EPERM`; the suite passed outside the sandbox on April 10, 2026
 - web `lint` and `build` pass
 - web `check-types` passed after `.next/types` existed; on a fresh checkout, build-first may be necessary
@@ -116,7 +117,7 @@ If your task changes any of those, call it out explicitly.
 
 ## Validation Rules
 
-Use [TESTING.md](./TESTING.md) as the current source of truth.
+Use [TESTING.md](./docs/TESTING.md) as the current source of truth.
 
 Default guidance:
 
@@ -148,7 +149,7 @@ Do not opportunistically fix these unless the task requires it:
 
 - dormant `apps/mobile` scaffolding
 - root Expo-based `tsconfig.json`
-- `packages/shared` export-path issue
+- `apps/web/scripts/prepare-e2e.mjs` lint warning issue
 - placeholder `ServicesModule` and `ReviewsModule`
 - placeholder provider `services` and `finances` pages
 - placeholder deploy jobs in GitHub Actions

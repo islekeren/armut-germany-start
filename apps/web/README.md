@@ -48,7 +48,7 @@ Default local URL:
 
 - `http://localhost:3000`
 
-The web app expects `API_URL` and `NEXT_PUBLIC_API_URL`. See [`ENVIRONMENT.md`](../../ENVIRONMENT.md).
+The web app expects `API_URL` and `NEXT_PUBLIC_API_URL`. See [`ENVIRONMENT.md`](../../docs/ENVIRONMENT.md).
 
 ## Validation
 

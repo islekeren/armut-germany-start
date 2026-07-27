@@ -1,6 +1,6 @@
 # Contributing
 
-Updated for the repository state audited on April 10, 2026.
+Updated for the repository state audited on July 27, 2026.
 
 ## Working Style
 
@@ -15,9 +15,9 @@ The codebase mixes production-facing flows, dormant scaffolding, and a few known
 
 ## Current Baseline To Know Before Editing
 
-- root `npm run lint` passes
+- root `npm run lint` currently fails on `apps/web/scripts/prepare-e2e.mjs` warnings
 - root `npm run build` passes
-- root `npm run check-types` fails in `packages/shared`
+- root `npm run check-types` passes
 - API unit and e2e suites pass
 - web build passes
 - web type-check can be order-sensitive on a fresh checkout until `.next/types` exists
@@ -61,7 +61,7 @@ See [ENVIRONMENT.md](./ENVIRONMENT.md) for the full env contract and current mis
 ### Shared packages
 
 - Be careful changing `packages/shared`
-- it currently blocks root type-checking and is not heavily integrated into the app code
+- it is not heavily integrated into the app code
 - `packages/ui` exists, but the app UI is still built directly in `apps/web/components`
 
 ## Safe Validation By Change Type
@@ -114,7 +114,7 @@ Then add the relevant app-level checks.
 
 - `apps/mobile` is not an active workspace, even though the folder exists
 - the root `tsconfig.json` still extends Expo config
-- `packages/shared` still needs explicit file extensions for NodeNext
+- `apps/web/scripts/prepare-e2e.mjs` currently needs a Node/global ESLint fix
 - provider `services` and `finances` pages are placeholder experiences
 - `ServicesModule` and `ReviewsModule` are empty backend shells
 - deploy jobs in `.github/workflows/ci.yml` are placeholders

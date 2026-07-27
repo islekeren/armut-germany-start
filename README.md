@@ -1,6 +1,6 @@
 # Armut Germany
 
-Audited against the repository on April 10, 2026.
+Audited against the repository on July 27, 2026.
 
 ## Overview
 
@@ -13,7 +13,7 @@ Active application workspaces:
 
 Supporting packages:
 
-- `packages/shared`: shared types and utilities, but still the source of the current root type-check failure
+- `packages/shared`: shared types and utilities
 - `packages/ui`: small component package scaffold; no direct app imports were found during this audit
 - `packages/eslint-config`, `packages/typescript-config`: shared tooling config
 
@@ -23,20 +23,20 @@ Dormant workspace state:
 
 ## Current Validation Snapshot
 
-Observed on April 10, 2026:
+Observed on July 27, 2026:
 
-- `npm run lint`: passes
+- `npm run lint`: currently fails because `apps/web/scripts/prepare-e2e.mjs` has `process` no-undef warnings and web lint uses `--max-warnings 0`
 - `npm run build`: passes
-- `npm run check-types`: fails in `packages/shared` because NodeNext exports use extensionless relative paths
+- `npm run check-types`: passes in the current workspace
 - `cd apps/api && npm run check-types`: passes
 - `cd apps/api && npm run build`: passes
 - `cd apps/api && npm run test -- --watchman=false`: passes
 - `cd apps/api && npm run test:e2e -- --watchman=false`: passes outside the sandbox; in restricted environments it can fail with `EPERM` when Supertest tries to bind a local server
-- `cd apps/web && npm run lint`: passes
+- `cd apps/web && npm run lint`: currently fails because `apps/web/scripts/prepare-e2e.mjs` uses Node globals without an ESLint Node/global declaration
 - `cd apps/web && npm run build`: passes
 - `cd apps/web && npm run check-types`: passes in the current workspace after `.next/types` exists; on a fresh checkout it may fail until `cache-life.d.ts` has been generated
 
-Use [TESTING.md](./TESTING.md) for the detailed command matrix and caveats.
+Use [TESTING.md](./docs/TESTING.md) for the detailed command matrix and caveats.
 
 ## Quick Start
 
@@ -145,21 +145,22 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 
 ## Documentation Index
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md): system shape, core flows, and danger zones
-- [ENVIRONMENT.md](./ENVIRONMENT.md): env vars, local services, and config mismatches
-- [TESTING.md](./TESTING.md): validated command status as of April 10, 2026
-- [DEPLOYMENT.md](./DEPLOYMENT.md): what is and is not encoded in the repo for deployment
-- [CONTRIBUTING.md](./CONTRIBUTING.md): repo-specific contribution guidance
-- [AGENT_GUIDE.md](./AGENT_GUIDE.md): operating instructions for coding agents
-- [WORKFLOW.md](./WORKFLOW.md): suggested change workflow for this repo
-- [PROJECT_GAP_REPORT.md](./PROJECT_GAP_REPORT.md): remaining product and platform gaps from this audit
+- [docs/README.md](./docs/README.md): documentation folder index
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md): system shape, core flows, and danger zones
+- [ENVIRONMENT.md](./docs/ENVIRONMENT.md): env vars, local services, and config mismatches
+- [TESTING.md](./docs/TESTING.md): validated command status as of July 27, 2026
+- [DEPLOYMENT.md](./docs/DEPLOYMENT.md): what is and is not encoded in the repo for deployment
+- [CONTRIBUTING.md](./docs/CONTRIBUTING.md): repo-specific contribution guidance
+- [AGENTS.md](./AGENTS.md): operating instructions for coding agents
+- [WORKFLOW.md](./docs/WORKFLOW.md): suggested change workflow for this repo
+- [PROJECT_GAP_REPORT.md](./docs/PROJECT_GAP_REPORT.md): remaining product and platform gaps from this audit
 - [apps/web/README.md](./apps/web/README.md): frontend-specific guide
 - [apps/api/README.md](./apps/api/README.md): backend-specific guide
 
 ## Known Repository Quirks
 
 - The root `tsconfig.json` still extends Expo config even though there is no active mobile workspace.
-- `packages/shared` breaks the root type-check because of NodeNext export-path rules.
+- Root lint currently fails on `apps/web/scripts/prepare-e2e.mjs` because Node globals are not declared for that script.
 - `apps/web` type generation can be order-sensitive on a fresh checkout.
 - Upload env names in `apps/api/.env.example` do not match the names used by `UploadsService`.
 - The repo does not contain a checked-in production deployment manifest such as `railway.json` or `vercel.json`.

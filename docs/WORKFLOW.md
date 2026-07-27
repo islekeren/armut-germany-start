@@ -1,6 +1,6 @@
 # Workflow
 
-Updated for the repository state audited on April 10, 2026.
+Updated for the repository state audited on July 27, 2026.
 
 ## Purpose
 
@@ -10,7 +10,7 @@ It replaces older automation-specific instructions that no longer match the chec
 
 ## Default Change Flow
 
-1. Read [README.md](./README.md), [ARCHITECTURE.md](./ARCHITECTURE.md), and [TESTING.md](./TESTING.md).
+1. Read [README.md](../README.md), [ARCHITECTURE.md](./ARCHITECTURE.md), and [TESTING.md](./TESTING.md).
 2. Check `git status --short`.
 3. Inspect the exact feature files involved.
 4. Reproduce the issue or verify the current behavior when possible.
@@ -75,8 +75,9 @@ npm run check-types
 
 Remember:
 
-- root type-check currently fails because of `packages/shared`
-- root lint and root build are currently green
+- root type-check currently passes
+- root build is currently green
+- root lint currently fails on the web e2e preparation script warnings
 
 ## CI Workflow Reality
 

@@ -337,7 +337,6 @@ export default function CreateRequestPage() {
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-primary">Elf</span>
-                <span className="text-sm text-muted">Germany</span>
               </Link>
               <LanguageToggle />
             </div>
