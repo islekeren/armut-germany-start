@@ -39,6 +39,7 @@ export async function closeTestApp(app?: { close: () => Promise<void> }) {
 }
 
 export async function resetDatabase() {
+  await prisma.stripeWebhookEvent.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.message.deleteMany();
   await prisma.conversationParticipant.deleteMany();

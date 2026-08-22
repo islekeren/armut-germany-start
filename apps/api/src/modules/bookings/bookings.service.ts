@@ -372,10 +372,14 @@ export class BookingsService {
           select: {
             id: true,
             bookingId: true,
-            stripePaymentId: true,
-            amount: true,
+            grossAmount: true,
+            platformFeeAmount: true,
+            providerAmount: true,
             currency: true,
             status: true,
+            paidAt: true,
+            failedAt: true,
+            refundedAt: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -431,6 +435,12 @@ export class BookingsService {
     if (!allowedTransitions[booking.status]?.includes(status)) {
       throw new BadRequestException(
         `Cannot transition from ${booking.status} to ${status}`,
+      );
+    }
+
+    if (status === "cancelled" && booking.paymentStatus === "paid") {
+      throw new BadRequestException(
+        "Paid bookings must be refunded before cancellation",
       );
     }
 

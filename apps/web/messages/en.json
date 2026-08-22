@@ -753,6 +753,14 @@
         "yourReview": "Your review",
         "noReviewComment": "No written feedback added.",
         "providerReply": "Provider reply",
+        "paymentTitle": "Secure payment",
+        "paymentHint": "Pay with Stripe to complete the financial step for this confirmed booking.",
+        "paymentFailedHint": "The previous payment did not complete. You can safely try again.",
+        "paymentAction": "Pay and confirm booking",
+        "paymentOpening": "Opening secure checkout...",
+        "paymentError": "Could not start Stripe Checkout",
+        "paymentReturnSuccess": "Payment submitted. We are waiting for Stripe's secure confirmation.",
+        "paymentReturnCancel": "Checkout was cancelled. No payment status was changed.",
         "statusHelp": {
           "pending": "Waiting for provider confirmation.",
           "confirmed": "Your booking is confirmed.",
@@ -891,6 +899,40 @@
     },
     "placeholders": {
       "comingSoon": "This section will be available soon."
+    },
+    "finances": {
+      "title": "Stripe payment account",
+      "loading": "Checking your Stripe account status...",
+      "loginRequired": "Please log in to manage your payment account.",
+      "loadError": "Could not load your Stripe account status.",
+      "actionError": "Could not open Stripe onboarding.",
+      "returned": "You returned from Stripe. Your verified account status is shown below.",
+      "demoTitle": "Test-mode demo",
+      "demoHint": "This connection uses Stripe test mode. No real money or live payouts are involved.",
+      "status": {
+        "not_started": {
+          "label": "Not connected",
+          "description": "Connect a test Stripe account before customers can pay for your bookings."
+        },
+        "pending": {
+          "label": "Verification pending",
+          "description": "Continue Stripe onboarding or wait while submitted details are verified."
+        },
+        "restricted": {
+          "label": "Action required",
+          "description": "Stripe needs more information before this account can receive transfers."
+        },
+        "ready": {
+          "label": "Ready",
+          "description": "Your Stripe test account can receive booking payments."
+        }
+      },
+      "actions": {
+        "connect": "Connect Stripe account",
+        "continue": "Continue onboarding",
+        "opening": "Opening Stripe...",
+        "refresh": "Refresh status"
+      }
     },
     "profile": {
       "title": "Edit Profile",

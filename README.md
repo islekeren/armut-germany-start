@@ -139,7 +139,7 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 
 - Quote acceptance does not auto-create a booking. The frontend redirects the customer to `/bookings/new` after accepting a quote.
 - Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
-- Provider `services` and `finances` pages exist, but they are still placeholder experiences.
+- Provider `services` remains a placeholder; `finances` now hosts the Stripe Connect test-mode onboarding flow.
 - `ServicesModule` and `ReviewsModule` are still empty backend shells.
 - Notifications are now a real API module and frontend page.
 

@@ -396,6 +396,22 @@ describe("BookingsService", () => {
         },
       });
     });
+
+    it("requires a paid booking to be refunded before cancellation", async () => {
+      prisma.booking.findUnique.mockResolvedValue({
+        id: "b-paid",
+        status: "confirmed",
+        paymentStatus: "paid",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+        quote: { requestId: "r-paid" },
+      });
+
+      await expect(
+        service.updateStatus("b-paid", "customer-1", "cancelled"),
+      ).rejects.toThrow("Paid bookings must be refunded before cancellation");
+      expect(prisma.booking.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("reschedule", () => {

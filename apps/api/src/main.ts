@@ -9,7 +9,7 @@ function escapeRegex(value: string) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const expressApp = app.getHttpAdapter().getInstance();
   const port = Number(process.env.PORT || 4000);
   const host = "0.0.0.0";

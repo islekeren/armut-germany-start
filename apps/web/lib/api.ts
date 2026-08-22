@@ -791,6 +791,9 @@ export interface ProviderProfile {
   ratingAvg: number;
   totalReviews: number;
   isApproved: boolean;
+  stripeAccountId?: string | null;
+  stripeOnboardingStatus?: StripeOnboardingStatus;
+  stripeTransfersEnabled?: boolean;
   user: {
     id: string;
     email: string;
@@ -831,6 +834,20 @@ export interface ProviderProfile {
       nameEn: string;
     };
   }[];
+}
+
+export type StripeOnboardingStatus =
+  | "not_started"
+  | "pending"
+  | "restricted"
+  | "ready";
+
+export interface StripeAccountStatus {
+  accountId: string | null;
+  onboardingStatus: StripeOnboardingStatus;
+  transfersEnabled: boolean;
+  requirementsDue: unknown[];
+  onboardedAt: string | null;
 }
 
 export interface CreateProviderProfileData {
@@ -889,6 +906,24 @@ export const providerApi = {
 
   getProfile: (token: string) =>
     apiRequest<ProviderProfile>("/providers/me", { token }),
+
+  createStripeAccount: (token: string) =>
+    apiRequest<StripeAccountStatus>("/providers/me/stripe-account", {
+      method: "POST",
+      token,
+    }),
+
+  createStripeOnboardingLink: (token: string) =>
+    apiRequest<{ url: string; expiresAt: string }>(
+      "/providers/me/stripe-onboarding-link",
+      { method: "POST", token },
+    ),
+
+  getStripeStatus: (token: string) =>
+    apiRequest<StripeAccountStatus>("/providers/me/stripe-status", {
+      token,
+      cache: "no-store",
+    }),
 
   updateProfile: (token: string, data: UpdateProviderProfileData) =>
     apiRequest<ProviderProfile>("/providers/me/profile", {
@@ -1079,9 +1114,14 @@ export interface BookingReview {
 export interface BookingPayment {
   id: string;
   bookingId: string;
-  amount: number;
+  grossAmount: number;
+  platformFeeAmount: number;
+  providerAmount: number;
   currency: string;
-  status: string;
+  status: PaymentStatus;
+  paidAt?: string | null;
+  failedAt?: string | null;
+  refundedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1216,6 +1256,18 @@ export const bookingsApi = {
       body: JSON.stringify(data),
       token,
     }),
+};
+
+export const paymentsApi = {
+  createCheckoutSession: (token: string, bookingId: string) =>
+    apiRequest<{ checkoutUrl: string; paymentId: string; reused: boolean }>(
+      "/payments/checkout-session",
+      {
+        method: "POST",
+        body: JSON.stringify({ bookingId }),
+        token,
+      },
+    ),
 };
 
 export interface ConversationParticipant {

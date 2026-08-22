@@ -15,6 +15,13 @@ enum UserType {
   admin
 }
 
+enum StripeOnboardingStatus {
+  not_started
+  pending
+  restricted
+  ready
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -39,6 +46,7 @@ model User {
   messagesSent       Message[]
   conversations      ConversationParticipant[]
   notifications      Notification[]
+  paymentsAsCustomer Payment[]                 @relation("CustomerPayments")
 
   @@index([email])
   @@index([userType])
@@ -47,21 +55,26 @@ model User {
 // ==================== PROVIDERS ====================
 
 model Provider {
-  id                String   @id @default(uuid())
-  userId            String   @unique
-  companyName       String?
-  taxId             String?
-  description       String
-  experienceYears   Int      @default(0)
-  serviceAreaRadius Float    @default(25) // km
-  serviceAreaLat    Float
-  serviceAreaLng    Float
-  ratingAvg         Float    @default(0)
-  totalReviews      Int      @default(0)
-  isApproved        Boolean  @default(false)
-  documents         String[] // URLs
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                     String                 @id @default(uuid())
+  userId                 String                 @unique
+  companyName            String?
+  taxId                  String?
+  description            String
+  experienceYears        Int                    @default(0)
+  serviceAreaRadius      Float                  @default(25) // km
+  serviceAreaLat         Float
+  serviceAreaLng         Float
+  ratingAvg              Float                  @default(0)
+  totalReviews           Int                    @default(0)
+  isApproved             Boolean                @default(false)
+  documents              String[] // URLs
+  stripeAccountId        String?                @unique
+  stripeOnboardingStatus StripeOnboardingStatus @default(not_started)
+  stripeTransfersEnabled Boolean                @default(false)
+  stripeRequirementsDue  Json?
+  stripeOnboardedAt      DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
   // Relations
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -69,6 +82,7 @@ model Provider {
   services Service[]
   quotes   Quote[]
   bookings Booking[]
+  payments Payment[]
 
   @@index([userId])
   @@index([isApproved])
@@ -291,35 +305,55 @@ model Booking {
 // ==================== PAYMENTS ====================
 
 model Payment {
-  id              String   @id @default(uuid())
-  bookingId       String   @unique
-  stripePaymentId String?
-  amount          Float
-  currency        String   @default("EUR")
-  status          String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                      String        @id @default(uuid())
+  bookingId               String        @unique
+  providerId              String
+  customerId              String
+  stripeCheckoutSessionId String?       @unique
+  stripePaymentIntentId   String?       @unique
+  checkoutAttempt         Int           @default(0)
+  grossAmount             Int
+  platformFeeAmount       Int
+  providerAmount          Int
+  currency                String        @default("eur")
+  status                  PaymentStatus @default(pending)
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  refundedAt              DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   // Relations
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  customer User     @relation("CustomerPayments", fields: [customerId], references: [id], onDelete: Cascade)
 
-  @@index([stripePaymentId])
+  @@index([providerId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model StripeWebhookEvent {
+  id          String    @id
+  type        String
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
 }
 
 // ==================== REVIEWS ====================
 
 model Review {
-  id            String   @id @default(uuid())
-  bookingId     String   @unique
-  reviewerId    String
-  revieweeId    String
-  rating        Int // 1-5
-  comment       String?
-  images        String[] @default([])
-  providerReply String?
+  id                  String   @id @default(uuid())
+  bookingId           String   @unique
+  reviewerId          String
+  revieweeId          String
+  rating              Int // 1-5
+  comment             String?
+  images              String[] @default([])
+  providerReply       String?
   providerReplyImages String[] @default([])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Relations
   booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)

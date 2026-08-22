@@ -753,6 +753,14 @@
         "yourReview": "Ihre Bewertung",
         "noReviewComment": "Kein schriftliches Feedback hinterlegt.",
         "providerReply": "Antwort des Dienstleisters",
+        "paymentTitle": "Sichere Zahlung",
+        "paymentHint": "Bezahlen Sie mit Stripe, um den finanziellen Schritt dieser bestätigten Buchung abzuschließen.",
+        "paymentFailedHint": "Die vorherige Zahlung wurde nicht abgeschlossen. Sie können es sicher erneut versuchen.",
+        "paymentAction": "Bezahlen und Buchung bestätigen",
+        "paymentOpening": "Sicherer Checkout wird geöffnet...",
+        "paymentError": "Stripe Checkout konnte nicht gestartet werden",
+        "paymentReturnSuccess": "Zahlung gesendet. Wir warten auf die sichere Bestätigung von Stripe.",
+        "paymentReturnCancel": "Der Checkout wurde abgebrochen. Der Zahlungsstatus wurde nicht geändert.",
         "statusHelp": {
           "pending": "Wartet auf die Bestätigung des Dienstleisters.",
           "confirmed": "Ihre Buchung ist bestätigt.",
@@ -891,6 +899,40 @@
     },
     "placeholders": {
       "comingSoon": "Dieser Bereich wird bald verfuegbar sein."
+    },
+    "finances": {
+      "title": "Stripe-Zahlungskonto",
+      "loading": "Status Ihres Stripe-Kontos wird geprüft...",
+      "loginRequired": "Bitte melden Sie sich an, um Ihr Zahlungskonto zu verwalten.",
+      "loadError": "Der Status Ihres Stripe-Kontos konnte nicht geladen werden.",
+      "actionError": "Das Stripe-Onboarding konnte nicht geöffnet werden.",
+      "returned": "Sie sind von Stripe zurückgekehrt. Der verifizierte Kontostatus wird unten angezeigt.",
+      "demoTitle": "Testmodus-Demo",
+      "demoHint": "Diese Verbindung nutzt den Stripe-Testmodus. Es werden weder echtes Geld noch Live-Auszahlungen verwendet.",
+      "status": {
+        "not_started": {
+          "label": "Nicht verbunden",
+          "description": "Verbinden Sie ein Stripe-Testkonto, bevor Kunden Ihre Buchungen bezahlen können."
+        },
+        "pending": {
+          "label": "Prüfung läuft",
+          "description": "Setzen Sie das Stripe-Onboarding fort oder warten Sie auf die Prüfung Ihrer Angaben."
+        },
+        "restricted": {
+          "label": "Aktion erforderlich",
+          "description": "Stripe benötigt weitere Angaben, bevor dieses Konto Überweisungen empfangen kann."
+        },
+        "ready": {
+          "label": "Bereit",
+          "description": "Ihr Stripe-Testkonto kann Buchungszahlungen empfangen."
+        }
+      },
+      "actions": {
+        "connect": "Stripe-Konto verbinden",
+        "continue": "Onboarding fortsetzen",
+        "opening": "Stripe wird geöffnet...",
+        "refresh": "Status aktualisieren"
+      }
     },
     "profile": {
       "title": "Profil bearbeiten",
