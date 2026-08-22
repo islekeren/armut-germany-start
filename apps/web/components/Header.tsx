@@ -50,7 +50,7 @@ export function Header() {
           label: t("nav.findProvider"),
         },
         {
-          href: "/requests",
+          href: "/my-requests",
           label: t("nav.requests"),
         },
         {
@@ -92,7 +92,7 @@ export function Header() {
     if (isAuthenticated && user?.userType === "customer") {
       return [
         { href: "/find-providers", label: t("nav.findProvider") },
-        { href: "/requests", label: t("nav.requests") },
+        { href: "/my-requests", label: t("nav.requests") },
         { href: "/create-request", label: t("nav.createRequest") },
         { href: "/my-requests", label: t("nav.myRequests") },
         { href: "/bookings", label: t("nav.bookings") },
@@ -284,7 +284,7 @@ export function Header() {
                             <Link href="/find-providers" className="block px-4 py-2 text-sm hover:bg-gray-100">
                               {t("nav.findProvider")}
                             </Link>
-                            <Link href="/requests" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link href="/my-requests" className="block px-4 py-2 text-sm hover:bg-gray-100">
                               {t("nav.requests")}
                             </Link>
                             <Link href="/create-request" className="block px-4 py-2 text-sm hover:bg-gray-100">
