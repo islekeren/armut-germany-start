@@ -218,7 +218,7 @@ Important invariant:
 ### Present but only partially wired or not used by current code
 
 - Redis is available locally and in CI, but cache currently runs in memory
-- Stripe Connect Accounts v2 onboarding, hosted Checkout destination charges, and signed payment webhooks are wired for test mode
+- Stripe Connect Accounts v2 onboarding, hosted Checkout separate charges and transfers, Express Dashboard access, and signed payment webhooks are wired for test mode
 - SendGrid env variables exist, but no email integration was found
 - Meilisearch dependency and env example exist, but no active search module was found
 - Google Maps env example exists, but no active Google Maps integration was found in current code

@@ -139,7 +139,8 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 
 - Quote acceptance does not auto-create a booking. The frontend redirects the customer to `/bookings/new` after accepting a quote.
 - Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
-- Provider `services` remains a placeholder; `finances` now hosts the Stripe Connect test-mode onboarding flow.
+- Provider `services` remains a placeholder; `finances` hosts Stripe Connect test-mode onboarding and Express Dashboard access.
+- Booking payments use separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
 - `ServicesModule` and `ReviewsModule` are still empty backend shells.
 - Notifications are now a real API module and frontend page.
 
@@ -148,6 +149,7 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 - [docs/README.md](./docs/README.md): documentation folder index
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md): system shape, core flows, and danger zones
 - [ENVIRONMENT.md](./docs/ENVIRONMENT.md): env vars, local services, and config mismatches
+- [STRIPE_SANDBOX.md](./docs/STRIPE_SANDBOX.md): local Connect onboarding, webhooks, and delayed-transfer testing
 - [TESTING.md](./docs/TESTING.md): validated command status as of July 27, 2026
 - [DEPLOYMENT.md](./docs/DEPLOYMENT.md): what is and is not encoded in the repo for deployment
 - [CONTRIBUTING.md](./docs/CONTRIBUTING.md): repo-specific contribution guidance

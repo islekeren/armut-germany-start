@@ -906,6 +906,7 @@
       "loginRequired": "Bitte melden Sie sich an, um Ihr Zahlungskonto zu verwalten.",
       "loadError": "Der Status Ihres Stripe-Kontos konnte nicht geladen werden.",
       "actionError": "Das Stripe-Onboarding konnte nicht geöffnet werden.",
+      "dashboardError": "Das Stripe-Dashboard konnte nicht geöffnet werden.",
       "returned": "Sie sind von Stripe zurückgekehrt. Der verifizierte Kontostatus wird unten angezeigt.",
       "demoTitle": "Testmodus-Demo",
       "demoHint": "Diese Verbindung nutzt den Stripe-Testmodus. Es werden weder echtes Geld noch Live-Auszahlungen verwendet.",
@@ -931,6 +932,7 @@
         "connect": "Stripe-Konto verbinden",
         "continue": "Onboarding fortsetzen",
         "opening": "Stripe wird geöffnet...",
+        "openDashboard": "Stripe-Dashboard öffnen",
         "refresh": "Status aktualisieren"
       }
     },

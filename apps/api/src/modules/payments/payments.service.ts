@@ -64,7 +64,8 @@ export class PaymentsService {
     if (
       !booking.provider.stripeAccountId ||
       booking.provider.stripeOnboardingStatus !== "ready" ||
-      !booking.provider.stripeTransfersEnabled
+      !booking.provider.stripeTransfersEnabled ||
+      !booking.provider.stripePayoutsEnabled
     ) {
       throw new BadRequestException(
         "Provider is not ready to receive Stripe payments",
@@ -126,6 +127,7 @@ export class PaymentsService {
         data: {
           stripeCheckoutSessionId: null,
           stripePaymentIntentId: null,
+          stripeChargeId: null,
           checkoutAttempt: { increment: 1 },
           status: "pending",
           failedAt: null,
@@ -148,6 +150,7 @@ export class PaymentsService {
     const session = await this.stripeService.createCheckoutSession(
       {
         mode: "payment",
+        integration_identifier: "armut_checkout_kdptwzmx",
         customer_email: booking.customer.email,
         success_url: urls.successUrl,
         cancel_url: urls.cancelUrl,
@@ -165,10 +168,7 @@ export class PaymentsService {
           },
         ],
         payment_intent_data: {
-          application_fee_amount: payment.platformFeeAmount,
-          transfer_data: {
-            destination: booking.provider.stripeAccountId,
-          },
+          transfer_group: `booking:${booking.id}`,
           metadata,
         },
       },
@@ -252,10 +252,22 @@ export class PaymentsService {
             event.data.object as Stripe.PaymentIntent,
           );
           break;
+        case "payment_intent.succeeded":
+          await this.handleSucceededPaymentIntent(
+            tx,
+            event.data.object as Stripe.PaymentIntent,
+          );
+          break;
         case "charge.refunded":
           await this.handleRefundedCharge(
             tx,
             event.data.object as Stripe.Charge,
+          );
+          break;
+        case "charge.dispute.created":
+          await this.handleDisputeCreated(
+            tx,
+            event.data.object as Stripe.Dispute,
           );
           break;
         default:
@@ -326,6 +338,28 @@ export class PaymentsService {
     if (status) await this.setPaymentStatus(tx, payment, status);
   }
 
+  private async handleSucceededPaymentIntent(
+    tx: Prisma.TransactionClient,
+    paymentIntent: Stripe.PaymentIntent,
+  ) {
+    const payment = await this.paymentFromMetadata(tx, paymentIntent.metadata);
+    this.validateAmount(payment, paymentIntent.amount, paymentIntent.currency);
+
+    const chargeId =
+      typeof paymentIntent.latest_charge === "string"
+        ? paymentIntent.latest_charge
+        : paymentIntent.latest_charge?.id;
+
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        stripePaymentIntentId: paymentIntent.id,
+        stripeChargeId: chargeId,
+      },
+    });
+    await this.setPaymentStatus(tx, payment, "paid");
+  }
+
   private async handleFailedPaymentIntent(
     tx: Prisma.TransactionClient,
     paymentIntent: Stripe.PaymentIntent,
@@ -361,7 +395,134 @@ export class PaymentsService {
     });
     if (!payment) throw new NotFoundException("Payment not found");
     this.validateAmount(payment, charge.amount, charge.currency);
+    await this.reverseProviderTransfer(tx, payment, "refund");
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { stripeChargeId: charge.id },
+    });
     await this.setPaymentStatus(tx, payment, "refunded");
+  }
+
+  private async handleDisputeCreated(
+    tx: Prisma.TransactionClient,
+    dispute: Stripe.Dispute,
+  ) {
+    const chargeId =
+      typeof dispute.charge === "string" ? dispute.charge : dispute.charge.id;
+    const payment = await tx.payment.findUnique({
+      where: { stripeChargeId: chargeId },
+      include: { provider: { select: { userId: true } } },
+    });
+    if (!payment) throw new NotFoundException("Payment not found");
+    await this.reverseProviderTransfer(tx, payment, "dispute");
+  }
+
+  private async reverseProviderTransfer(
+    tx: Prisma.TransactionClient,
+    payment: {
+      id: string;
+      bookingId: string;
+      stripeTransferId: string | null;
+      stripeTransferReversalId: string | null;
+      transferReversedAt: Date | null;
+    },
+    reason: "refund" | "dispute",
+  ) {
+    if (
+      !payment.stripeTransferId ||
+      payment.stripeTransferReversalId ||
+      payment.transferReversedAt
+    ) {
+      return;
+    }
+
+    const reversal = await this.stripeService.reverseTransfer(
+      payment.stripeTransferId,
+      {
+        metadata: {
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+          reason,
+        },
+      },
+      `provider-transfer-reversal:${payment.id}`,
+    );
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        stripeTransferReversalId: reversal.id,
+        transferReversedAt: new Date(),
+      },
+    });
+  }
+
+  async releaseProviderFunds(bookingId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { bookingId },
+      include: { provider: true },
+    });
+    if (!payment || payment.status !== "paid") {
+      throw new BadRequestException(
+        "Booking must have a confirmed payment before completion",
+      );
+    }
+    if (payment.stripeTransferReversalId || payment.transferReversedAt) {
+      throw new ConflictException("Provider transfer has already been reversed");
+    }
+    if (payment.stripeTransferId && payment.transferredAt) return payment;
+    if (
+      !payment.provider.stripeAccountId ||
+      payment.provider.stripeOnboardingStatus !== "ready" ||
+      !payment.provider.stripeTransfersEnabled ||
+      !payment.provider.stripePayoutsEnabled
+    ) {
+      throw new BadRequestException(
+        "Provider is not ready to receive Stripe transfers",
+      );
+    }
+    if (!payment.stripePaymentIntentId) {
+      throw new ConflictException("Stripe payment intent is missing");
+    }
+
+    let chargeId = payment.stripeChargeId;
+    if (!chargeId) {
+      const paymentIntent = await this.stripeService.retrievePaymentIntent(
+        payment.stripePaymentIntentId,
+      );
+      chargeId =
+        typeof paymentIntent.latest_charge === "string"
+          ? paymentIntent.latest_charge
+          : paymentIntent.latest_charge?.id ?? null;
+    }
+    if (!chargeId) {
+      throw new ConflictException("Stripe source charge is not available");
+    }
+
+    const transfer = await this.stripeService.createTransfer(
+      {
+        amount: payment.providerAmount,
+        currency: payment.currency,
+        destination: payment.provider.stripeAccountId,
+        source_transaction: chargeId,
+        transfer_group: `booking:${bookingId}`,
+        metadata: {
+          bookingId,
+          paymentId: payment.id,
+          providerId: payment.providerId,
+          customerId: payment.customerId,
+        },
+      },
+      `provider-transfer:${payment.id}`,
+    );
+
+    return this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        stripeChargeId: chargeId,
+        stripeTransferId: transfer.id,
+        transferredAt: new Date(),
+      },
+    });
   }
 
   private async setPaymentStatus(

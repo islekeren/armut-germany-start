@@ -58,6 +58,24 @@ export default function ProviderFinancesPage() {
     }
   }, [status?.accountId, t]);
 
+  const openDashboard = useCallback(async () => {
+    const token = getStoredAccessToken();
+    if (!token) {
+      setError(t("loginRequired"));
+      return;
+    }
+
+    setIsActing(true);
+    setError(null);
+    try {
+      const link = await providerApi.createStripeDashboardLink(token);
+      window.location.assign(link.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("dashboardError"));
+      setIsActing(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     if (searchParams.get("stripe") === "refresh") {
       openOnboarding();
@@ -117,7 +135,18 @@ export default function ProviderFinancesPage() {
                 >
                   {isActing ? t("actions.opening") : primaryLabel}
                 </button>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  onClick={openDashboard}
+                  disabled={isLoading || isActing}
+                  className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isActing
+                    ? t("actions.opening")
+                    : t("actions.openDashboard")}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={loadStatus}

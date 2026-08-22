@@ -12,6 +12,7 @@ describe("StripeConnectService", () => {
     createConnectedAccount: jest.fn(),
     createOnboardingLink: jest.fn(),
     retrieveConnectedAccount: jest.fn(),
+    createExpressDashboardLoginLink: jest.fn(),
     toAccountSnapshot: jest.fn(),
   };
   let service: StripeConnectService;
@@ -22,6 +23,7 @@ describe("StripeConnectService", () => {
     stripeAccountId: null,
     stripeOnboardingStatus: "not_started",
     stripeTransfersEnabled: false,
+    stripePayoutsEnabled: false,
     stripeRequirementsDue: null,
     stripeOnboardedAt: null,
     user: {
@@ -50,6 +52,7 @@ describe("StripeConnectService", () => {
       accountId: "acct_test",
       onboardingStatus: "pending",
       transfersEnabled: false,
+      payoutsEnabled: false,
       requirementsDue: [{ description: "identity" }],
       onboardedAt: null,
     });
@@ -67,5 +70,22 @@ describe("StripeConnectService", () => {
       }),
     );
     expect(stripeService.createConnectedAccount).toHaveBeenCalledWith(provider);
+  });
+
+  it("creates an Express Dashboard login link for a ready provider", async () => {
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "ready",
+      stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
+    });
+    stripeService.createExpressDashboardLoginLink.mockResolvedValue({
+      url: "https://connect.stripe.test/express/login",
+    });
+
+    await expect(service.createDashboardLoginLink("user-1")).resolves.toEqual({
+      url: "https://connect.stripe.test/express/login",
+    });
   });
 });

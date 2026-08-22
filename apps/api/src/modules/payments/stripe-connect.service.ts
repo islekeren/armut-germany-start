@@ -31,6 +31,7 @@ export class StripeConnectService {
     stripeAccountId: string | null;
     stripeOnboardingStatus: StripeOnboardingStatus;
     stripeTransfersEnabled: boolean;
+    stripePayoutsEnabled: boolean;
     stripeRequirementsDue: Prisma.JsonValue | null;
     stripeOnboardedAt: Date | null;
   }) {
@@ -38,6 +39,7 @@ export class StripeConnectService {
       accountId: provider.stripeAccountId,
       onboardingStatus: provider.stripeOnboardingStatus,
       transfersEnabled: provider.stripeTransfersEnabled,
+      payoutsEnabled: provider.stripePayoutsEnabled,
       requirementsDue: provider.stripeRequirementsDue ?? [],
       onboardedAt: provider.stripeOnboardedAt,
     };
@@ -50,6 +52,7 @@ export class StripeConnectService {
         stripeAccountId: snapshot.accountId,
         stripeOnboardingStatus: snapshot.onboardingStatus,
         stripeTransfersEnabled: snapshot.transfersEnabled,
+        stripePayoutsEnabled: snapshot.payoutsEnabled,
         stripeRequirementsDue: snapshot.requirementsDue as Prisma.InputJsonValue,
         stripeOnboardedAt: snapshot.onboardedAt,
       },
@@ -93,5 +96,20 @@ export class StripeConnectService {
       this.stripeService.toAccountSnapshot(account),
     );
     return this.response(updated);
+  }
+
+  async createDashboardLoginLink(userId: string) {
+    const provider = await this.getProvider(userId);
+    if (
+      !provider.stripeAccountId ||
+      provider.stripeOnboardingStatus !== "ready"
+    ) {
+      throw new NotFoundException("Provider Stripe account is not ready");
+    }
+
+    const link = await this.stripeService.createExpressDashboardLoginLink(
+      provider.stripeAccountId,
+    );
+    return { url: link.url };
   }
 }

@@ -846,6 +846,7 @@ export interface StripeAccountStatus {
   accountId: string | null;
   onboardingStatus: StripeOnboardingStatus;
   transfersEnabled: boolean;
+  payoutsEnabled: boolean;
   requirementsDue: unknown[];
   onboardedAt: string | null;
 }
@@ -918,6 +919,11 @@ export const providerApi = {
       "/providers/me/stripe-onboarding-link",
       { method: "POST", token },
     ),
+  createStripeDashboardLink: (token: string) =>
+    apiRequest<{ url: string }>("/providers/me/stripe-dashboard-link", {
+      method: "POST",
+      token,
+    }),
 
   getStripeStatus: (token: string) =>
     apiRequest<StripeAccountStatus>("/providers/me/stripe-status", {
@@ -1122,6 +1128,8 @@ export interface BookingPayment {
   paidAt?: string | null;
   failedAt?: string | null;
   refundedAt?: string | null;
+  transferredAt?: string | null;
+  transferReversedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -71,6 +71,7 @@ model Provider {
   stripeAccountId        String?                @unique
   stripeOnboardingStatus StripeOnboardingStatus @default(not_started)
   stripeTransfersEnabled Boolean                @default(false)
+  stripePayoutsEnabled   Boolean                @default(false)
   stripeRequirementsDue  Json?
   stripeOnboardedAt      DateTime?
   createdAt              DateTime               @default(now())
@@ -305,23 +306,28 @@ model Booking {
 // ==================== PAYMENTS ====================
 
 model Payment {
-  id                      String        @id @default(uuid())
-  bookingId               String        @unique
-  providerId              String
-  customerId              String
-  stripeCheckoutSessionId String?       @unique
-  stripePaymentIntentId   String?       @unique
-  checkoutAttempt         Int           @default(0)
-  grossAmount             Int
-  platformFeeAmount       Int
-  providerAmount          Int
-  currency                String        @default("eur")
-  status                  PaymentStatus @default(pending)
-  paidAt                  DateTime?
-  failedAt                DateTime?
-  refundedAt              DateTime?
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
+  id                       String        @id @default(uuid())
+  bookingId                String        @unique
+  providerId               String
+  customerId               String
+  stripeCheckoutSessionId  String?       @unique
+  stripePaymentIntentId    String?       @unique
+  stripeChargeId           String?       @unique
+  stripeTransferId         String?       @unique
+  stripeTransferReversalId String?       @unique
+  checkoutAttempt          Int           @default(0)
+  grossAmount              Int
+  platformFeeAmount        Int
+  providerAmount           Int
+  currency                 String        @default("eur")
+  status                   PaymentStatus @default(pending)
+  paidAt                   DateTime?
+  failedAt                 DateTime?
+  refundedAt               DateTime?
+  transferredAt            DateTime?
+  transferReversedAt       DateTime?
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
 
   // Relations
   booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)

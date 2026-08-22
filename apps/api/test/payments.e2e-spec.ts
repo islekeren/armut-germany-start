@@ -29,6 +29,10 @@ describe("Stripe Connect payments (e2e)", () => {
     retrieveCheckoutSession: jest.fn(),
     expireCheckoutSession: jest.fn(),
     createCheckoutSession: jest.fn(),
+    retrievePaymentIntent: jest.fn(),
+    createTransfer: jest.fn(),
+    reverseTransfer: jest.fn(),
+    createExpressDashboardLoginLink: jest.fn(),
     constructWebhookEvent: jest.fn(() => webhookEvent),
   };
 
@@ -75,6 +79,7 @@ describe("Stripe Connect payments (e2e)", () => {
       accountId: account.id,
       onboardingStatus: "pending",
       transfersEnabled: false,
+      payoutsEnabled: false,
       requirementsDue: [{ description: "identity" }],
       onboardedAt: null,
     });
@@ -97,7 +102,7 @@ describe("Stripe Connect payments (e2e)", () => {
     );
   });
 
-  it("creates one destination-charge checkout and applies an idempotent paid webhook", async () => {
+  it("collects payment and releases one delayed provider transfer on completion", async () => {
     const { user: customer } = await createUserFixture({
       email: "stripe-customer@example.com",
     });
@@ -113,6 +118,7 @@ describe("Stripe Connect payments (e2e)", () => {
         stripeAccountId: "acct_ready",
         stripeOnboardingStatus: "ready",
         stripeTransfersEnabled: true,
+        stripePayoutsEnabled: true,
       },
     });
 
@@ -178,8 +184,7 @@ describe("Stripe Connect payments (e2e)", () => {
     expect(stripeService.createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         payment_intent_data: expect.objectContaining({
-          application_fee_amount: 1500,
-          transfer_data: { destination: "acct_ready" },
+          transfer_group: `booking:${booking.id}`,
         }),
       }),
       expect.stringMatching(/^checkout-session:/),
@@ -216,6 +221,22 @@ describe("Stripe Connect payments (e2e)", () => {
         .expect(200);
     }
 
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: "completion_pending" },
+    });
+    stripeService.retrievePaymentIntent.mockResolvedValue({
+      id: "pi_e2e",
+      latest_charge: "ch_e2e",
+    });
+    stripeService.createTransfer.mockResolvedValue({ id: "tr_e2e" });
+
+    await request(app.getHttpServer())
+      .patch(`/api/bookings/${booking.id}/status`)
+      .set("Authorization", `Bearer ${customerAuth.accessToken}`)
+      .send({ status: "completed" })
+      .expect(200);
+
     const [updatedBooking, updatedPayment, notifications] = await Promise.all([
       prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }),
       prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
@@ -223,9 +244,21 @@ describe("Stripe Connect payments (e2e)", () => {
         where: { metadata: { path: ["paymentId"], equals: payment.id } },
       }),
     ]);
-    expect(updatedBooking.status).toBe("confirmed");
+    expect(updatedBooking.status).toBe("completed");
     expect(updatedBooking.paymentStatus).toBe("paid");
     expect(updatedPayment.status).toBe("paid");
+    expect(updatedPayment.stripeChargeId).toBe("ch_e2e");
+    expect(updatedPayment.stripeTransferId).toBe("tr_e2e");
+    expect(updatedPayment.transferredAt).toBeInstanceOf(Date);
+    expect(stripeService.createTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 8500,
+        destination: "acct_ready",
+        source_transaction: "ch_e2e",
+        transfer_group: `booking:${booking.id}`,
+      }),
+      `provider-transfer:${payment.id}`,
+    );
     expect(notifications).toHaveLength(2);
     expect(otherCustomer.id).not.toBe(customer.id);
   });

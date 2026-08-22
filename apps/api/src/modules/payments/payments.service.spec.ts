@@ -30,6 +30,9 @@ describe("PaymentsService", () => {
     retrieveCheckoutSession: jest.fn(),
     expireCheckoutSession: jest.fn(),
     createCheckoutSession: jest.fn(),
+    retrievePaymentIntent: jest.fn(),
+    createTransfer: jest.fn(),
+    reverseTransfer: jest.fn(),
     constructWebhookEvent: jest.fn(),
   };
 
@@ -49,6 +52,7 @@ describe("PaymentsService", () => {
       stripeAccountId: "acct_test",
       stripeOnboardingStatus: "ready",
       stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
     },
     quote: {
       status: "accepted",
@@ -69,6 +73,11 @@ describe("PaymentsService", () => {
     checkoutAttempt: 0,
     stripeCheckoutSessionId: null,
     stripePaymentIntentId: null,
+    stripeChargeId: null,
+    stripeTransferId: null,
+    stripeTransferReversalId: null,
+    transferredAt: null,
+    transferReversedAt: null,
   };
 
   beforeEach(() => {
@@ -169,7 +178,7 @@ describe("PaymentsService", () => {
     );
   });
 
-  it("creates a destination-charge Checkout Session", async () => {
+  it("creates a separate-charge Checkout Session without an automatic transfer", async () => {
     prisma.booking.findUnique.mockResolvedValue(booking);
     prisma.payment.upsert.mockResolvedValue(payment);
     prisma.payment.update.mockResolvedValue(payment);
@@ -185,12 +194,68 @@ describe("PaymentsService", () => {
       expect.objectContaining({
         mode: "payment",
         payment_intent_data: expect.objectContaining({
-          application_fee_amount: 1852,
-          transfer_data: { destination: "acct_test" },
+          transfer_group: "booking:booking-1",
         }),
       }),
       "checkout-session:payment-1:0",
     );
+    const params = stripeService.createCheckoutSession.mock.calls[0][0];
+    expect(params.payment_intent_data).not.toHaveProperty(
+      "application_fee_amount",
+    );
+    expect(params.payment_intent_data).not.toHaveProperty("transfer_data");
+  });
+
+  it("releases the provider share once after confirmed payment", async () => {
+    prisma.payment.findUnique.mockResolvedValue({
+      ...payment,
+      status: "paid",
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: "ch_1",
+      provider: booking.provider,
+    });
+    stripeService.createTransfer.mockResolvedValue({ id: "tr_1" });
+    prisma.payment.update.mockResolvedValue({
+      ...payment,
+      stripeTransferId: "tr_1",
+    });
+
+    await service.releaseProviderFunds(booking.id);
+
+    expect(stripeService.createTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: payment.providerAmount,
+        currency: "eur",
+        destination: "acct_test",
+        source_transaction: "ch_1",
+        transfer_group: "booking:booking-1",
+      }),
+      "provider-transfer:payment-1",
+    );
+    expect(prisma.payment.update).toHaveBeenCalledWith({
+      where: { id: payment.id },
+      data: expect.objectContaining({
+        stripeChargeId: "ch_1",
+        stripeTransferId: "tr_1",
+        transferredAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it("does not create a second provider transfer", async () => {
+    prisma.payment.findUnique.mockResolvedValue({
+      ...payment,
+      status: "paid",
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: "ch_1",
+      stripeTransferId: "tr_existing",
+      transferredAt: new Date(),
+      provider: booking.provider,
+    });
+
+    await service.releaseProviderFunds(booking.id);
+
+    expect(stripeService.createTransfer).not.toHaveBeenCalled();
   });
 
   it("rejects an already paid payment", async () => {
@@ -245,6 +310,55 @@ describe("PaymentsService", () => {
     expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith({
       where: { id: "evt_1" },
       data: { processedAt: expect.any(Date) },
+    });
+  });
+
+  it("reverses a released provider transfer after a full refund", async () => {
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+    prisma.stripeWebhookEvent.create.mockResolvedValue({ id: "evt_refund" });
+    prisma.stripeWebhookEvent.update.mockResolvedValue({ id: "evt_refund" });
+    prisma.payment.findUnique.mockResolvedValue({
+      ...payment,
+      status: "paid",
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: "ch_1",
+      stripeTransferId: "tr_1",
+      stripeTransferReversalId: null,
+      transferredAt: new Date(),
+      transferReversedAt: null,
+      provider: { userId: "provider-user-1" },
+    });
+    stripeService.reverseTransfer.mockResolvedValue({ id: "trr_1" });
+    prisma.payment.update.mockResolvedValue(payment);
+    prisma.booking.update.mockResolvedValue(booking);
+
+    await service.processWebhook({
+      id: "evt_refund",
+      type: "charge.refunded",
+      data: {
+        object: {
+          id: "ch_1",
+          amount: payment.grossAmount,
+          amount_refunded: payment.grossAmount,
+          currency: payment.currency,
+          payment_intent: "pi_1",
+        },
+      },
+    } as any);
+
+    expect(stripeService.reverseTransfer).toHaveBeenCalledWith(
+      "tr_1",
+      expect.objectContaining({
+        metadata: expect.objectContaining({ reason: "refund" }),
+      }),
+      "provider-transfer-reversal:payment-1",
+    );
+    expect(prisma.payment.update).toHaveBeenCalledWith({
+      where: { id: payment.id },
+      data: expect.objectContaining({
+        stripeTransferReversalId: "trr_1",
+        transferReversedAt: expect.any(Date),
+      }),
     });
   });
 

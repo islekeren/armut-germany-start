@@ -21,4 +21,9 @@ export class StripeConnectController {
   getStatus(@Req() req: any) {
     return this.stripeConnectService.refreshStatus(req.user.id);
   }
+
+  @Post("stripe-dashboard-link")
+  createDashboardLoginLink(@Req() req: any) {
+    return this.stripeConnectService.createDashboardLoginLink(req.user.id);
+  }
 }

@@ -10,6 +10,7 @@ export interface StripeAccountSnapshot {
   accountId: string;
   onboardingStatus: "pending" | "restricted" | "ready";
   transfersEnabled: boolean;
+  payoutsEnabled: boolean;
   requirementsDue: unknown[];
   onboardedAt: Date | null;
 }
@@ -54,9 +55,12 @@ export class StripeService implements OnModuleInit {
 
   private validateConfiguration() {
     const secretKey = this.required("STRIPE_SECRET_KEY");
-    if (!secretKey.startsWith("sk_test_")) {
+    if (
+      !secretKey.startsWith("sk_test_") &&
+      !secretKey.startsWith("rk_test_")
+    ) {
       throw new InternalServerErrorException(
-        "Only Stripe test-mode secret keys are allowed",
+        "Only Stripe test-mode secret or restricted keys are allowed",
       );
     }
 
@@ -77,13 +81,16 @@ export class StripeService implements OnModuleInit {
   private get stripe() {
     if (!this.stripeClient) {
       const secretKey = this.required("STRIPE_SECRET_KEY");
-      if (!secretKey.startsWith("sk_test_")) {
+      if (
+        !secretKey.startsWith("sk_test_") &&
+        !secretKey.startsWith("rk_test_")
+      ) {
         throw new InternalServerErrorException(
-          "Only Stripe test-mode secret keys are allowed",
+          "Only Stripe test-mode secret or restricted keys are allowed",
         );
       }
       this.stripeClient = new Stripe(secretKey, {
-        apiVersion: "2026-02-25.clover" as Stripe.LatestApiVersion,
+        apiVersion: "2026-07-29.dahlia" as Stripe.LatestApiVersion,
         appInfo: { name: "Armut Germany", version: "0.1.0" },
       });
     }
@@ -181,9 +188,14 @@ export class StripeService implements OnModuleInit {
     const transferStatus =
       account.configuration?.recipient?.capabilities?.stripe_balance
         ?.stripe_transfers?.status;
+    const payoutStatus =
+      account.configuration?.recipient?.capabilities?.stripe_balance?.payouts
+        ?.status;
     const requirementsDue = account.requirements?.entries ?? [];
     const transfersEnabled = transferStatus === "active";
-    const onboardingStatus = transfersEnabled && requirementsDue.length === 0
+    const payoutsEnabled = payoutStatus === "active";
+    const onboardingStatus =
+      transfersEnabled && payoutsEnabled && requirementsDue.length === 0
       ? "ready"
       : transferStatus === "restricted" || transferStatus === "unsupported"
         ? "restricted"
@@ -193,6 +205,7 @@ export class StripeService implements OnModuleInit {
       accountId: account.id,
       onboardingStatus,
       transfersEnabled,
+      payoutsEnabled,
       requirementsDue,
       onboardedAt: onboardingStatus === "ready" ? new Date() : null,
     };
@@ -211,6 +224,31 @@ export class StripeService implements OnModuleInit {
     idempotencyKey: string,
   ) {
     return this.stripe.checkout.sessions.create(params, { idempotencyKey });
+  }
+
+  async retrievePaymentIntent(paymentIntentId: string) {
+    return this.stripe.paymentIntents.retrieve(paymentIntentId);
+  }
+
+  async createTransfer(
+    params: Stripe.TransferCreateParams,
+    idempotencyKey: string,
+  ) {
+    return this.stripe.transfers.create(params, { idempotencyKey });
+  }
+
+  async reverseTransfer(
+    transferId: string,
+    params: Stripe.TransferCreateReversalParams,
+    idempotencyKey: string,
+  ) {
+    return this.stripe.transfers.createReversal(transferId, params, {
+      idempotencyKey,
+    });
+  }
+
+  async createExpressDashboardLoginLink(accountId: string) {
+    return this.stripe.accounts.createLoginLink(accountId);
   }
 
   constructWebhookEvent(rawBody: Buffer, signature: string) {

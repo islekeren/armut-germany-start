@@ -50,13 +50,15 @@ cp apps/api/.env.example apps/api/.env
 | `S3_ACCESS_KEY_ID` | Required for uploads | used by `UploadsService` |
 | `S3_SECRET_ACCESS_KEY` | Required for uploads | used by `UploadsService` |
 | `S3_PUBLIC_URL` | Optional for uploads | used to build public URLs |
-| `STRIPE_SECRET_KEY` | Required for payments | must be a Stripe test-mode `sk_test_` key |
+| `STRIPE_SECRET_KEY` | Required for payments | prefer a least-privilege `rk_test_` key; `sk_test_` is accepted for initial sandbox setup |
 | `STRIPE_WEBHOOK_SECRET` | Required for payments | Stripe CLI or Dashboard endpoint signing secret |
 | `STRIPE_CONNECT_RETURN_URL` | Required for payments | hosted onboarding completion URL |
 | `STRIPE_CONNECT_REFRESH_URL` | Required for payments | expired onboarding-link recovery URL |
 | `STRIPE_CHECKOUT_SUCCESS_URL` | Required for payments | must contain `{bookingId}` |
 | `STRIPE_CHECKOUT_CANCEL_URL` | Required for payments | must contain `{bookingId}` |
 | `PLATFORM_COMMISSION_RATE` | Optional for payments | defaults to `0.15`; must be between 0 and 1 |
+
+See [STRIPE_SANDBOX.md](./STRIPE_SANDBOX.md) for the local Connect onboarding, webhook, payment, and delayed-transfer test flow.
 
 ### API variables present in `.env.example` but not wired as written
 

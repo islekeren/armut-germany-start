@@ -906,6 +906,7 @@
       "loginRequired": "Please log in to manage your payment account.",
       "loadError": "Could not load your Stripe account status.",
       "actionError": "Could not open Stripe onboarding.",
+      "dashboardError": "Could not open the Stripe Dashboard.",
       "returned": "You returned from Stripe. Your verified account status is shown below.",
       "demoTitle": "Test-mode demo",
       "demoHint": "This connection uses Stripe test mode. No real money or live payouts are involved.",
@@ -931,6 +932,7 @@
         "connect": "Connect Stripe account",
         "continue": "Continue onboarding",
         "opening": "Opening Stripe...",
+        "openDashboard": "Open Stripe Dashboard",
         "refresh": "Refresh status"
       }
     },
