@@ -53,7 +53,10 @@ export default async function RootLayout({
 
   return (
     <html lang={locale}>
-      <body className={`${outfit.variable} ${geistMono.variable} antialiased`}>
+      <body
+        suppressHydrationWarning
+        className={`${outfit.variable} ${geistMono.variable} antialiased`}
+      >
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             {children}
