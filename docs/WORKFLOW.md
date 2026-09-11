@@ -1,6 +1,6 @@
 # Workflow
 
-Updated for the repository state audited on July 27, 2026.
+Updated for the repository state audited on September 11, 2026.
 
 ## Purpose
 
@@ -46,8 +46,6 @@ npm run build
 npm run check-types
 ```
 
-If `check-types` fails with a missing `.next/types` file, run the build first and retry.
-
 ### Backend-only
 
 ```bash
@@ -77,7 +75,7 @@ Remember:
 
 - root type-check currently passes
 - root build is currently green
-- root lint currently fails on the web e2e preparation script warnings
+- root lint passes; API lint reports 9 warnings
 
 ## CI Workflow Reality
 
@@ -96,10 +94,11 @@ Use CI as a real validation signal, but do not treat it as a real deployment sys
 
 The repository does not currently define:
 
-- a real production deployment branch
 - a checked-in Vercel config
-- a checked-in Railway config
-- a checked-in infrastructure manifest
+- a complete infrastructure manifest or production topology
+- a real deployment action in the placeholder GitHub Actions deploy jobs
+
+The checked-in Railway and Render API configs are candidates, not proof of the active production host. `main` is canonical; keep `deployment` only as a compatibility mirror fast-forwarded from `main`.
 
 If your change affects deployment, read [DEPLOYMENT.md](./DEPLOYMENT.md) first and avoid inventing missing platform behavior.
 

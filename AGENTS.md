@@ -1,6 +1,6 @@
 # Agent Guide
 
-Updated for the repository state audited on July 27, 2026.
+Updated for the repository state audited on September 11, 2026.
 
 ## Start Here
 
@@ -23,14 +23,14 @@ Do not overwrite unrelated user changes.
 
 ## Current Repo Facts You Should Know
 
-- root `npm run lint` currently fails because `apps/web/scripts/prepare-e2e.mjs` has `process` no-undef warnings and web lint uses `--max-warnings 0`
+- root `npm run lint` passes; API lint reports 9 warnings
 - root `npm run build` passes
 - root `npm run check-types` passes in the current workspace
-- API `check-types`, `build`, `test -- --watchman=false`, and `test:e2e -- --watchman=false` pass
+- API `check-types`, `build`, and `test -- --watchman=false` pass
 - API `lint` passes with warnings
 - API e2e can fail in a restricted sandbox with `EPERM`; the suite passed outside the sandbox on April 10, 2026
 - web `lint` and `build` pass
-- web `check-types` passed after `.next/types` existed; on a fresh checkout, build-first may be necessary
+- web `check-types` generates Next.js route types before running TypeScript and passes in the audited checkout
 - `apps/mobile` is not an active npm workspace even though the folder exists
 
 ## What To Read First By Task Type
@@ -110,7 +110,7 @@ Treat these areas as high-risk:
 - API routes live under `/api`
 - auth tokens are stored in browser `localStorage`
 - the frontend messaging UI is not fully socket-driven yet
-- uploads are meant for S3-compatible storage, but env naming is still inconsistent
+- uploads are meant for S3-compatible storage, and the example credential names now match `UploadsService`
 - the repo does not encode a real production deployment topology
 
 If your task changes any of those, call it out explicitly.
@@ -149,7 +149,7 @@ Do not opportunistically fix these unless the task requires it:
 
 - dormant `apps/mobile` scaffolding
 - root Expo-based `tsconfig.json`
-- `apps/web/scripts/prepare-e2e.mjs` lint warning issue
+- remaining API lint warnings
 - placeholder `ServicesModule` and `ReviewsModule`
 - placeholder provider `services` and `finances` pages
 - placeholder deploy jobs in GitHub Actions

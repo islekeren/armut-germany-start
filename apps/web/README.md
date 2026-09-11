@@ -1,6 +1,6 @@
 # Web App
 
-Updated for the repository state audited on April 10, 2026.
+Updated for the repository state audited on September 11, 2026.
 
 ## Purpose
 
@@ -52,16 +52,11 @@ The web app expects `API_URL` and `NEXT_PUBLIC_API_URL`. See [`ENVIRONMENT.md`](
 
 ## Validation
 
-Observed on April 10, 2026:
+Observed on September 11, 2026:
 
 - `npm run lint`: passes
 - `npm run build`: passes
-- `npm run check-types`: passes in the current workspace after `.next/types` exists
-
-Fresh-checkout caveat:
-
-- `npm run check-types` can fail until `.next/types/cache-life.d.ts` exists
-- if that happens, run `npm run build` once and retry
+- `npm run check-types`: generates route types with `next typegen`, then passes TypeScript validation
 
 ## Current Implementation Notes
 
@@ -69,7 +64,7 @@ Fresh-checkout caveat:
 - frontend/backend coupling is intentionally centralized in `lib/api.ts`
 - customer quote acceptance redirects to `/bookings/new` because booking creation is still a separate step
 - notifications are implemented as a real page and API flow
-- provider `services` and `finances` pages still render placeholder content
+- provider `services` and `finances` pages render placeholder content on `main`; the payment feature branch replaces `finances` with Stripe Connect onboarding and Dashboard access
 
 ## Safe Change Notes
 

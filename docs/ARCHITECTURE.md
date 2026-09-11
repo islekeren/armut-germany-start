@@ -1,6 +1,6 @@
 # Architecture
 
-Audited against the repository on April 10, 2026.
+Audited against the current checkout on September 11, 2026.
 
 ## System Shape
 
@@ -47,7 +47,7 @@ Observed fallback pages:
 - Auth tokens are stored in `localStorage`
 - The frontend supports customer bookings, messages, notifications, and request management
 - Provider `orders`, `calendar`, `profile`, `reviews`, `messages`, and `requests` have real route implementations
-- Provider `services` and `finances` routes exist but still render placeholder content
+- Provider `services` and `finances` routes are placeholders on `main`; the payment feature branch adds Stripe Connect onboarding, status refresh, and Express Dashboard access to `finances`
 
 ## Backend
 
@@ -169,6 +169,28 @@ Important invariant:
 - bookings move through `pending`, `confirmed`, `in_progress`, `completion_pending`, `completed`, and `cancelled`
 - booking completion and other state changes can emit notifications
 
+### Payments and Stripe Connect
+
+The current `codex/stripe-connect-payments` checkout contains:
+
+- provider Stripe Connect Accounts v2 onboarding and status refresh
+- Express Dashboard login links
+- hosted Checkout sessions using separate charges and transfers
+- signed webhook processing that records successful booking payments
+- delayed provider transfer after customer-confirmed completion
+- paid bookings must be refunded before cancellation
+
+Release boundary:
+
+- this implementation has not yet been merged into `origin/main`
+- `main` must remain the canonical integration branch; synchronize, review, test, and merge the feature branch before describing payments as released
+
+Known reliability work before production use:
+
+- block quote acceptance when the selected provider cannot receive Stripe payments
+- distinguish a returned Checkout session from a webhook-confirmed payment instead of showing an active payment state too early
+- avoid coupling booking-completion HTTP latency to a synchronous provider transfer
+
 ### Messaging
 
 - backend supports REST and a Socket.IO gateway
@@ -192,18 +214,19 @@ Important invariant:
 ### `packages/shared`
 
 - contains shared types and utility exports
-- currently blocks root `npm run check-types` because NodeNext exports need explicit file extensions
-- no direct app imports were found during this audit
+- is declared as a dependency by both active apps but is not yet broadly imported by application source
+- passes its current lint, type-check, and unit-test tasks
+- is not yet the single source of truth for every API/frontend contract
 
 ### `packages/ui`
 
 - small component scaffold package
-- no direct app imports were found during this audit
+- is available to the web app as `@repo/ui`, although most product UI still lives under `apps/web/components`
 - the actual frontend UI lives under `apps/web/components`
 
 ## External Dependencies
 
-### Actively wired
+### Actively wired on `main`
 
 - PostgreSQL
 - Prisma
@@ -212,10 +235,14 @@ Important invariant:
 - S3-compatible object storage
 - `next-intl`
 
+### Wired in the payment feature branch but not yet on `main`
+
+- Stripe Connect Accounts v2 onboarding, hosted Checkout, signed payment webhooks, and delayed transfers
+
 ### Present but only partially wired or not used by current code
 
 - Redis is available locally and in CI, but cache currently runs in memory
-- Stripe env variables and a `Payment` model exist, but there is no payments module
+- On `main`, Stripe env variables and a `Payment` model exist, but there is no payments module
 - SendGrid env variables exist, but no email integration was found
 - Meilisearch dependency and env example exist, but no active search module was found
 - Google Maps env example exists, but no active Google Maps integration was found in current code

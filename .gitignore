@@ -18,6 +18,9 @@ coverage
 # Turbo
 .turbo
 
+# Local Git worktrees
+.worktrees/
+
 # Vercel
 .vercel
 
@@ -36,4 +39,3 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
-

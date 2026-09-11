@@ -1,6 +1,6 @@
 # Project Gap Report
 
-Observed and updated on July 27, 2026.
+Observed and updated on September 11, 2026.
 
 ## Scope
 
@@ -16,38 +16,54 @@ It is a repo-grounded gap report based on:
 ## Current Snapshot
 
 - the web app has broad route coverage for customer and provider flows
-- the API now includes notifications and passes unit and e2e tests
-- root build and type-check are green
-- the biggest remaining repo-wide tooling issue is the root lint failure from `apps/web/scripts/prepare-e2e.mjs`
+- the API includes notifications and the payment feature branch includes Stripe Connect payments
+- root lint, build, type-check, and all 283 unit tests on `main` are green
+- API lint still reports 9 warnings
+- API e2e was not rerun in this audit because the local Docker daemon was unavailable
+- payment work and the latest `origin/main` dashboard fixes are not yet integrated on one canonical branch
 
 ## Active Gaps
 
 ### 1. Validation and tooling gaps
 
-- Root `npm run lint` currently fails because `apps/web/scripts/prepare-e2e.mjs` uses `process` without a Node/global ESLint declaration.
-- Web `npm run check-types` can still be order-sensitive on a fresh checkout until `.next/types/cache-life.d.ts` exists.
+- Root lint now passes; the previous `prepare-e2e.mjs` Node-global problem is resolved.
+- Web type-check now runs `next typegen` before TypeScript and passes in the current checkout.
 - API lint still passes with 9 warnings instead of a clean warning-free baseline.
+- The root `tsconfig.json` still extends Expo configuration and produces a warning during otherwise passing unit-test runs.
+- The latest API e2e and Playwright status needs reconfirmation in a Docker-capable environment before release.
 
 ### 2. Product and UX gaps
 
 - Public routes like `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to a generic coming-soon page instead of final content.
-- Provider `services` and `finances` pages exist, but they still render placeholder content.
+- Provider `services` remains a placeholder; `finances` has Stripe Connect test-mode onboarding and Dashboard access in the payment feature branch.
 - Quote acceptance still requires an explicit follow-up booking creation step.
 - Messaging has a realtime backend gateway, but the current frontend experience is still primarily REST-driven.
+- Homepage search and category price/postcode/sort controls are not yet a complete end-to-end search experience.
+- Forgot-password remains a coming-soon route; there is no reset-token and email-delivery flow.
+- Provider calendar actions such as details, messaging, availability, and appointment creation remain incomplete.
 
 ### 3. Backend domain gaps
 
 - `ServicesModule` is still an empty shell.
 - `ReviewsModule` is still an empty shell.
-- A `Payment` model exists in Prisma, but there is still no payments controller or service module.
+- Payment controllers and services exist in the current feature branch but are not yet in `origin/main`.
+- Quote acceptance does not check whether the selected provider is eligible to receive Stripe payments.
+- Payment return/webhook processing state is not represented clearly enough for the frontend to avoid premature active-payment messaging.
+- Booking completion currently waits on the Stripe transfer path, which can exceed the frontend timeout even if Stripe succeeds.
+- Request taxonomy invariants are enforced on create but not consistently on update.
+- Notification failures can still make otherwise successful domain mutations appear failed.
 
 ### 4. Platform and configuration gaps
 
-- Upload env names are inconsistent between `apps/api/.env.example` and `UploadsService`.
-- The repo has no checked-in real deployment manifest such as `railway.json` or `vercel.json`.
+- Upload env names are now aligned between `apps/api/.env.example` and `UploadsService`.
+- `railway.json` and `render.yaml` exist, but the production host and externally selected deployment branch are not confirmed.
+- `railway.json` runs `db:seed` during every pre-deploy, which is unsafe for production.
+- The checked-in `Dockerfile` is not a complete runnable production image.
+- No checked-in frontend deployment config defines the production web release path.
 - GitHub Actions deploy jobs are placeholders only.
 - `apps/mobile` is still dormant scaffolding rather than a real workspace.
 - the root `tsconfig.json` still extends Expo config even though the mobile workspace is not active.
+- auth and socket configuration must not rely on fallback JWT secrets in production.
 
 ### 5. Shared-package gaps
 
@@ -56,22 +72,39 @@ It is a repo-grounded gap report based on:
 
 ## Suggested Priority Order
 
-### P0
+### 0. Establish a canonical branch
 
-- Fix `apps/web/scripts/prepare-e2e.mjs` lint warnings so root lint becomes a trustworthy gate.
-- Reconcile upload env names between code and example config.
+- Keep `main` canonical and synchronize `codex/stripe-connect-payments` with `origin/main`.
+- Resolve the combined dashboard/payment state and validate it before merging through a pull request.
+- Keep `deployment` synchronized as a compatibility mirror of `main`; never integrate feature work there directly.
 
-### P1
+### 1. Remove production and payment blockers
 
-- Decide whether placeholder public pages should stay as coming-soon routes or become real content pages.
-- Replace provider `services` and `finances` placeholders with real product flows or relabel them more explicitly as beta.
-- Decide whether the explicit quote-to-booking handoff is the intended product behavior.
+- Remove automatic production seeding and require strong production JWT secrets.
+- Complete Stripe eligibility, webhook-processing state, and transfer-latency reliability work.
+- Reconfirm API and Playwright e2e, then merge and release the payment feature.
 
-### P2
+### 2. Finish beta-critical product surfaces
 
-- Decide whether to formalize deployment config in-repo or document the external release process properly.
-- Decide whether to keep or remove dormant mobile scaffolding.
-- Decide whether `packages/shared` and `packages/ui` should become real integration points or stay scaffold-only.
+- Implement forgot-password/reset-email behavior.
+- Replace German beta legal and trust placeholders with reviewed content.
+- Implement provider service management and resolve service/category request visibility.
+- Choose the search baseline, then complete homepage and category filtering.
+
+### 3. Reliability and maintainability
+
+- Align request-update taxonomy validation with create behavior.
+- Preserve timeout/abort behavior across token-refresh retries.
+- Isolate notification failures from successful domain mutations.
+- Move shared request taxonomy/contracts out of direct frontend imports from API source.
+- Clean the lint baseline, improve readiness/monitoring, and document the real release path.
+
+### 4. Product follow-through
+
+- Complete review moderation boundaries, provider calendar actions, route consolidation, and frontend realtime messaging.
+- Make the native-versus-WebView mobile decision only after the beta web flow is stable.
+
+See [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md) for the ordered Linear implementation sequence and release gates.
 
 ## Recommended Use Of This File
 
