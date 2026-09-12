@@ -12,12 +12,14 @@ import {
   BookingQueryDto,
 } from "./dto/booking.dto";
 import { NotificationsService } from "../notifications/notifications.service";
+import { PaymentsService } from "../payments/payments.service";
 
 @Injectable()
 export class BookingsService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    private paymentsService: PaymentsService,
   ) {}
 
   private sanitizeImages(images?: string[]) {
@@ -372,10 +374,16 @@ export class BookingsService {
           select: {
             id: true,
             bookingId: true,
-            stripePaymentId: true,
-            amount: true,
+            grossAmount: true,
+            platformFeeAmount: true,
+            providerAmount: true,
             currency: true,
             status: true,
+            paidAt: true,
+            failedAt: true,
+            refundedAt: true,
+            transferredAt: true,
+            transferReversedAt: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -434,6 +442,12 @@ export class BookingsService {
       );
     }
 
+    if (status === "cancelled" && booking.paymentStatus === "paid") {
+      throw new BadRequestException(
+        "Paid bookings must be refunded before cancellation",
+      );
+    }
+
     // Provider-driven states
     if (
       ["confirmed", "in_progress", "completion_pending"].includes(status) &&
@@ -452,6 +466,8 @@ export class BookingsService {
           "Booking must be marked as completion pending before customer confirmation",
         );
       }
+
+      await this.paymentsService.releaseProviderFunds(booking.id);
     }
 
     const previousStatus = booking.status;

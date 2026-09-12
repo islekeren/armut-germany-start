@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
+    "prebuild": "prisma generate",
     "build": "nest build",
     "start": "nest start",
     "start:prod": "node dist/main",
     "lint": "eslint .",
+    "precheck-types": "prisma generate",
     "check-types": "tsc --noEmit",
     "test": "npm run test:unit",
     "test:unit": "jest --watchman=false",
@@ -56,6 +58,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
+    "stripe": "^22.5.0",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0"
   },

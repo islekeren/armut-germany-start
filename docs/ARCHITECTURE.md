@@ -47,7 +47,7 @@ Observed fallback pages:
 - Auth tokens are stored in `localStorage`
 - The frontend supports customer bookings, messages, notifications, and request management
 - Provider `orders`, `calendar`, `profile`, `reviews`, `messages`, and `requests` have real route implementations
-- Provider `services` and `finances` routes exist but still render placeholder content
+- Provider `services` remains a placeholder; `finances` provides Stripe Connect test-mode onboarding and status refresh
 
 ## Backend
 
@@ -76,6 +76,7 @@ Observed in `apps/api/src/app.module.ts`:
 - `QuotesModule`
 - `UploadsModule`
 - `NotificationsModule`
+- `PaymentsModule`
 
 Important nuance:
 
@@ -97,6 +98,7 @@ Observed controller groups:
 - `/api/uploads`
 - `/api/admin`
 - `/api/notifications`
+- `/api/payments`
 
 ### Common infrastructure
 
@@ -167,6 +169,7 @@ Important invariant:
 
 - booking creation requires an accepted quote
 - bookings move through `pending`, `confirmed`, `in_progress`, `completion_pending`, `completed`, and `cancelled`
+- paid bookings must be refunded before they can be cancelled
 - booking completion and other state changes can emit notifications
 
 ### Messaging
@@ -215,7 +218,7 @@ Important invariant:
 ### Present but only partially wired or not used by current code
 
 - Redis is available locally and in CI, but cache currently runs in memory
-- Stripe env variables and a `Payment` model exist, but there is no payments module
+- Stripe Connect Accounts v2 onboarding, hosted Checkout separate charges and transfers, Express Dashboard access, and signed payment webhooks are wired for test mode
 - SendGrid env variables exist, but no email integration was found
 - Meilisearch dependency and env example exist, but no active search module was found
 - Google Maps env example exists, but no active Google Maps integration was found in current code

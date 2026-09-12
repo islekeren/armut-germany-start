@@ -4,6 +4,7 @@ Project documentation lives here so the repository root stays focused.
 
 - [Architecture](./ARCHITECTURE.md): system shape, core flows, and danger zones
 - [Environment](./ENVIRONMENT.md): env vars, local services, and config mismatches
+- [Stripe sandbox](./STRIPE_SANDBOX.md): Connect onboarding, webhooks, payments, and delayed provider transfers
 - [Testing](./TESTING.md): current validation matrix and caveats
 - [Deployment](./DEPLOYMENT.md): release and hosting notes
 - [Contributing](./CONTRIBUTING.md): repo-specific contribution guidance

@@ -42,12 +42,22 @@ describe("BookingsService", () => {
   const notificationsService = {
     create: jest.fn(),
   };
+  const paymentsService = {
+    releaseProviderFunds: jest.fn(),
+  };
 
   let service: BookingsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new BookingsService(prisma as any, notificationsService as any);
+    paymentsService.releaseProviderFunds.mockResolvedValue({
+      stripeTransferId: "tr_test",
+    });
+    service = new BookingsService(
+      prisma as any,
+      notificationsService as any,
+      paymentsService as any,
+    );
   });
 
   describe("create", () => {
@@ -307,6 +317,7 @@ describe("BookingsService", () => {
         where: { id: "r1" },
         data: { status: "completed" },
       });
+      expect(paymentsService.releaseProviderFunds).toHaveBeenCalledWith("b1");
     });
 
     it("notifies both parties when the customer confirms completion", async () => {
@@ -354,6 +365,25 @@ describe("BookingsService", () => {
       });
     });
 
+    it("does not complete the booking when provider funds cannot be released", async () => {
+      prisma.booking.findUnique.mockResolvedValue({
+        id: "b-unpaid",
+        status: "completion_pending",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+        quote: { requestId: "r1" },
+      });
+      paymentsService.releaseProviderFunds.mockRejectedValue(
+        new BadRequestException("Booking must have a confirmed payment"),
+      );
+
+      await expect(
+        service.updateStatus("b-unpaid", "customer-1", "completed"),
+      ).rejects.toThrow("Booking must have a confirmed payment");
+      expect(prisma.booking.update).not.toHaveBeenCalled();
+      expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
+    });
+
     it("notifies both parties when a booking is cancelled", async () => {
       prisma.booking.findUnique.mockResolvedValue({
         id: "b2",
@@ -395,6 +425,22 @@ describe("BookingsService", () => {
           previousStatus: "confirmed",
         },
       });
+    });
+
+    it("requires a paid booking to be refunded before cancellation", async () => {
+      prisma.booking.findUnique.mockResolvedValue({
+        id: "b-paid",
+        status: "confirmed",
+        paymentStatus: "paid",
+        customerId: "customer-1",
+        provider: { userId: "provider-user" },
+        quote: { requestId: "r-paid" },
+      });
+
+      await expect(
+        service.updateStatus("b-paid", "customer-1", "cancelled"),
+      ).rejects.toThrow("Paid bookings must be refunded before cancellation");
+      expect(prisma.booking.update).not.toHaveBeenCalled();
     });
   });
 

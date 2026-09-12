@@ -19,6 +19,7 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         ...process.env,
+        NODE_ENV: "test",
         DATABASE_URL:
           process.env.DATABASE_URL ||
           "postgresql://postgres:postgres@127.0.0.1:5432/armut_test",
