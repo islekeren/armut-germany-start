@@ -144,7 +144,7 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 - Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
 - Provider `services` and `finances` are placeholders on `main`; the payment feature branch replaces `finances` with Stripe Connect test-mode onboarding and Express Dashboard access.
 - The payment feature branch uses separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
-- The Stripe payment work has not yet been merged into `origin/main`; do not treat it as released until the branch is synchronized, reviewed, validated, and merged.
+- The Stripe payment work is synchronized with `origin/main` in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), but it is not released and remains blocked by payment-safety work.
 - `ServicesModule` and `ReviewsModule` are still empty backend shells.
 - Notifications are now a real API module and frontend page.
 
@@ -179,7 +179,7 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 - Use `main` as the canonical integration and release branch.
 - Develop work on short-lived branches and merge through reviewed pull requests after required checks pass.
 - Do not commit directly to `main` or keep long-running product work only on `deployment`.
-- Synchronize `codex/stripe-connect-payments` with `origin/main`, resolve and validate the combined changes, then merge it into `main`.
+- Keep `codex/stripe-connect-payments` synchronized with `origin/main`; resolve the release blockers documented in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8) before merging it into `main`.
 - Keep `deployment` as a compatibility mirror of `main`; do not merge feature work into it directly, and synchronize it only after reviewed changes land on `main`.
 
 This is the recommended repository policy, not proof of the current settings in Railway, Render, Vercel, or another external hosting dashboard.

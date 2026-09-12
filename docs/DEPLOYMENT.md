@@ -107,16 +107,16 @@ See [ENVIRONMENT.md](./ENVIRONMENT.md) for the variable inventory. Never use exa
 Current repository state:
 
 - the active payment work is on `codex/stripe-connect-payments`
-- the payment feature must include `origin/main`'s dashboard hydration changes before integration
+- the payment feature includes `origin/main`'s dashboard hydration changes and is open as draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8)
 - the payment commits have not been merged into `origin/main`
-- a long-lived `deployment` branch exists, but repository files do not prove that an external host still deploys from it
+- `deployment` was fast-forwarded to the current `origin/main` on September 12, 2026, but repository files do not prove that an external host deploys from it
 
 Recommended policy:
 
 1. Use `main` as the canonical integration and release branch.
 2. Create short-lived feature and fix branches from an up-to-date `origin/main`.
 3. Require pull requests, review, and green checks; do not commit directly to `main`.
-4. Synchronize `codex/stripe-connect-payments` with `origin/main`, resolve the combined changes, run the full payment-sensitive validation set, and merge through a pull request.
+4. Keep `codex/stripe-connect-payments` synchronized with `origin/main`, resolve the payment-safety blockers in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), and merge only after the full payment-sensitive validation set passes.
 5. Verify the selected production branch in every external hosting dashboard.
 6. Keep `deployment` as a compatibility mirror of `main`: never merge feature work into it directly, and fast-forward it only after reviewed changes land on `main`.
 

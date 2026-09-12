@@ -22,31 +22,31 @@
 
 ## Task 1: Publish the documentation refresh
 
-- [ ] Resolve documentation conflicts against current `origin/main`.
-- [ ] Align all branch guidance with the decision to retain `deployment` as a mirror.
-- [ ] Run formatting, diff, lint, type-check, build, and unit-test validation.
-- [ ] Commit and push `codex/planning-docs-refresh`.
-- [ ] Open a pull request targeting `main` and request review.
+- [x] Resolve documentation conflicts against current `origin/main`.
+- [x] Align all branch guidance with the decision to retain `deployment` as a mirror.
+- [x] Run formatting, diff, lint, type-check, build, and unit-test validation.
+- [x] Commit and push `codex/planning-docs-refresh`.
+- [x] Open pull request [#7](https://github.com/islekeren/armut-germany-start/pull/7) targeting `main` and complete independent review.
 
 ## Task 2: Reconcile and publish the payment branch
 
-- [ ] Create an isolated worktree for `codex/stripe-connect-payments`.
-- [ ] Fast-forward the local branch to `origin/codex/stripe-connect-payments`.
-- [ ] Establish a passing branch baseline, then merge current `origin/main` without rebasing published commits.
-- [ ] Run root lint, type-check, build, unit tests, and all available payment-sensitive checks.
-- [ ] Review the combined diff and document known release blockers.
-- [ ] Push the synchronized branch and open a draft pull request targeting `main`.
+- [x] Create an isolated worktree for `codex/stripe-connect-payments`.
+- [x] Fast-forward the local branch to `origin/codex/stripe-connect-payments`.
+- [x] Establish a passing branch baseline, then merge current `origin/main` without rebasing published commits.
+- [x] Run root lint, type-check, build, unit tests, API e2e, and Playwright on clean test data.
+- [x] Review the combined diff and document known release blockers.
+- [x] Push the synchronized branch and open draft pull request [#8](https://github.com/islekeren/armut-germany-start/pull/8) targeting `main`.
 
 ## Task 3: Synchronize the deployment compatibility branch
 
-- [ ] Create an isolated worktree for `deployment`.
-- [ ] Fast-forward `deployment` to current `origin/main`.
-- [ ] Push without adding feature-only commits.
-- [ ] Confirm local and remote deployment tips match current `main`.
+- [x] Create an isolated worktree for `deployment`.
+- [x] Fast-forward `deployment` to current `origin/main`.
+- [x] Push without adding feature-only commits.
+- [x] Confirm local and remote deployment tips match current `main`.
 - [ ] Repeat the fast-forward after approved pull requests merge into `main`.
 
 ## Task 4: Final audit and handoff
 
-- [ ] Confirm both pull requests target `main` and report their review/release caveats.
-- [ ] Confirm no stale mobile prototype branch was merged or deleted.
+- [x] Confirm both pull requests target `main` and report their review/release caveats.
+- [x] Confirm no stale mobile prototype branch was merged or deleted.
 - [ ] Report validation evidence, e2e limitations, and the required post-merge deployment sync.

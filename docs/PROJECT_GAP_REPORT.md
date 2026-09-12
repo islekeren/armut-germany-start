@@ -19,8 +19,8 @@ It is a repo-grounded gap report based on:
 - the API includes notifications and the payment feature branch includes Stripe Connect payments
 - root lint, build, type-check, and all 283 unit tests on `main` are green
 - API lint still reports 9 warnings
-- API e2e was not rerun in this audit because the local Docker daemon was unavailable
-- payment work and the latest `origin/main` dashboard fixes are not yet integrated on one canonical branch
+- API e2e was not rerun on `main`; the synchronized payment branch passed 19/19 API e2e tests and 3/3 Playwright flows on a clean test database on September 12
+- payment work now includes the latest `origin/main` dashboard fixes in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), but it is not yet merged into the canonical branch
 
 ## Active Gaps
 
@@ -49,6 +49,8 @@ It is a repo-grounded gap report based on:
 - Payment controllers and services exist in the current feature branch but are not yet in `origin/main`.
 - Quote acceptance does not check whether the selected provider is eligible to receive Stripe payments.
 - Payment return/webhook processing state is not represented clearly enough for the frontend to avoid premature active-payment messaging.
+- Checkout retries do not correlate immutable attempts, so a delayed webhook from an older attempt can invalidate a newer payable session.
+- A dispute opened before provider transfer is not persisted as a payout-blocking state; this is tracked by ARM-39.
 - Booking completion currently waits on the Stripe transfer path, which can exceed the frontend timeout even if Stripe succeeds.
 - Request taxonomy invariants are enforced on create but not consistently on update.
 - Notification failures can still make otherwise successful domain mutations appear failed.
@@ -74,15 +76,15 @@ It is a repo-grounded gap report based on:
 
 ### 0. Establish a canonical branch
 
-- Keep `main` canonical and synchronize `codex/stripe-connect-payments` with `origin/main`.
-- Resolve the combined dashboard/payment state and validate it before merging through a pull request.
+- Keep `main` canonical; the payment branch is synchronized and available in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8).
+- Resolve the payment-safety blockers identified by review before moving PR #8 out of draft.
 - Keep `deployment` synchronized as a compatibility mirror of `main`; never integrate feature work there directly.
 
 ### 1. Remove production and payment blockers
 
 - Remove automatic production seeding and require strong production JWT secrets.
-- Complete Stripe eligibility, webhook-processing state, and transfer-latency reliability work.
-- Reconfirm API and Playwright e2e, then merge and release the payment feature.
+- Complete Stripe eligibility, immutable Checkout-attempt processing, dispute blocking, and transfer-latency reliability work.
+- Keep API and Playwright e2e green, then merge and release the payment feature.
 
 ### 2. Finish beta-critical product surfaces
 

@@ -14,14 +14,15 @@ This roadmap orders the known work by dependency and release risk. It does not a
 
 ## Phase 0: Reconcile Branches Before More Feature Work
 
-The payment feature and latest `origin/main` dashboard fixes are currently split across branches. Resolve that divergence first:
+The payment feature now includes the latest `origin/main` dashboard fixes in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8). The branch reconciliation steps completed on September 12 were:
 
-1. update local knowledge of `origin/main` and the payment feature branch
-2. synchronize `codex/stripe-connect-payments` with `origin/main`
-3. resolve and review the combined dashboard, navigation, notification, and payment changes
-4. run root lint, type-check, build, and all unit tests
-5. run API and Playwright e2e in a Docker-capable environment
-6. run the Stripe sandbox onboarding, checkout, webhook, completion, transfer, cancellation, and refund checks relevant to the changed flow
+1. updated local knowledge of `origin/main` and the payment feature branch
+2. fast-forwarded the local payment branch to its remote and merged `origin/main` without rewriting history
+3. reviewed the combined dashboard, navigation, notification, and payment changes
+4. passed root lint, type-check, build, and all 300 unit tests on the payment branch
+5. passed 19/19 API e2e tests and 3/3 Playwright flows on a clean migrated/seeded database
+
+Stripe-hosted sandbox onboarding, real webhook delivery, completion, transfer, cancellation, refund, and dispute checks still require valid test credentials and the safety work below.
 
 Do not merge the payment feature merely to make the branches look aligned. Phase 1 closes its production blockers before ARM-33 is considered released.
 
@@ -34,16 +35,17 @@ Implement in this order:
 1. **ARM-25 — deployment hardening:** remove automatic `db:seed` from Railway production pre-deploy and document the real migration/release procedure.
 2. **ARM-38 — production JWT secrets:** fail safely when secure auth/socket secrets are missing in production; remove reliance on fallback secrets and add configuration tests.
 3. **ARM-34 — Stripe eligibility before acceptance:** prevent quote acceptance when the provider cannot receive payments, with an actionable customer/provider state.
-4. **ARM-36 — payment processing state:** distinguish Checkout return from webhook-confirmed payment so the UI does not show an active payment prematurely.
-5. **ARM-37 — completion/transfer latency:** decouple or safely handle the provider transfer so customer completion does not time out while Stripe succeeds.
-6. **ARM-33 — merge and release payments:** reconfirm payment unit/e2e/manual flows, merge through a pull request into `main`, and release only through the verified hosting path.
+4. **ARM-36 — Checkout attempt and processing state:** correlate immutable attempts, reject stale webhook state changes, and distinguish Checkout return from webhook-confirmed payment.
+5. **ARM-39 — dispute before payout:** persist dispute state and prevent provider release whether the dispute arrives before or after transfer.
+6. **ARM-37 — completion/transfer latency:** decouple or safely handle the provider transfer so customer completion does not time out while Stripe succeeds.
+7. **ARM-33 — merge and release payments:** reconfirm payment unit/e2e/manual flows, move draft PR #8 to review, merge it into `main`, and release only through the verified hosting path.
 
 Exit criteria:
 
 - production deploy does not seed demo data
 - production cannot start with known fallback JWT secrets
 - payment eligibility is checked before the customer commits to the provider
-- checkout, webhook processing, transfer, cancellation, and refund states are idempotent and visible
+- checkout attempts, webhook processing, disputes, transfers, reversals, cancellation, and refund states are idempotent and visible
 - the combined work is on `main` with green release-relevant checks
 
 ## Phase 2: Beta Trust And Account Recovery
@@ -98,7 +100,7 @@ Mobile scaffolding should not distract from production web reliability.
 
 - **ARM-21 is complete** based on the audited category list/detail behavior and tests; keep it in `Done`.
 - Rewrite stale issue descriptions to reflect the remaining scope rather than already implemented screens.
-- Add ungrouped payment/provider issues to the project before planning a cycle.
+- Keep newly discovered payment/provider risks in the project and link release blockers to ARM-33.
 - Add concrete reproduction IDs and expected/actual behavior to ARM-32 and ARM-35.
 - Assign owners, estimates, cycle placement, and due dates only through an explicit team planning decision.
 
