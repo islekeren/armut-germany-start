@@ -1,48 +1,40 @@
 # Testing
 
-Audited against the repository on July 27, 2026.
+Audited against the current checkout on September 11, 2026.
 
 ## Current Command Matrix
 
-| Command | Scope | Status | Notes |
-| --- | --- | --- | --- |
-| `npm run lint` | whole repo | Fail | web lint fails because `apps/web/scripts/prepare-e2e.mjs` has `process` no-undef warnings and web lint uses `--max-warnings 0`; API lint emits 9 warnings |
-| `npm run build` | whole repo | Pass | builds both `web` and `api` successfully |
-| `npm run check-types` | whole repo | Pass | passes in the current workspace |
-| `cd apps/web && npm run lint` | web | Fail | `apps/web/scripts/prepare-e2e.mjs` uses `process` without a Node/global ESLint declaration |
-| `cd apps/web && npm run build` | web | Pass | Next.js production build succeeds |
-| `cd apps/web && npm run check-types` | web | Pass with caveat | passed after `.next/types` existed; on a fresh checkout it can fail until `cache-life.d.ts` is generated |
-| `cd apps/api && npm run lint` | api | Pass with warnings | 9 warnings, 0 errors |
-| `cd apps/api && npm run check-types` | api | Pass | no current TypeScript failures |
-| `cd apps/api && npm run build` | api | Pass | Nest build succeeds |
-| `cd apps/api && npm run test -- --watchman=false` | api unit tests | Pass | 27 suites, 248 tests passed |
-| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e | Pass with environment caveat | passed outside the sandbox; in a restricted sandbox it failed with `EPERM` while binding a local server |
+| Command                                               | Scope                 | Status                   | Notes                                                                                                           |
+| ----------------------------------------------------- | --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `npm run lint`                                        | whole repo            | Pass with warnings       | all lint tasks exit successfully; API lint emits 9 warnings and 0 errors                                        |
+| `npm run build`                                       | whole repo            | Pass                     | builds both `web` and `api` successfully                                                                        |
+| `npm run check-types`                                 | whole repo            | Pass                     | active apps and packages pass                                                                                   |
+| `npm run test`                                        | whole repo            | Pass with config warning | 283 tests pass on `main`: API 262, web 14, shared 4, UI 3; the root Expo `tsconfig.json` produces a warning     |
+| `cd apps/web && npm run lint`                         | web                   | Pass                     | `prepare-e2e.mjs` now declares its Node global                                                                  |
+| `cd apps/web && npm run build`                        | web                   | Pass                     | Next.js production build succeeds                                                                               |
+| `cd apps/web && npm run check-types`                  | web                   | Pass                     | the script runs `next typegen` before `tsc --noEmit`                                                            |
+| `cd apps/web && npm run test`                         | web unit tests        | Pass                     | 14 tests passed                                                                                                 |
+| `cd apps/api && npm run lint`                         | api                   | Pass with warnings       | 9 warnings, 0 errors                                                                                            |
+| `cd apps/api && npm run check-types`                  | api                   | Pass                     | no current TypeScript failures                                                                                  |
+| `cd apps/api && npm run build`                        | api                   | Pass                     | Nest build succeeds                                                                                             |
+| `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 30 suites, 262 tests passed on `main`                                                                           |
+| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Not rerun in this audit  | Docker daemon was unavailable on September 11, 2026; the suite previously passed outside the restricted sandbox |
+| `cd packages/shared && npm run test`                  | shared unit tests     | Pass                     | 4 tests passed                                                                                                  |
+| `cd packages/ui && npm run test`                      | UI package unit tests | Pass                     | 3 tests passed                                                                                                  |
 
-## Current Failures
+## Current Caveats
 
-### Root lint
+### API lint warnings
 
-Observed failure on July 27, 2026:
+Root and API lint now exit successfully. API lint still reports 9 warnings in cache, auth, bookings, messages, and requests code. They do not currently fail CI, but a warning-free baseline would make future lint regressions easier to spot.
 
-- `apps/web/scripts/prepare-e2e.mjs` references `process`
-- the web lint command uses `--max-warnings 0`
+### Root Expo TypeScript configuration warning
 
-Current effect:
+The root `tsconfig.json` still extends `expo/tsconfig.base` even though `apps/mobile` is not an active npm workspace. Unit tests pass, but tooling can emit a warning while loading the root config. Treat that as known scaffolding debt, not a failed test.
 
-- root `npm run lint` fails even though the issue is currently warnings only
+### Web generated types
 
-### Web clean-checkout caveat
-
-Observed sequence on April 10, 2026:
-
-1. `cd apps/web && npm run check-types` failed because `.next/types/cache-life.d.ts` was missing
-2. `cd apps/web && npm run build` succeeded
-3. `cd apps/web && npm run check-types` then passed
-
-Current interpretation:
-
-- this is not a proven code failure in `apps/web`
-- it is a generated-types ordering issue worth knowing about on a fresh checkout
+The web `check-types` script now runs `next typegen` before TypeScript, which removes the previously documented build-first dependency. If a fresh checkout still reports missing `.next/types` files, rerun the command after clearing stale generated state and record the exact failure.
 
 ### API e2e caveat in restricted environments
 
@@ -55,10 +47,11 @@ Current interpretation:
 
 - the e2e suite itself is green
 - some restricted environments need elevated execution to let Supertest bind a local server
+- the September 11 audit could not reconfirm it because the local Docker daemon was unavailable; do not report a fresh e2e pass from this audit
 
 ## Current Warning Baseline
 
-`cd apps/api && npm run lint` currently exits successfully but reports warnings in these areas:
+`cd apps/api && npm run lint` currently exits successfully but reports 9 warnings in these areas:
 
 - unused args/imports in cache, auth, bookings, messages, and requests code
 
@@ -85,7 +78,7 @@ npm run build
 npm run check-types
 ```
 
-If `check-types` fails on a fresh checkout with a missing `.next/types` file, run the build first and retry.
+The script generates Next.js types itself. If generated-type failures recur, capture and investigate them rather than treating build-first as a permanent required step.
 
 ### Backend-only changes
 
@@ -146,7 +139,8 @@ Observed in `.github/workflows/ci.yml`:
 Practical meaning:
 
 - CI is useful for lint, build, and API coverage
-- root lint is not a dependable gate until the web e2e preparation script lint warning is fixed
+- root lint is a usable gate again, although its API warning baseline should still be reduced to zero
+- deploy jobs do not prove that an application was released because they only print placeholder messages
 
 ## Reporting Guidance
 

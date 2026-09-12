@@ -1,25 +1,29 @@
 # Deployment
 
-Audited against the repository on April 10, 2026.
+Audited against the current checkout on September 11, 2026.
 
 ## What The Repository Actually Contains
 
 Checked-in deployment-related assets:
 
-- `.github/workflows/ci.yml`
-- `docker-compose.yml`
+- `.github/workflows/ci.yml`: validation plus placeholder staging and production jobs
+- `railway.json`: Railway API build, pre-deploy, start, and health-check commands
+- `render.yaml`: one Render API web-service definition
+- `Dockerfile`: dependency-install and Prisma-generation scaffold
+- `docker-compose.yml`: local PostgreSQL and Redis services
 
-Not present in the repository:
+Not present:
 
-- `railway.json`
-- `vercel.json`
-- `Dockerfile`
+- a Vercel manifest or another checked-in web-host definition
+- infrastructure-as-code for the database, object storage, secrets, or Stripe resources
 - Terraform, Pulumi, Helm, or Kubernetes manifests
+- a complete production container definition
 
 Practical meaning:
 
-- the repo does not encode a complete production deployment story
-- if the team is deploying through platform dashboards or another branch strategy, that knowledge is currently outside the repo
+- the repo now contains candidate API deployment configs, but it still does not encode a complete production topology
+- the frontend production host and release path remain unspecified in the repository
+- external platform settings can override or supplement these files, so the actual provider and deployment branch must be verified in the hosting dashboards
 
 ## CI Workflow
 
@@ -27,89 +31,115 @@ Observed in `.github/workflows/ci.yml`:
 
 - triggers on pushes and pull requests to `main` and `develop`
 - uses Node `20.x`
-- runs these jobs in sequence:
-  - `lint`
-  - `test-api`
-  - `test-web`
-  - `build-api`
-  - `e2e-tests`
-  - `deploy-staging`
-  - `deploy-production`
+- runs lint and type-check first
+- runs API and web unit tests
+- builds the web and API
+- runs API and Playwright e2e tests with a seeded test database
+- exposes `deploy-staging` on `develop` and `deploy-production` on `main`
 
-### CI job details
-
-- `test-api` provisions Postgres 15 and Redis 7, runs Prisma generate and migrate deploy, then runs API unit tests with coverage
-- `test-web` runs `npm run test --if-present` in `apps/web` and then `npm run build`
-- `e2e-tests` runs API e2e tests and conditionally runs Playwright only if a Playwright config and tests are present in `apps/web`
-
-### Deploy jobs
-
-The deploy jobs are placeholders:
-
-- `deploy-staging` runs only on `develop`
-- `deploy-production` runs only on `main`
-- both jobs currently just `echo` deployment text and do not perform a real release
+Both deploy jobs remain placeholders. They only print deployment text and do not publish an application.
 
 Practical meaning:
 
-- GitHub Actions is a real CI pipeline
-- GitHub Actions is not a real deployment pipeline yet
+- GitHub Actions is a real validation pipeline
+- GitHub Actions is not a real release pipeline
+- a green deploy job is not evidence that Railway, Render, Vercel, or another host released the commit
 
-## What A Real Deployment Would Need
+## Checked-in Platform Configs
 
-### Backend requirements
+### Railway
 
-From current code, the API needs:
+`railway.json` targets the API and currently:
 
-- PostgreSQL
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `JWT_REFRESH_SECRET`
-- optional `PORT`
-- S3-compatible storage config if uploads are used
+- builds with Railpack
+- generates Prisma Client and builds the API
+- runs Prisma migrations before deploy
+- starts the NestJS production build
+- checks `/api/health`
+- restarts failed processes up to 10 times
 
-Nice-to-know:
+Production blocker:
 
-- Redis is provisioned in CI and local docker compose, but runtime cache is currently in memory
-- Swagger is available at `/api/docs`
+```text
+preDeployCommand = migrate deploy + db:seed
+```
 
-### Frontend requirements
+Running `db:seed` on every deploy can insert or rewrite development/demo data in a production database. Remove seed from the pre-deploy command before using this config for production. Keep production seeding, backfills, and one-off data migrations as explicit, reviewed operations.
 
-From current code, the web app needs:
+### Render
 
-- `API_URL`
-- `NEXT_PUBLIC_API_URL`
+`render.yaml` defines a single `armut-germany-api` web service. It:
 
-Optional:
+- installs dependencies, generates Prisma Client, and builds the API
+- runs migrations before deploy without automatically running the seed
+- starts the API and checks `/api/health`
+- declares database, JWT, and CORS configuration
 
-- `API_TIMEOUT_MS`
-- `NEXT_PUBLIC_API_TIMEOUT_MS`
+It does not define the frontend, database, Redis, object storage, Stripe secrets, or the complete set of optional API integrations. `autoDeploy: true` does not reveal the selected branch from repository state; verify that setting in Render before relying on it.
 
-## What The Repo Cannot Tell You Yet
+### Dockerfile
 
-The repository alone does not confirm:
+The checked-in `Dockerfile` installs workspace dependencies and runs API Prisma generation. It currently has no application build command, production stage, exposed port, or `CMD`/`ENTRYPOINT`.
 
-- which hosting provider serves production
-- which branch is the real deployment branch
-- how production secrets are managed
-- where database migrations run in production
-- whether deployment config lives in Vercel, Railway, another platform, or manual steps
+Do not treat it as a runnable production image until those pieces and a container health-check path are added and tested.
 
-Avoid writing docs or automation that pretend those details are known unless they are added to the repo or confirmed separately.
+## Required Runtime Configuration
+
+The API needs at minimum:
+
+- PostgreSQL and `DATABASE_URL`
+- strong, independently generated `JWT_SECRET` and `JWT_REFRESH_SECRET`
+- `CORS_ORIGINS` matching the deployed frontend
+- S3-compatible storage variables if uploads are enabled
+- Stripe variables if the payment feature is deployed
+- optional `PORT`, depending on the host
+
+The web app needs:
+
+- `API_URL` for server-side calls
+- `NEXT_PUBLIC_API_URL` for browser-side calls and rewrites
+- optional API timeout overrides
+
+See [ENVIRONMENT.md](./ENVIRONMENT.md) for the variable inventory. Never use example or fallback secrets in production.
+
+## Branch State And Recommended Policy
+
+Current repository state:
+
+- the active payment work is on `codex/stripe-connect-payments`
+- the payment feature includes `origin/main`'s dashboard hydration changes and is open as draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8)
+- the payment commits have not been merged into `origin/main`
+- `deployment` was fast-forwarded to the current `origin/main` on September 12, 2026, but repository files do not prove that an external host deploys from it
+
+Recommended policy:
+
+1. Use `main` as the canonical integration and release branch.
+2. Create short-lived feature and fix branches from an up-to-date `origin/main`.
+3. Require pull requests, review, and green checks; do not commit directly to `main`.
+4. Keep `codex/stripe-connect-payments` synchronized with `origin/main`, resolve the payment-safety blockers in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), and merge only after the full payment-sensitive validation set passes.
+5. Verify the selected production branch in every external hosting dashboard.
+6. Keep `deployment` as a compatibility mirror of `main`: never merge feature work into it directly, and fast-forward it only after reviewed changes land on `main`.
+
+The hosting-dashboard check still requires external confirmation. The repository cannot safely assert the current Railway, Render, Vercel, or other host branch.
+
+## Production Readiness Checklist
+
+Before the first production release:
+
+1. remove automatic production seeding from `railway.json`
+2. decide which API config is authoritative instead of leaving Railway and Render as equally plausible paths
+3. document and configure the frontend host
+4. replace placeholder GitHub Actions deploy jobs or remove them to avoid false confidence
+5. verify production secrets, CORS, database migrations, S3 access, Stripe webhooks, and health/readiness behavior
+6. validate backup and rollback procedures
+7. merge payment work into `main` only after its reliability issues and e2e coverage are verified
 
 ## Safe Change Guidance
 
 If a task affects deployment:
 
-1. inspect `.github/workflows/ci.yml`
-2. confirm whether the work is only CI, only app code, or true deployment config
-3. do not invent `vercel.json`, `railway.json`, or branch-based deployment rules without explicit confirmation
-4. update this document when deployment knowledge becomes repo-visible
-
-## Recommended Next Documentation Step
-
-If the team has a real production setup outside this repo, document it explicitly in one of these ways:
-
-- add checked-in platform config where possible
-- add a private/internal runbook that is referenced from this repo
-- replace the placeholder GitHub Actions deploy jobs with the actual release path
+1. inspect `.github/workflows/ci.yml`, `railway.json`, `render.yaml`, and `Dockerfile`
+2. distinguish CI changes from real hosting changes
+3. confirm external provider and branch settings before changing branch policy or release triggers
+4. keep schema migration and seed operations separate in production
+5. update this document whenever deployment knowledge becomes repo-visible
