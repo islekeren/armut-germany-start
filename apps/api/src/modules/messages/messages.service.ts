@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -11,6 +12,30 @@ export class MessagesService {
   constructor(private prisma: PrismaService) {}
 
   async createConversation(userId: string, dto: CreateConversationDto) {
+    if (dto.participantId === userId) {
+      throw new BadRequestException("Cannot start a conversation with yourself");
+    }
+
+    const participant = await this.prisma.user.findFirst({
+      where: { id: dto.participantId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!participant) {
+      throw new NotFoundException("Participant not found");
+    }
+
+    if (dto.requestId) {
+      const request = await this.prisma.serviceRequest.findUnique({
+        where: { id: dto.requestId },
+        select: { id: true },
+      });
+
+      if (!request) {
+        throw new NotFoundException("Service request not found");
+      }
+    }
+
     // Check if conversation already exists between these users
     const existingConversation = await this.prisma.conversation.findFirst({
       where: {
