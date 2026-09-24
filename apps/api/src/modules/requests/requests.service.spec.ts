@@ -329,7 +329,9 @@ describe("RequestsService", () => {
         radius: 50,
       } as any);
 
-      expect(result.data).toEqual([{ id: "near", lat: 52.52, lng: 13.405 }]);
+      expect(result.data.map((request) => request.id)).toEqual(["near"]);
+      expect(result.data[0]).not.toHaveProperty("lat");
+      expect(result.data[0]).not.toHaveProperty("lng");
     });
   });
 
@@ -348,16 +350,70 @@ describe("RequestsService", () => {
   });
 
   describe("findOne", () => {
-    it("returns request by id", async () => {
-      prisma.serviceRequest.findUnique.mockResolvedValue({ id: "r1" });
-      await expect(service.findOne("r1")).resolves.toEqual({ id: "r1" });
+    const storedRequest = {
+      id: "r1",
+      customerId: "owner-1",
+      categoryId: "c1",
+      requestSector: null,
+      requestBranch: null,
+      title: "Need cleaning",
+      description: "Flat",
+      address: "Hauptstr. 1",
+      city: "Berlin",
+      postalCode: "10115",
+      lat: 52.5,
+      lng: 13.4,
+      preferredDate: null,
+      budgetMin: null,
+      budgetMax: null,
+      images: [],
+      status: "open",
+      createdAt: new Date("2026-01-01"),
+      updatedAt: new Date("2026-01-01"),
+      customer: {
+        id: "owner-1",
+        firstName: "Anna",
+        lastName: "Miller",
+        profileImage: null,
+        createdAt: new Date("2025-01-01"),
+      },
+      category: { id: "c1" },
+      quotes: [{ id: "q1", price: 100 }],
+    };
+
+    it("returns the full request to its owner", async () => {
+      prisma.serviceRequest.findUnique.mockResolvedValue(storedRequest);
+      await expect(
+        service.findOne("r1", { id: "owner-1", userType: "customer" }),
+      ).resolves.toEqual(storedRequest);
+    });
+
+    it("hides address, surname, coordinates and quotes from other users", async () => {
+      prisma.serviceRequest.findUnique.mockResolvedValue(storedRequest);
+      const result: any = await service.findOne("r1", {
+        id: "someone-else",
+        userType: "provider",
+      });
+
+      expect(result).not.toHaveProperty("address");
+      expect(result).not.toHaveProperty("lat");
+      expect(result).not.toHaveProperty("lng");
+      expect(result).not.toHaveProperty("customerId");
+      expect(result).not.toHaveProperty("quotes");
+      expect(result.customer).toEqual({
+        firstName: "Anna",
+        lastName: "M.",
+        profileImage: null,
+        createdAt: storedRequest.customer.createdAt,
+      });
+      expect(result.city).toBe("Berlin");
     });
 
     it("throws when request is missing", async () => {
       prisma.serviceRequest.findUnique.mockResolvedValue(null);
-      await expect(service.findOne("missing")).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findOne("missing", { id: "u1", userType: "customer" }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -494,8 +550,10 @@ describe("RequestsService", () => {
           }),
         }),
       );
+      expect(result.data.map((request) => request.id)).toEqual(["near"]);
+      expect(result.data[0]).not.toHaveProperty("lat");
       expect(result).toEqual({
-        data: [{ id: "near", lat: 52.52, lng: 13.405 }],
+        data: [expect.objectContaining({ id: "near" })],
         meta: {
           total: 1,
           page: 1,

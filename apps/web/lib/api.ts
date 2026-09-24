@@ -655,7 +655,12 @@ export const requestsApi = {
     });
   },
 
-  getById: (id: string) => apiRequest<ServiceRequest>(`/requests/${id}`),
+  getById: (id: string, token: string) =>
+    apiRequest<ServiceRequest>(`/requests/${id}`, {
+      method: "GET",
+      token,
+      cache: "no-store",
+    }),
 
   update: (id: string, data: UpdateRequestData, token: string) =>
     apiRequest<ServiceRequest>(`/requests/${id}`, {

@@ -18,6 +18,68 @@ import {
   resolveRequestTaxonomy,
 } from "../../common/request-taxonomy";
 
+type PublicRequestSource = {
+  id: string;
+  categoryId: string;
+  requestSector: string | null;
+  requestBranch: string | null;
+  title: string;
+  description: string;
+  city: string;
+  postalCode: string;
+  preferredDate: Date | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  images: string[];
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  customer?: {
+    firstName: string;
+    lastName: string;
+    profileImage?: string | null;
+    createdAt?: Date;
+  } | null;
+  category?: unknown;
+  _count?: { quotes: number };
+};
+
+/**
+ * Shape of a request visible to people other than its owner: no street
+ * address, coordinates, customer id, surname, or quotes.
+ */
+export function toPublicRequest(request: PublicRequestSource) {
+  const { customer } = request;
+
+  return {
+    id: request.id,
+    categoryId: request.categoryId,
+    requestSector: request.requestSector,
+    requestBranch: request.requestBranch,
+    title: request.title,
+    description: request.description,
+    city: request.city,
+    postalCode: request.postalCode,
+    preferredDate: request.preferredDate,
+    budgetMin: request.budgetMin,
+    budgetMax: request.budgetMax,
+    images: request.images,
+    status: request.status,
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
+    customer: customer
+      ? {
+          firstName: customer.firstName,
+          lastName: customer.lastName ? `${customer.lastName.charAt(0)}.` : "",
+          profileImage: customer.profileImage ?? null,
+          ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
+        }
+      : null,
+    category: request.category,
+    ...(request._count ? { _count: request._count } : {}),
+  };
+}
+
 @Injectable()
 export class RequestsService {
   constructor(
@@ -162,14 +224,14 @@ export class RequestsService {
       lat,
       lng,
       radius,
-      status,
       page = 1,
       limit = 10,
     } = query;
     const skip = (page - 1) * limit;
 
+    // This endpoint is public, so only open requests are ever listed.
     const where: any = {
-      status: status || "open",
+      status: "open",
     };
 
     const resolvedCategorySlug = categorySlug || category;
@@ -221,7 +283,7 @@ export class RequestsService {
     const total = await this.prisma.serviceRequest.count({ where });
 
     return {
-      data: requests,
+      data: requests.map(toPublicRequest),
       meta: {
         total,
         page,
@@ -253,7 +315,7 @@ export class RequestsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewer: { id: string; userType: string }) {
     const request = await this.prisma.serviceRequest.findUnique({
       where: { id },
       include: {
@@ -291,7 +353,11 @@ export class RequestsService {
       throw new NotFoundException("Service request not found");
     }
 
-    return request;
+    if (request.customerId === viewer.id || viewer.userType === "admin") {
+      return request;
+    }
+
+    return toPublicRequest(request);
   }
 
   async update(id: string, userId: string, updateRequestDto: UpdateRequestDto) {
@@ -457,7 +523,7 @@ export class RequestsService {
     const total = requests.length;
 
     return {
-      data: requests,
+      data: requests.map(toPublicRequest),
       meta: {
         total,
         page,

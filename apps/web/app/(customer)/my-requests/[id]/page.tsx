@@ -115,23 +115,22 @@ export default function RequestDetailPage() {
     }
 
     try {
-      const apiRequest = await requestsApi.getById(requestId);
-      setRequest(transformRequest(apiRequest));
-
       const token = getStoredAccessToken();
-      if (token) {
-        const [quoteData, bookingData] = await Promise.all([
-          quotesApi.getByRequest(token, requestId),
-          bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
-        ]);
-        setQuotes(quoteData);
-        setRequestBooking(
-          bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
-        );
-      } else {
-        setQuotes([]);
-        setRequestBooking(null);
+      if (!token) {
+        setError(t("loadError"));
+        return;
       }
+
+      const [apiRequest, quoteData, bookingData] = await Promise.all([
+        requestsApi.getById(requestId, token),
+        quotesApi.getByRequest(token, requestId),
+        bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
+      ]);
+      setRequest(transformRequest(apiRequest));
+      setQuotes(quoteData);
+      setRequestBooking(
+        bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
+      );
     } catch (err) {
       console.error("Failed to load request details:", err);
       setError(err instanceof Error ? err.message : t("loadError"));
