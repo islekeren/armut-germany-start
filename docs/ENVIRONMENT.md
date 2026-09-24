@@ -51,6 +51,7 @@ cp apps/api/.env.example apps/api/.env
 | `S3_ACCESS_KEY_ID`            | Required for uploads                        | used by `UploadsService`                                                                  |
 | `S3_SECRET_ACCESS_KEY`        | Required for uploads                        | used by `UploadsService`                                                                  |
 | `S3_PUBLIC_URL`               | Optional for uploads                        | used to build public URLs                                                                 |
+| `S3_FORCE_PATH_STYLE`         | Optional for uploads                        | `true` for MinIO or S3 mocks that need path-style bucket URLs; the e2e suite sets it      |
 | `STRIPE_SECRET_KEY`           | Required for payments in the feature branch | prefer a least-privilege `rk_test_` key; `sk_test_` is accepted for initial sandbox setup |
 | `STRIPE_WEBHOOK_SECRET`       | Required for payments in the feature branch | Stripe CLI or Dashboard endpoint signing secret                                           |
 | `STRIPE_CONNECT_RETURN_URL`   | Required for payments in the feature branch | hosted onboarding completion URL                                                          |
