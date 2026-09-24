@@ -30,6 +30,10 @@ export function Header() {
       : "/";
 
   const desktopMainLinks = useMemo<NavLink[]>(() => {
+    if (isAuthenticated && user?.userType === "admin") {
+      return [{ href: "/admin/providers", label: t("nav.adminProviders") }];
+    }
+
     if (isAuthenticated && user?.userType === "provider") {
       return [
         {
@@ -77,6 +81,13 @@ export function Header() {
   }, [isAuthenticated, t, user?.userType]);
 
   const mobileLinks = useMemo<NavLink[]>(() => {
+    if (isAuthenticated && user?.userType === "admin") {
+      return [
+        { href: "/admin/providers", label: t("nav.adminProviders") },
+        { href: notificationsHref, label: t("nav.notifications") },
+      ];
+    }
+
     if (isAuthenticated && user?.userType === "provider") {
       return [
         { href: "/dashboard", label: t("nav.dashboard") },
@@ -261,7 +272,11 @@ export function Header() {
                           <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
                           <p className="truncate text-xs text-muted">{user.email}</p>
                         </div>
-                        {user.userType === "provider" ? (
+                        {user.userType === "admin" ? (
+                          <Link href="/admin/providers" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            {t("nav.adminProviders")}
+                          </Link>
+                        ) : user.userType === "provider" ? (
                           <>
                             <Link href="/dashboard/listings" className="block px-4 py-2 text-sm hover:bg-gray-100">
                               {t("nav.offers")}

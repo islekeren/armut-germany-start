@@ -28,7 +28,8 @@
     "myRequests": "My Requests",
     "bookings": "Bookings",
     "messages": "Messages",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "adminProviders": "Approve providers"
   },
   "notifications": {
     "title": "Notifications",
@@ -791,7 +792,7 @@
   "provider": {
     "dashboard": {
       "title": "Overview",
-      "welcomeBack": "Welcome back, {name}! 👋",
+      "welcomeBack": "Welcome, {name}! 👋",
       "activityOverview": "Here is an overview of your current activities.",
       "noRequests": "No new listings.",
       "noAppointments": "No upcoming appointments.",
@@ -1064,6 +1065,11 @@
       "preferredDate": "Preferred date",
       "notSpecified": "Not specified",
       "quotes": "Quotes"
+    },
+    "approval": {
+      "pendingTitle": "Your provider profile is under review",
+      "pendingDescription": "You can already browse requests. You can send quotes as soon as our team approves your profile – usually within 1–2 business days.",
+      "quoteBlocked": "Your profile has not been approved yet. You can send quotes once the review is complete."
     }
   },
   "providerOnboarding": {
@@ -1123,6 +1129,24 @@
       "continue": "Continue",
       "finish": "Finish onboarding",
       "submitting": "Creating account..."
+    }
+  },
+  "admin": {
+    "providers": {
+      "title": "Approve providers",
+      "subtitle": "New providers can only send quotes after they are approved here.",
+      "loading": "Loading providers...",
+      "loadError": "Providers could not be loaded.",
+      "actionError": "Approval failed. Please try again.",
+      "forbidden": "This page is only available to administrators.",
+      "empty": "No providers are waiting for approval.",
+      "location": "Location",
+      "experience": "Experience",
+      "years": "{count, plural, one {# year} other {# years}}",
+      "categories": "Categories",
+      "registeredAt": "Registered on",
+      "approve": "Approve",
+      "approved": "{name} has been approved."
     }
   }
 }

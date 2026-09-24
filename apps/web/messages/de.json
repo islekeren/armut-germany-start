@@ -28,7 +28,8 @@
     "myRequests": "Meine Anfragen",
     "bookings": "Buchungen",
     "messages": "Nachrichten",
-    "notifications": "Benachrichtigungen"
+    "notifications": "Benachrichtigungen",
+    "adminProviders": "Anbieter freigeben"
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -791,7 +792,7 @@
   "provider": {
     "dashboard": {
       "title": "Übersicht",
-      "welcomeBack": "Willkommen zurück, {name}! 👋",
+      "welcomeBack": "Willkommen, {name}! 👋",
       "activityOverview": "Hier ist eine Übersicht Ihrer aktuellen Aktivitäten.",
       "noRequests": "Keine neuen Anzeigen.",
       "noAppointments": "Keine anstehenden Termine.",
@@ -1064,6 +1065,11 @@
       "preferredDate": "Wunschtermin",
       "notSpecified": "Nicht angegeben",
       "quotes": "Angebote"
+    },
+    "approval": {
+      "pendingTitle": "Ihr Anbieterprofil wird geprüft",
+      "pendingDescription": "Sie können Anfragen bereits ansehen. Angebote können Sie senden, sobald unser Team Ihr Profil freigegeben hat – in der Regel innerhalb von 1–2 Werktagen.",
+      "quoteBlocked": "Ihr Profil ist noch nicht freigegeben. Sie können Angebote senden, sobald die Prüfung abgeschlossen ist."
     }
   },
   "providerOnboarding": {
@@ -1123,6 +1129,24 @@
       "continue": "Weiter",
       "finish": "Onboarding abschließen",
       "submitting": "Konto wird erstellt..."
+    }
+  },
+  "admin": {
+    "providers": {
+      "title": "Anbieter freigeben",
+      "subtitle": "Neue Anbieter können erst Angebote senden, nachdem sie hier freigegeben wurden.",
+      "loading": "Anbieter werden geladen...",
+      "loadError": "Anbieter konnten nicht geladen werden.",
+      "actionError": "Die Freigabe ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "forbidden": "Diese Seite ist nur für Administratoren verfügbar.",
+      "empty": "Keine Anbieter warten auf Freigabe.",
+      "location": "Ort",
+      "experience": "Erfahrung",
+      "years": "{count, plural, one {# Jahr} other {# Jahre}}",
+      "categories": "Kategorien",
+      "registeredAt": "Registriert am",
+      "approve": "Freigeben",
+      "approved": "{name} wurde freigegeben."
     }
   }
 }

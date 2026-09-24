@@ -248,7 +248,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  userType: "customer" | "provider";
+  userType: "customer" | "provider" | "admin";
   phone?: string;
   avatar?: string;
   createdAt: string;
@@ -1450,6 +1450,44 @@ export const uploadsApi = {
   deleteFile: (token: string, key: string) =>
     apiRequest<{ success: boolean }>(`/uploads/${encodeURIComponent(key)}`, {
       method: "DELETE",
+      token,
+    }),
+};
+
+export interface PendingProvider {
+  id: string;
+  companyName: string | null;
+  description: string;
+  experienceYears: number;
+  isApproved: boolean;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    createdAt: string;
+  };
+  profile?: { city: string | null; postalCode: string | null } | null;
+  services?: Array<{
+    id: string;
+    category?: { nameDe: string; nameEn: string } | null;
+  }>;
+}
+
+// Admin API calls (require an admin account)
+export const adminApi = {
+  getPendingProviders: (token: string, page = 1, limit = 50) =>
+    apiRequest<PaginatedResponse<PendingProvider>>(
+      `/admin/providers/pending?page=${page}&limit=${limit}`,
+      { token, cache: "no-store" },
+    ),
+
+  setProviderApproval: (token: string, providerId: string, approved: boolean) =>
+    apiRequest<PendingProvider>(`/admin/providers/${providerId}/approve`, {
+      method: "PATCH",
+      body: JSON.stringify({ approved }),
       token,
     }),
 };

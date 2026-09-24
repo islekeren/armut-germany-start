@@ -121,8 +121,21 @@ Observed in `apps/api/prisma/seed.ts`:
 - Customer
   - Email: `customer@test.com`
   - Password: `12345678`
+- Admin
+  - Email: `admin@test.com`
+  - Password: `12345678`
 
 The seed also creates request taxonomy categories, additional providers, quotes, bookings, reviews, conversations, and notifications-related data paths.
+
+## Provider Approval
+
+New providers start unapproved: they can browse requests but cannot send quotes, and their dashboard shows a "profile under review" notice. An admin approves them at `/admin/providers`.
+
+Admins cannot sign up through the app. Promote an existing, non-provider account against the target database with:
+
+```bash
+npm run admin:grant --workspace=api -- someone@example.com
+```
 
 ## Repository Map
 

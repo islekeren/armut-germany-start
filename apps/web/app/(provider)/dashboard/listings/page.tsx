@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
 import {
+  AlertBanner,
+  PanelCard,
+  ProviderSubpageShell,
+  useProviderApproval,
+} from "@/components";
+import {
+  ApiError,
   getStoredAccessToken,
   providerApi,
   quotesApi,
@@ -33,6 +39,8 @@ export default function ListingsPage() {
   const t = useTranslations("provider.requests");
   const tNav = useTranslations("provider.dashboard.navigation");
   const tFilters = useTranslations("provider.offers.filters");
+  const tApproval = useTranslations("provider.approval");
+  const isApproved = useProviderApproval();
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [allRequests, setAllRequests] = useState<ProviderRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,6 +214,11 @@ export default function ListingsPage() {
       return;
     }
 
+    if (isApproved === false) {
+      setError(tApproval("quoteBlocked"));
+      return;
+    }
+
     if (!offerPrice || Number(offerPrice) <= 0) {
       setError(t("invalidPrice"));
       return;
@@ -247,9 +260,13 @@ export default function ListingsPage() {
       setSuccessMessage(t("quoteSent"));
     } catch (sendError) {
       console.error("Failed to send offer", sendError);
-      setError(
-        sendError instanceof Error ? sendError.message : t("quoteError"),
-      );
+      if (sendError instanceof ApiError && sendError.status === 403) {
+        setError(tApproval("quoteBlocked"));
+      } else {
+        setError(
+          sendError instanceof Error ? sendError.message : t("quoteError"),
+        );
+      }
     } finally {
       setSendingOffer(false);
     }
@@ -546,7 +563,7 @@ export default function ListingsPage() {
                           <button
                             type="button"
                             onClick={() => handleSendOffer(request.id)}
-                            disabled={sendingOffer}
+                            disabled={sendingOffer || isApproved === false}
                             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
                           >
                             {sendingOffer ? t("sendingOffer") : t("sendOffer")}

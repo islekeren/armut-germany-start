@@ -203,6 +203,15 @@ export class AdminService {
               createdAt: true,
             },
           },
+          profile: {
+            select: { city: true, postalCode: true },
+          },
+          services: {
+            select: {
+              id: true,
+              category: { select: { nameDe: true, nameEn: true } },
+            },
+          },
         },
       }),
       this.prisma.provider.count({ where: { isApproved: false } }),

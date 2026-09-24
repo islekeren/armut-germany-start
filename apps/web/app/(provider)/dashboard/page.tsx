@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ProviderApprovalNotice } from "@/components/provider/ProviderApprovalNotice";
 import { useEffect, useState } from "react";
 import {
   providerApi,
@@ -285,6 +286,8 @@ export default function ProviderDashboard() {
                 {t("activityOverview")}
               </p>
             </div>
+
+            <ProviderApprovalNotice className="mb-8" />
 
             {/* Stats */}
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

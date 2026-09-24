@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { PageContainer } from "@/components/ui/PageContainer";
+import { ProviderApprovalNotice } from "./ProviderApprovalNotice";
 
 interface ProviderSubpageShellProps {
   title: string;
@@ -34,6 +35,8 @@ export function ProviderSubpageShell({
         </nav>
 
         {headerSlot || <h1 className="mb-6 text-xl font-bold sm:mb-8 sm:text-2xl">{title}</h1>}
+
+        <ProviderApprovalNotice className="mb-6" />
 
         {children}
       </PageContainer>
