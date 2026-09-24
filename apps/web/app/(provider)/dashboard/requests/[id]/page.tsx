@@ -139,13 +139,13 @@ export default function ProviderRequestDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted">{t("createdAt")}</p>
-                <p className="font-medium">{new Date(request.createdAt).toLocaleDateString()}</p>
+                <p className="font-medium">{new Date(request.createdAt).toLocaleDateString(locale)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted">{t("preferredDate")}</p>
                 <p className="font-medium">
                   {request.preferredDate
-                    ? new Date(request.preferredDate).toLocaleDateString()
+                    ? new Date(request.preferredDate).toLocaleDateString(locale)
                     : t("notSpecified")}
                 </p>
               </div>

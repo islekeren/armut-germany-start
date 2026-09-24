@@ -1017,13 +1017,18 @@ export class ProvidersService {
     const openRecentRequests = recentRequests.map((req) => ({
       id: req.id,
       title: req.title,
-      category: req.category.nameEn, // Or nameDe based on locale, but using EN for now
+      // `category`/`budget` are kept for existing clients; the web app
+      // localizes from categoryDe and the raw budget values.
+      category: req.category.nameEn,
+      categoryDe: req.category.nameDe,
       location: `${req.postalCode} ${req.city}`,
       date: req.createdAt,
       budget:
         req.budgetMin && req.budgetMax
           ? `${req.budgetMin}-${req.budgetMax}€`
           : "Custom",
+      budgetMin: req.budgetMin,
+      budgetMax: req.budgetMax,
       sortDate: req.createdAt,
     }));
 
@@ -1036,6 +1041,7 @@ export class ProvidersService {
       id: booking.id,
       customer: `${booking.customer.firstName} ${booking.customer.lastName}`,
       service: booking.quote.request.category.nameEn,
+      serviceDe: booking.quote.request.category.nameDe,
       date: booking.scheduledDate,
       time: booking.scheduledDate, // Frontend will format this
       status: booking.status,

@@ -47,6 +47,9 @@ export function Header() {
       ];
     }
 
+    // Kept to three entries so the bar fits next to the notification and
+    // message buttons; "/requests" lists other people's requests and is
+    // meant for providers, so customers get their own list instead.
     if (isAuthenticated && user?.userType === "customer") {
       return [
         {
@@ -54,16 +57,12 @@ export function Header() {
           label: t("nav.findProvider"),
         },
         {
-          href: "/requests",
-          label: t("nav.requests"),
+          href: "/my-requests",
+          label: t("nav.myRequests"),
         },
         {
           href: "/create-request",
           label: t("nav.createRequest"),
-        },
-        {
-          href: "/how-it-works",
-          label: t("nav.howItWorks"),
         },
       ];
     }
@@ -186,7 +185,7 @@ export function Header() {
     <header className="relative z-50 bg-primary text-white">
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex items-center justify-between gap-3">
-          <Link href={logoHref} className="flex min-w-0 items-center gap-2">
+          <Link href={logoHref} className="flex shrink-0 items-center gap-2">
             <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Elf</span>
           </Link>
 
@@ -195,7 +194,7 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="truncate text-white/90 hover:scale-105 hover:text-amber-300"
+                className="whitespace-nowrap text-white/90 hover:scale-105 hover:text-amber-300"
               >
                 {item.label}
               </Link>

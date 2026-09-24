@@ -63,14 +63,26 @@ export default function ProviderDashboard() {
             quotesApi.getMyQuotes(token),
           ]);
           // Format dates for display
+          const isGerman = locale.startsWith("de");
+          const formatBudget = (min?: number | null, max?: number | null) =>
+            typeof min === "number" && typeof max === "number"
+              ? t("budgetRange", { min, max })
+              : typeof min === "number"
+                ? t("budgetFrom", { min })
+                : typeof max === "number"
+                  ? t("budgetUpTo", { max })
+                  : t("budgetOnRequest");
           const formattedData = {
             ...dashboardData,
             recentRequests: dashboardData.recentRequests.map(r => ({
               ...r,
+              category: (isGerman && r.categoryDe) || r.category,
+              budget: formatBudget(r.budgetMin, r.budgetMax),
               date: new Date(r.date).toLocaleDateString(locale),
             })),
             activeBookings: dashboardData.activeBookings.map(b => ({
               ...b,
+              service: (isGerman && b.serviceDe) || b.service,
               date: new Date(b.date).toLocaleDateString(locale),
               time: new Date(b.date).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
             }))

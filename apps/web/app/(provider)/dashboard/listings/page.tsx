@@ -100,16 +100,23 @@ export default function ListingsPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allRequests]);
 
+  // e.g. "vor 3 Stunden" / "3 hours ago", "jetzt" / "now".
   const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
+    const diffMinutes = Math.floor(
+      (Date.now() - new Date(dateString).getTime()) / 60_000,
+    );
+    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
 
-    if (diffDays > 0) return `${diffDays}d`;
-    if (diffHours > 0) return `${diffHours}h`;
-    return "now";
+    if (diffMinutes >= 60 * 24) {
+      return formatter.format(-Math.floor(diffMinutes / (60 * 24)), "day");
+    }
+    if (diffMinutes >= 60) {
+      return formatter.format(-Math.floor(diffMinutes / 60), "hour");
+    }
+    if (diffMinutes >= 1) {
+      return formatter.format(-diffMinutes, "minute");
+    }
+    return formatter.format(0, "second");
   };
 
   const filteredRequests = useMemo(() => {
@@ -454,7 +461,7 @@ export default function ListingsPage() {
                     )}
                   </div>
                   <span className="text-sm text-muted">
-                    {t("postedAt", { time: getTimeAgo(request.createdAt) })}
+                    {getTimeAgo(request.createdAt)}
                   </span>
                 </div>
 
@@ -469,7 +476,7 @@ export default function ListingsPage() {
                   <span className="flex items-center gap-1 text-muted">
                     📅{" "}
                     {request.preferredDate
-                      ? new Date(request.preferredDate).toLocaleDateString()
+                      ? new Date(request.preferredDate).toLocaleDateString(locale)
                       : t("flexible")}
                   </span>
                   {request.budget ? (
@@ -600,10 +607,6 @@ export default function ListingsPage() {
               </li>
             </ul>
 
-            <div className="mt-6 rounded-lg bg-secondary/10 p-4">
-              <div className="text-2xl font-bold text-secondary">87%</div>
-              <div className="text-sm text-muted">{t("acceptanceRate")}</div>
-            </div>
           </PanelCard>
         </aside>
       </div>

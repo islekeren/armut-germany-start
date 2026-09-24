@@ -687,15 +687,19 @@ export interface RequestItem {
   id: string;
   title: string;
   category: string;
+  categoryDe?: string;
   location: string;
   date: string;
   budget: string;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
 }
 
 export interface BookingItem {
   id: string;
   customer: string;
   service: string;
+  serviceDe?: string;
   date: string;
   time: string;
   status: string;

@@ -858,7 +858,11 @@
         "today": "Today",
         "yesterday": "Yesterday",
         "twoDaysAgo": "2 days ago"
-      }
+      },
+      "budgetRange": "€{min}–{max}",
+      "budgetFrom": "from €{min}",
+      "budgetUpTo": "up to €{max}",
+      "budgetOnRequest": "Budget open"
     },
     "requests": {
       "title": "Open Listings",

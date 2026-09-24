@@ -262,8 +262,8 @@
     "step3": "Überprüfen",
     "whatDoYouNeed": "Was brauchen Sie?",
     "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",
-    "selectSector": "Hauptbereich waehlen",
-    "selectBranch": "Dienstleistungsbereich waehlen",
+    "selectSector": "Hauptbereich wählen",
+    "selectBranch": "Dienstleistungsbereich wählen",
     "branchSearchPlaceholder": "Dienstleistungsbereich suchen",
     "noBranchMatch": "Kein passender Dienstleistungsbereich gefunden.",
     "loadingCategories": "Kategorien werden geladen...",
@@ -577,11 +577,11 @@
       "bookingPending": "Buchungsdetails stehen noch aus",
       "completedOn": "Abgeschlossen am",
       "rate": "Bewerten",
-      "delete": "Loeschen",
-      "deleting": "Wird geloescht...",
-      "deleteConfirm": "Moechten Sie diese Anfrage wirklich loeschen?",
-      "deleteSuccess": "Anfrage erfolgreich geloescht.",
-      "deleteError": "Anfrage konnte nicht geloescht werden.",
+      "delete": "Löschen",
+      "deleting": "Wird gelöscht...",
+      "deleteConfirm": "Möchten Sie diese Anfrage wirklich löschen?",
+      "deleteSuccess": "Anfrage erfolgreich gelöscht.",
+      "deleteError": "Anfrage konnte nicht gelöscht werden.",
       "noRequests": "Keine Anfragen gefunden",
       "noRequestsHint": "Erstellen Sie eine neue Anfrage, um Angebote zu erhalten",
       "createRequest": "Anfrage erstellen",
@@ -802,7 +802,7 @@
       "noRequests": "Keine neuen Anzeigen.",
       "noAppointments": "Keine anstehenden Termine.",
       "noPendingOffers": "Keine ausstehenden Angebote.",
-      "pendingOfferValidUntil": "Gueltig bis {date}",
+      "pendingOfferValidUntil": "Gültig bis {date}",
       "pendingOffersUntitled": "Anzeige ohne Titel",
       "pendingOffersUnknownCustomer": "Unbekannter Kunde",
       "loading": "Lädt...",
@@ -858,7 +858,11 @@
         "today": "Heute",
         "yesterday": "Gestern",
         "twoDaysAgo": "Vor 2 Tagen"
-      }
+      },
+      "budgetRange": "{min}–{max} €",
+      "budgetFrom": "ab {min} €",
+      "budgetUpTo": "bis {max} €",
+      "budgetOnRequest": "Budget offen"
     },
     "requests": {
       "title": "Offene Anzeigen",
@@ -899,7 +903,7 @@
       "acceptanceRate": "Ihrer Angebote wurden bisher angenommen"
     },
     "placeholders": {
-      "comingSoon": "Dieser Bereich wird bald verfuegbar sein."
+      "comingSoon": "Dieser Bereich wird bald verfügbar sein."
     },
     "profile": {
       "title": "Profil bearbeiten",

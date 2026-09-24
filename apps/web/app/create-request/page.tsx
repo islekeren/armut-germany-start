@@ -47,6 +47,39 @@ type RequestDraft = {
   imageCount: number;
 };
 
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .trim();
+}
+
+/** Picks the leaf category whose German or English name best matches `query`. */
+function findCategoryForQuery(categories: Category[], query: string) {
+  const needle = normalizeSearchText(query);
+  if (needle.length < 3) return null;
+
+  const leaves = categories.filter((category) => category.parent);
+  const names = (category: Category) =>
+    [category.nameDe, category.nameEn].map(normalizeSearchText);
+
+  return (
+    leaves.find((category) => names(category).some((name) => name === needle)) ||
+    leaves.find((category) =>
+      names(category).some((name) => name.startsWith(needle)),
+    ) ||
+    leaves.find((category) =>
+      names(category).some(
+        (name) => name.includes(needle) || needle.includes(name),
+      ),
+    ) ||
+    null
+  );
+}
+
 function readRequestDraft(): RequestDraft | null {
   try {
     const raw = sessionStorage.getItem(REQUEST_DRAFT_KEY);
@@ -84,6 +117,8 @@ export default function CreateRequestPage() {
     searchParams.get("sector") || searchParams.get("requestSector") || "";
   const initialBranch =
     searchParams.get("branch") || searchParams.get("requestBranch") || "";
+  const initialQuery = searchParams.get("q")?.trim() || "";
+  const initialPostalCode = searchParams.get("postalCode")?.trim() || "";
 
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -100,7 +135,7 @@ export default function CreateRequestPage() {
     category: initialCategory,
     title: "",
     description: "",
-    postalCode: "",
+    postalCode: initialPostalCode,
     city: "",
     address: "",
     preferredDate: "",
@@ -210,6 +245,18 @@ export default function CreateRequestPage() {
       try {
         const data = await getCategories();
         setCategories(data);
+
+        // Coming from the homepage search: preselect the best matching
+        // service so the user lands directly on the details step.
+        if (initialQuery && !initialCategory && !initialBranch) {
+          const match = findCategoryForQuery(data, initialQuery);
+          if (match) {
+            setSelectedSectorId(match.parent?.slug || null);
+            setSelectedBranchId(match.slug);
+            setFormData((prev) => ({ ...prev, category: match.id }));
+            setStep(2);
+          }
+        }
       } catch (err) {
         console.error("Failed to load categories:", err);
         setCategoriesError(
@@ -222,6 +269,8 @@ export default function CreateRequestPage() {
       }
     };
     loadCategories();
+    // Only the initial URL should drive this; later edits are user choices.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
   useEffect(() => {
