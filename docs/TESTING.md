@@ -18,7 +18,7 @@ Audited against the current checkout on September 11, 2026.
 | `cd apps/api && npm run check-types`                  | api                   | Pass                     | no current TypeScript failures                                                                              |
 | `cd apps/api && npm run build`                        | api                   | Pass                     | Nest build succeeds                                                                                         |
 | `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 30 suites, 262 tests passed on `main`                                                                       |
-| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 4 suites, 17 tests on September 24, 2026 against `docker-compose.test.yml`                                  |
+| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 8 suites, 233 tests on September 24, 2026 against `docker-compose.test.yml`                                 |
 | `cd apps/web && npm run test:e2e`                     | web Playwright e2e    | Pass                     | 3 tests on September 24, 2026 against `docker-compose.test.yml`                                             |
 | `cd packages/shared && npm run test`                  | shared unit tests     | Pass                     | 4 tests passed                                                                                              |
 | `cd packages/ui && npm run test`                      | UI package unit tests | Pass                     | 3 tests passed                                                                                              |
@@ -57,6 +57,23 @@ Notes:
 - `createTestApp()` in `apps/api/test/e2e-utils.ts` boots `AppModule` through `configureApp()` from `apps/api/src/app.setup.ts`, the same HTTP setup `main.ts` uses (Helmet, CORS, validation pipe, `/api` prefix). Pass an override callback to swap providers, as `app.e2e-spec.ts` does to mock Prisma
 - build state with the fixtures (`createUserFixture`, `createProviderFixture`, `createAdminFixture`, `createRequestFixture`, `createQuoteFixture`, `createBookingFixture`, `createDealFixture`, `createConversationFixture`) and call `resetAndSeedDatabase()` in `beforeEach`
 - authenticate with `loginAs(app, email)` and send `.set(bearer(token))`
+- `setup-e2e.ts` sets `THROTTLE_DISABLED=true` for the whole suite; `throttling.e2e-spec.ts` turns it off locally to prove the auth limits still hold
+- `authorization.e2e-spec.ts` holds tables of protected, admin-only, and public routes and checks them against the routes Express actually registers. When you add a controller route, add it to one of those tables or the drift check fails
+
+### API e2e coverage
+
+| Spec                                          | Covers                                                                                                   |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `app.e2e-spec.ts`                             | routing, validation, and guard smoke checks with Prisma mocked                                           |
+| `auth.e2e-spec.ts`                            | register, refresh, verify, change password, duplicate registration                                       |
+| `authorization.e2e-spec.ts`                   | 401 on every protected route, 403 on admin routes, request/user/provider ownership, route-table drift    |
+| `bookings.e2e-spec.ts`                        | booking creation, status state machine, cancel side effects, reschedule, reviews and replies, visibility |
+| `providers.e2e-spec.ts`                       | provider profile creation and updates, public profile, review replies                                    |
+| `quotes.e2e-spec.ts`                          | quote create/edit/withdraw rules, accept/reject side effects, visibility                                 |
+| `requests-bookings-notifications.e2e-spec.ts` | end-to-end request → quote → booking → notifications flow                                                |
+| `throttling.e2e-spec.ts`                      | login rate limit and the `NODE_ENV=test` guard on `THROTTLE_DISABLED`                                    |
+
+Not yet covered: messages (REST and socket gateway), users profile and anonymisation, admin behaviour beyond the guard, uploads, and notification fan-out for messages.
 
 ## Current Caveats
 
