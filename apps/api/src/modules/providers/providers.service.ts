@@ -437,17 +437,17 @@ export class ProvidersService {
     };
   }
 
+  // Public endpoint: only approved (and therefore not deleted) providers,
+  // and no private contact details.
   async findOne(id: string) {
-    const provider = await this.prisma.provider.findUnique({
-      where: { id },
+    const provider = await this.prisma.provider.findFirst({
+      where: { id, isApproved: true },
       include: {
         user: {
           select: {
             id: true,
-            email: true,
             firstName: true,
             lastName: true,
-            phone: true,
             profileImage: true,
           },
         },

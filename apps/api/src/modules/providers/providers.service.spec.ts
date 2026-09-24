@@ -337,20 +337,20 @@ describe("ProvidersService", () => {
   });
 
   describe("findOne", () => {
-    it("should return a provider by id", async () => {
-      prisma.provider.findUnique.mockResolvedValue(mockProvider);
+    it("should return an approved provider by id without contact details", async () => {
+      prisma.provider.findFirst.mockResolvedValue(mockProvider);
 
       const result = await service.findOne("provider-1");
 
       expect(result).toEqual(mockProvider);
-      expect(prisma.provider.findUnique).toHaveBeenCalledWith({
-        where: { id: "provider-1" },
-        include: expect.any(Object),
-      });
+      const query = prisma.provider.findFirst.mock.calls[0][0];
+      expect(query.where).toEqual({ id: "provider-1", isApproved: true });
+      expect(query.include.user.select).not.toHaveProperty("email");
+      expect(query.include.user.select).not.toHaveProperty("phone");
     });
 
     it("should throw NotFoundException if provider not found", async () => {
-      prisma.provider.findUnique.mockResolvedValue(null);
+      prisma.provider.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne("non-existent")).rejects.toThrow(
         NotFoundException,

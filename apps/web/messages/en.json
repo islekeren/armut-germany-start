@@ -1161,5 +1161,17 @@
       "approve": "Approve",
       "approved": "{name} has been approved."
     }
+  },
+  "accountDeletion": {
+    "title": "Delete account",
+    "description": "Your account will be deleted and your personal data (name, email, phone, profile picture) removed. Open requests are closed. Completed bookings, reviews and messages remain for the other party under “Deleted user”. This cannot be undone.",
+    "confirmWord": "DELETE",
+    "confirmLabel": "Type “{word}” to confirm",
+    "confirmError": "Please type “{word}” to confirm.",
+    "loginAgain": "Please log in again.",
+    "activeBookings": "You still have active bookings. Complete or cancel them before deleting your account.",
+    "error": "Your account could not be deleted. Please try again.",
+    "deleting": "Deleting...",
+    "submit": "Delete account"
   }
 }

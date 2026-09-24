@@ -1161,5 +1161,17 @@
       "approve": "Freigeben",
       "approved": "{name} wurde freigegeben."
     }
+  },
+  "accountDeletion": {
+    "title": "Konto löschen",
+    "description": "Ihr Konto wird gelöscht und Ihre persönlichen Daten (Name, E-Mail, Telefon, Profilbild) werden entfernt. Offene Anfragen werden geschlossen. Abgeschlossene Buchungen, Bewertungen und Nachrichten bleiben für die andere Seite unter „Gelöschter Nutzer“ erhalten. Dies kann nicht rückgängig gemacht werden.",
+    "confirmWord": "LÖSCHEN",
+    "confirmLabel": "Zur Bestätigung „{word}“ eingeben",
+    "confirmError": "Bitte geben Sie „{word}“ zur Bestätigung ein.",
+    "loginAgain": "Bitte melden Sie sich erneut an.",
+    "activeBookings": "Sie haben noch laufende Buchungen. Bitte schließen Sie diese ab oder stornieren Sie sie, bevor Sie Ihr Konto löschen.",
+    "error": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+    "deleting": "Wird gelöscht...",
+    "submit": "Konto löschen"
   }
 }
