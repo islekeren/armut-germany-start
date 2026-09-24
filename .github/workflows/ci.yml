@@ -5,6 +5,10 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  schedule:
+    # Nightly full browser suite; PRs run only the @smoke subset.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
 
 env:
   NODE_VERSION: "20.x"
@@ -165,17 +169,17 @@ jobs:
           name: api-build
           path: apps/api/dist
 
-  e2e-tests:
-    name: E2E Tests
+  e2e-api:
+    name: E2E (API)
     runs-on: ubuntu-latest
-    needs: [build-api, test-web]
+    needs: [lint, typecheck]
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: armut_test
+          POSTGRES_DB: armut_e2e_api
         ports:
           - 5432:5432
         options: >-
@@ -183,6 +187,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      s3:
+        image: adobe/s3mock:latest
+        env:
+          COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: armut-e2e-uploads
+        ports:
+          - 9190:9090
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_e2e_api
+      JWT_SECRET: test-jwt-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+      S3_ENDPOINT: http://127.0.0.1:9190
+      S3_PUBLIC_URL: http://127.0.0.1:9190/armut-e2e-uploads
 
     steps:
       - uses: actions/checkout@v4
@@ -196,9 +213,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
       - name: Generate Prisma Client
         working-directory: apps/api
         run: npx prisma generate
@@ -206,45 +220,106 @@ jobs:
       - name: Run database migrations
         working-directory: apps/api
         run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
 
-      - name: Seed database
-        working-directory: apps/api
-        run: npm run db:seed
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
+      - name: Wait for the S3 mock
+        run: curl --silent --fail --retry 20 --retry-delay 2 --retry-connrefused http://127.0.0.1:9190/ > /dev/null
 
       - name: Run API E2E tests
         working-directory: apps/api
         run: npm run test:e2e
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
-          JWT_SECRET: test-jwt-secret
-          JWT_REFRESH_SECRET: test-refresh-secret
 
-      - name: Run Playwright E2E tests
+  e2e-web:
+    name: E2E (Web)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: armut_e2e_web
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_e2e_web
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      JWT_SECRET: test-jwt-secret
+      JWT_REFRESH_SECRET: test-refresh-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Generate Prisma Client
+        working-directory: apps/api
+        run: npx prisma generate
+
+      # prepare-e2e migrates, resets, and seeds the database and builds both apps.
+      - name: Run Playwright smoke tests
+        if: github.event_name == 'pull_request'
+        working-directory: apps/web
+        run: npm run test:e2e:smoke
+
+      - name: Run full Playwright suite
+        if: github.event_name != 'pull_request'
         working-directory: apps/web
         run: npm run test:e2e
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:4000
-          JWT_SECRET: test-jwt-secret
-          JWT_REFRESH_SECRET: test-refresh-secret
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: apps/web/playwright-report
           retention-days: 30
 
+      - name: Upload failure traces
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-test-results
+          path: apps/web/test-results
+          retention-days: 7
+
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
-    if: github.ref == 'refs/heads/develop'
+    needs: [build-api, test-web, e2e-api, e2e-web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -256,8 +331,8 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
-    if: github.ref == 'refs/heads/main'
+    needs: [build-api, test-web, e2e-api, e2e-web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
     steps:
       - uses: actions/checkout@v4

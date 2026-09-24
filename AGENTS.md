@@ -28,7 +28,9 @@ Do not overwrite unrelated user changes.
 - root `npm run check-types` passes in the current workspace
 - API `check-types`, `build`, and `test -- --watchman=false` pass
 - API `lint` passes with warnings
+- API e2e (15 suites, 289 tests) and web Playwright e2e (51 tests) passed on September 24, 2026 against `docker-compose.test.yml`; see [TESTING.md](./docs/TESTING.md) for setup
 - API e2e can fail in a restricted sandbox with `EPERM`; the suite passed outside the sandbox on April 10, 2026
+- `authorization.e2e-spec.ts` fails when a new controller route is not added to its route tables; that is intentional
 - web `lint` and `build` pass
 - web `check-types` generates Next.js route types before running TypeScript and passes in the audited checkout
 - `apps/mobile` is not an active npm workspace even though the folder exists
@@ -126,6 +128,8 @@ Default guidance:
 - backend-only: `cd apps/api && npm run lint && npm run check-types && npm run build`
 - backend logic change: add `npm run test -- --watchman=false`
 - routing or bootstrap change in API: add `npm run test:e2e -- --watchman=false`
+- user-facing flow change: add `cd apps/web && npm run test:e2e:smoke` (or the full `npm run test:e2e`)
+- e2e suites need `npm run test:e2e:services:up && npm run test:e2e:setup` first
 - cross-cutting change: `npm run lint && npm run build && npm run check-types`
 
 Environment caveat:
