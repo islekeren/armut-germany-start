@@ -537,6 +537,9 @@ export default function ListingsPage() {
                             </label>
                             <input
                               type="date"
+                              min={new Date(Date.now() + 86_400_000)
+                                .toISOString()
+                                .slice(0, 10)}
                               value={offerValidUntil}
                               onChange={(event) =>
                                 setOfferValidUntil(event.target.value)
