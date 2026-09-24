@@ -32,6 +32,17 @@ export function isApiUnavailableError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.code === "unavailable";
 }
 
+/**
+ * Errors that say nothing about whether the session is valid (API down,
+ * rate limited). Callers should keep the stored session and retry later.
+ */
+export function isTransientApiError(error: unknown): error is ApiError {
+  return (
+    isApiUnavailableError(error) ||
+    (error instanceof ApiError && error.status === 429)
+  );
+}
+
 export function isApiNotFoundError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
 }
@@ -176,15 +187,15 @@ export async function apiRequest<T>(
               cache: cache ?? undefined,
               headers: retryHeaders,
             });
-          } else {
+          } else if ([400, 401, 403].includes(refreshResponse.status)) {
+            // Only a rejected refresh token ends the session; rate limits and
+            // server errors keep it so the next request can retry.
             localStorage.removeItem(ACCESS_TOKEN_KEY);
             localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
           }
         } catch {
-          localStorage.removeItem(ACCESS_TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
+          // Network failure while refreshing: keep the session for a retry.
         }
       }
     }
@@ -237,7 +248,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  userType: "customer" | "provider";
+  userType: "customer" | "provider" | "admin";
   phone?: string;
   avatar?: string;
   createdAt: string;
@@ -403,9 +414,11 @@ export const providersApi = {
     lat?: number;
     lng?: number;
     radius?: number;
+    postalCode?: string;
   }) => {
     const params = new URLSearchParams();
     if (query?.categoryId) params.append("categoryId", query.categoryId);
+    if (query?.postalCode) params.append("postalCode", query.postalCode);
     if (query?.minRating !== undefined)
       params.append("minRating", query.minRating.toString());
     if (query?.page) params.append("page", query.page.toString());
@@ -644,7 +657,12 @@ export const requestsApi = {
     });
   },
 
-  getById: (id: string) => apiRequest<ServiceRequest>(`/requests/${id}`),
+  getById: (id: string, token: string) =>
+    apiRequest<ServiceRequest>(`/requests/${id}`, {
+      method: "GET",
+      token,
+      cache: "no-store",
+    }),
 
   update: (id: string, data: UpdateRequestData, token: string) =>
     apiRequest<ServiceRequest>(`/requests/${id}`, {
@@ -671,15 +689,19 @@ export interface RequestItem {
   id: string;
   title: string;
   category: string;
+  categoryDe?: string;
   location: string;
   date: string;
   budget: string;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
 }
 
 export interface BookingItem {
   id: string;
   customer: string;
   service: string;
+  serviceDe?: string;
   date: string;
   time: string;
   status: string;
@@ -974,6 +996,7 @@ export interface Quote {
     companyName?: string | null;
     ratingAvg?: number;
     totalReviews?: number;
+    createdAt?: string;
     user: {
       id: string;
       firstName: string;
@@ -1434,6 +1457,44 @@ export const uploadsApi = {
   deleteFile: (token: string, key: string) =>
     apiRequest<{ success: boolean }>(`/uploads/${encodeURIComponent(key)}`, {
       method: "DELETE",
+      token,
+    }),
+};
+
+export interface PendingProvider {
+  id: string;
+  companyName: string | null;
+  description: string;
+  experienceYears: number;
+  isApproved: boolean;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    createdAt: string;
+  };
+  profile?: { city: string | null; postalCode: string | null } | null;
+  services?: Array<{
+    id: string;
+    category?: { nameDe: string; nameEn: string } | null;
+  }>;
+}
+
+// Admin API calls (require an admin account)
+export const adminApi = {
+  getPendingProviders: (token: string, page = 1, limit = 50) =>
+    apiRequest<PaginatedResponse<PendingProvider>>(
+      `/admin/providers/pending?page=${page}&limit=${limit}`,
+      { token, cache: "no-store" },
+    ),
+
+  setProviderApproval: (token: string, providerId: string, approved: boolean) =>
+    apiRequest<PendingProvider>(`/admin/providers/${providerId}/approve`, {
+      method: "PATCH",
+      body: JSON.stringify({ approved }),
       token,
     }),
 };

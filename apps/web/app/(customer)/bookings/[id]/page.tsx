@@ -434,6 +434,7 @@ export default function BookingDetailPage() {
                 </label>
                 <input
                   type="datetime-local"
+                  min={toDateTimeLocalValue(new Date())}
                   value={rescheduleDate}
                   onChange={(event) => setRescheduleDate(event.target.value)}
                   className="mt-2 w-full rounded-lg border border-border px-4 py-3 outline-none transition focus:border-primary"

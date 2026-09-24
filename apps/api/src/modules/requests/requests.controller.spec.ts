@@ -59,9 +59,10 @@ describe("RequestsController", () => {
   });
 
   it("returns request by id", async () => {
+    const req = { user: { id: "u1", userType: "customer" } };
     requestsService.findOne.mockResolvedValue({ id: "r1" });
-    await expect(controller.findOne("r1")).resolves.toEqual({ id: "r1" });
-    expect(requestsService.findOne).toHaveBeenCalledWith("r1");
+    await expect(controller.findOne("r1", req)).resolves.toEqual({ id: "r1" });
+    expect(requestsService.findOne).toHaveBeenCalledWith("r1", req.user);
   });
 
   it("updates request by id", async () => {

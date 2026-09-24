@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Header } from "@/components";
 import { useAuth } from "@/contexts";
 import {
@@ -66,18 +66,24 @@ const transformRequest = (
   context: {
     bookingsByRequestId: Map<string, CustomerBooking>;
     acceptedQuotesByRequestId: Map<string, Quote>;
+    locale: string;
   },
 ): RequestCard => {
+  const isGerman = context.locale.startsWith("de");
+  const dateLocale = isGerman ? "de-DE" : "en-US";
   const booking = context.bookingsByRequestId.get(request.id);
   const acceptedQuote = context.acceptedQuotesByRequestId.get(request.id);
 
   return {
     id: request.id,
     title: request.title,
-    category: request.category?.nameEn || request.category?.slug || request.categoryId,
+    category:
+      (isGerman ? request.category?.nameDe : request.category?.nameEn) ||
+      request.category?.slug ||
+      request.categoryId,
     categorySlug: request.category?.slug,
     status: mapApiStatus(request.status),
-    createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
+    createdAt: new Date(request.createdAt).toLocaleDateString(dateLocale, {
       month: "long",
       day: "numeric",
       year: "numeric",
@@ -96,7 +102,7 @@ const transformRequest = (
     acceptedQuoteId: acceptedQuote?.id,
     hasReview: Boolean(booking?.review),
     completedAt: booking?.completedAt
-      ? new Date(booking.completedAt).toLocaleDateString("en-US", {
+      ? new Date(booking.completedAt).toLocaleDateString(dateLocale, {
           month: "long",
           day: "numeric",
           year: "numeric",
@@ -107,6 +113,7 @@ const transformRequest = (
 
 export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
+  const locale = useLocale();
   const { isAuthenticated } = useAuth();
   const [filter, setFilter] = useState("booked");
   const [requests, setRequests] = useState<RequestCard[]>([]);
@@ -151,6 +158,7 @@ export default function MyRequestsPage() {
         transformRequest(request, {
           bookingsByRequestId,
           acceptedQuotesByRequestId,
+          locale,
         }),
       );
       setRequests(transformedRequests);
@@ -160,7 +168,7 @@ export default function MyRequestsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     fetchRequests();
@@ -306,12 +314,12 @@ export default function MyRequestsPage() {
                         <>
                           {sector && (
                             <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
-                              {getSectorLabel(sector)}
+                              {getSectorLabel(sector, locale)}
                             </span>
                           )}
                           {branch && (
                             <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                              {getBranchLabel(branch)}
+                              {getBranchLabel(branch, locale)}
                             </span>
                           )}
                         </>

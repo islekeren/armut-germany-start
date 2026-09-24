@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { anonymizeUserAccount } from "./account-deletion";
 
 @Injectable()
 export class UsersService {
@@ -19,29 +20,31 @@ export class UsersService {
     updatedAt: true,
   };
 
+  // Deleted (anonymised) accounts are invisible to every lookup, which is
+  // what stops their existing access and refresh tokens from working.
   async findById(id: string) {
-    return this.prisma.user.findUnique({
-      where: { id },
+    return this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
       select: this.userResponseSelect,
     });
   }
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
+    return this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
       select: this.userResponseSelect,
     });
   }
 
   async findByIdWithPassword(id: string) {
-    return this.prisma.user.findUnique({
-      where: { id },
+    return this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
     });
   }
 
   async findByEmailWithPassword(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
+    return this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
     });
   }
 
@@ -74,9 +77,6 @@ export class UsersService {
   }
 
   async delete(id: string) {
-    return this.prisma.user.delete({
-      where: { id },
-      select: this.userResponseSelect,
-    });
+    return anonymizeUserAccount(this.prisma, id);
   }
 }

@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertBanner, PanelCard, ProviderSubpageShell } from "@/components";
 import {
+  AlertBanner,
+  PanelCard,
+  ProviderSubpageShell,
+  useProviderApproval,
+} from "@/components";
+import {
+  ApiError,
   getStoredAccessToken,
   providerApi,
   quotesApi,
@@ -33,6 +39,8 @@ export default function ListingsPage() {
   const t = useTranslations("provider.requests");
   const tNav = useTranslations("provider.dashboard.navigation");
   const tFilters = useTranslations("provider.offers.filters");
+  const tApproval = useTranslations("provider.approval");
+  const isApproved = useProviderApproval();
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [allRequests, setAllRequests] = useState<ProviderRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,16 +100,23 @@ export default function ListingsPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allRequests]);
 
+  // e.g. "vor 3 Stunden" / "3 hours ago", "jetzt" / "now".
   const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
+    const diffMinutes = Math.floor(
+      (Date.now() - new Date(dateString).getTime()) / 60_000,
+    );
+    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
 
-    if (diffDays > 0) return `${diffDays}d`;
-    if (diffHours > 0) return `${diffHours}h`;
-    return "now";
+    if (diffMinutes >= 60 * 24) {
+      return formatter.format(-Math.floor(diffMinutes / (60 * 24)), "day");
+    }
+    if (diffMinutes >= 60) {
+      return formatter.format(-Math.floor(diffMinutes / 60), "hour");
+    }
+    if (diffMinutes >= 1) {
+      return formatter.format(-diffMinutes, "minute");
+    }
+    return formatter.format(0, "second");
   };
 
   const filteredRequests = useMemo(() => {
@@ -206,6 +221,11 @@ export default function ListingsPage() {
       return;
     }
 
+    if (isApproved === false) {
+      setError(tApproval("quoteBlocked"));
+      return;
+    }
+
     if (!offerPrice || Number(offerPrice) <= 0) {
       setError(t("invalidPrice"));
       return;
@@ -247,9 +267,13 @@ export default function ListingsPage() {
       setSuccessMessage(t("quoteSent"));
     } catch (sendError) {
       console.error("Failed to send offer", sendError);
-      setError(
-        sendError instanceof Error ? sendError.message : t("quoteError"),
-      );
+      if (sendError instanceof ApiError && sendError.status === 403) {
+        setError(tApproval("quoteBlocked"));
+      } else {
+        setError(
+          sendError instanceof Error ? sendError.message : t("quoteError"),
+        );
+      }
     } finally {
       setSendingOffer(false);
     }
@@ -437,7 +461,7 @@ export default function ListingsPage() {
                     )}
                   </div>
                   <span className="text-sm text-muted">
-                    {t("postedAt", { time: getTimeAgo(request.createdAt) })}
+                    {getTimeAgo(request.createdAt)}
                   </span>
                 </div>
 
@@ -452,7 +476,7 @@ export default function ListingsPage() {
                   <span className="flex items-center gap-1 text-muted">
                     📅{" "}
                     {request.preferredDate
-                      ? new Date(request.preferredDate).toLocaleDateString()
+                      ? new Date(request.preferredDate).toLocaleDateString(locale)
                       : t("flexible")}
                   </span>
                   {request.budget ? (
@@ -513,6 +537,9 @@ export default function ListingsPage() {
                             </label>
                             <input
                               type="date"
+                              min={new Date(Date.now() + 86_400_000)
+                                .toISOString()
+                                .slice(0, 10)}
                               value={offerValidUntil}
                               onChange={(event) =>
                                 setOfferValidUntil(event.target.value)
@@ -546,7 +573,7 @@ export default function ListingsPage() {
                           <button
                             type="button"
                             onClick={() => handleSendOffer(request.id)}
-                            disabled={sendingOffer}
+                            disabled={sendingOffer || isApproved === false}
                             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
                           >
                             {sendingOffer ? t("sendingOffer") : t("sendOffer")}
@@ -583,10 +610,6 @@ export default function ListingsPage() {
               </li>
             </ul>
 
-            <div className="mt-6 rounded-lg bg-secondary/10 p-4">
-              <div className="text-2xl font-bold text-secondary">87%</div>
-              <div className="text-sm text-muted">{t("acceptanceRate")}</div>
-            </div>
           </PanelCard>
         </aside>
       </div>

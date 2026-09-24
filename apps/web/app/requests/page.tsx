@@ -210,7 +210,7 @@ export default function RequestsPage() {
                     <span className="text-muted">
                       📅{" "}
                       {request.preferredDate
-                        ? new Date(request.preferredDate).toLocaleDateString()
+                        ? new Date(request.preferredDate).toLocaleDateString(locale)
                         : t("flexible")}
                     </span>
                     {getBudgetText(request) ? (

@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { anonymizeUserAccount } from "../users/account-deletion";
 import { sanitizeUserResponse } from "../../common/security";
 import { getRequestTaxonomyCategoryBySlug } from "../../common/request-taxonomy";
 
@@ -172,12 +173,8 @@ export class AdminService {
   }
 
   async deleteUser(id: string) {
-    // Soft delete or hard delete based on requirements
-    const user = await this.prisma.user.delete({
-      where: { id },
-    });
-
-    return sanitizeUserResponse(user);
+    // Same anonymisation as self-service deletion; see account-deletion.ts.
+    return anonymizeUserAccount(this.prisma, id);
   }
 
   // ==================== Provider Management ====================
@@ -201,6 +198,15 @@ export class AdminService {
               lastName: true,
               phone: true,
               createdAt: true,
+            },
+          },
+          profile: {
+            select: { city: true, postalCode: true },
+          },
+          services: {
+            select: {
+              id: true,
+              category: { select: { nameDe: true, nameEn: true } },
             },
           },
         },

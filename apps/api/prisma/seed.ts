@@ -308,6 +308,22 @@ async function main() {
     }
   }
 
+  // Create Admin User (development only; approves new providers at /admin/providers)
+  await prisma.user.upsert({
+    where: { email: "admin@test.com" },
+    update: {},
+    create: {
+      email: "admin@test.com",
+      password: hashedPassword,
+      firstName: "Admin",
+      lastName: "User",
+      userType: "admin",
+      isVerified: true,
+      gdprConsent: true,
+    },
+  });
+  console.log("✅ Created admin user: admin@test.com");
+
   // Create Customer User
   const customerEmail = "customer@test.com";
   const customerUser = await prisma.user.upsert({

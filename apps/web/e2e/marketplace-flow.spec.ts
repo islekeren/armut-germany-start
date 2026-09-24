@@ -93,7 +93,11 @@ test("provider can view listings and send an offer", async ({ page }) => {
 
   await page.getByRole("heading", { name: "Have apartment cleaned (80sqm)" }).click();
   await page.locator('input[placeholder="100"]').fill("145");
-  await page.locator('input[type="date"]').fill("2026-05-01");
+  // Offers must be valid in the future; derive the date from today.
+  const validUntil = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  await page.locator('input[type="date"]').fill(validUntil);
   await page
     .getByPlaceholder("Describe your offer and what's included...")
     .fill("I can complete this cleaning in one visit and bring all materials.");

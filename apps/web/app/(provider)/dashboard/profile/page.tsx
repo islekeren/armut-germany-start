@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   FormInput,
   FormLabel,
@@ -125,6 +125,7 @@ function mapProfileToFormData(profile: ProviderProfile): FormData {
 
 export default function ProviderProfilePage() {
   const t = useTranslations("provider.profile");
+  const locale = useLocale();
   const tNav = useTranslations("provider.dashboard.navigation");
   const tPublic = useTranslations("providerPublicProfile");
   const { refreshAuth } = useAuth();
@@ -435,7 +436,7 @@ export default function ProviderProfilePage() {
                       <div className="flex items-center justify-between gap-4">
                         <p className="font-medium">{review.customer}</p>
                         <p className="text-sm text-muted">
-                          {new Date(review.date).toLocaleDateString()}
+                          {new Date(review.date).toLocaleDateString(locale)}
                         </p>
                       </div>
                       <p className="mt-1 text-sm text-muted">

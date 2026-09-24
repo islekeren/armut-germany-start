@@ -28,7 +28,8 @@
     "myRequests": "My Requests",
     "bookings": "Bookings",
     "messages": "Messages",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "adminProviders": "Approve providers"
   },
   "notifications": {
     "title": "Notifications",
@@ -114,8 +115,11 @@
       "city": "City",
       "cityPlaceholder": "e.g. Berlin",
       "priceMin": "Min price (€)",
-      "priceMax": "Max price (€)"
-    }
+      "priceMax": "Max price (€)",
+      "postalCode": "Postcode",
+      "postalCodePlaceholder": "e.g. 10115"
+    },
+    "unknownPostalCode": "We don't recognise this postcode. Please check it."
   },
   "requestsPage": {
     "title": "Open Requests",
@@ -321,7 +325,10 @@
     "providerBlockedDescription": "Provider accounts cannot create service requests. Use your provider dashboard to discover and quote customer requests.",
     "providerBlockedAction": "Go to provider dashboard",
     "errorCreating": "Failed to create request. Please try again.",
-    "errorNoToken": "No authentication token found."
+    "errorNoToken": "No authentication token found.",
+    "draftRestored": "We restored your details. Please review them and submit your request.",
+    "draftPhotosLost": "Photos could not be saved – please add them again in the Details step.",
+    "unknownPostalCode": "We don't recognise this postcode. Please check it."
   },
   "hero": {
     "title": "Find the Perfect Service Provider",
@@ -633,7 +640,12 @@
         "tip1": "Compare not only prices but also reviews",
         "tip2": "Ask follow-up questions if something is unclear",
         "tip3": "Pay attention to the provider's experience"
-      }
+      },
+      "flexible": "Flexible",
+      "budgetRange": "€{min}–{max}",
+      "budgetFrom": "from €{min}",
+      "budgetUpTo": "up to €{max}",
+      "acceptConfirm": "Accept the quote from {provider} for €{price}? All other quotes for this request will be declined."
     },
     "bookings": {
       "title": "My Bookings",
@@ -695,7 +707,7 @@
         "acceptedOnlyText": "Only accepted quotes can be turned into bookings.",
         "backToRequest": "Back to Request",
         "scheduleTitle": "Schedule your service",
-        "scheduleHint": "Pick when you want the provider to arrive. The provider can confirm or ask for a different time afterward.",
+        "scheduleHint": "Pick when you want the provider to arrive. The booking is confirmed right away – you can agree on details by message afterwards.",
         "scheduledDate": "Date and time",
         "scheduledDateHint": "Choose the preferred arrival time for the service.",
         "creating": "Creating booking...",
@@ -789,7 +801,7 @@
   "provider": {
     "dashboard": {
       "title": "Overview",
-      "welcomeBack": "Welcome back, {name}! 👋",
+      "welcomeBack": "Welcome, {name}! 👋",
       "activityOverview": "Here is an overview of your current activities.",
       "noRequests": "No new listings.",
       "noAppointments": "No upcoming appointments.",
@@ -850,7 +862,11 @@
         "today": "Today",
         "yesterday": "Yesterday",
         "twoDaysAgo": "2 days ago"
-      }
+      },
+      "budgetRange": "€{min}–{max}",
+      "budgetFrom": "from €{min}",
+      "budgetUpTo": "up to €{max}",
+      "budgetOnRequest": "Budget open"
     },
     "requests": {
       "title": "Open Listings",
@@ -1062,6 +1078,11 @@
       "preferredDate": "Preferred date",
       "notSpecified": "Not specified",
       "quotes": "Quotes"
+    },
+    "approval": {
+      "pendingTitle": "Your provider profile is under review",
+      "pendingDescription": "You can already browse requests. You can send quotes as soon as our team approves your profile – usually within 1–2 business days.",
+      "quoteBlocked": "Your profile has not been approved yet. You can send quotes once the review is complete."
     }
   },
   "providerOnboarding": {
@@ -1122,5 +1143,35 @@
       "finish": "Finish onboarding",
       "submitting": "Creating account..."
     }
+  },
+  "admin": {
+    "providers": {
+      "title": "Approve providers",
+      "subtitle": "New providers can only send quotes after they are approved here.",
+      "loading": "Loading providers...",
+      "loadError": "Providers could not be loaded.",
+      "actionError": "Approval failed. Please try again.",
+      "forbidden": "This page is only available to administrators.",
+      "empty": "No providers are waiting for approval.",
+      "location": "Location",
+      "experience": "Experience",
+      "years": "{count, plural, one {# year} other {# years}}",
+      "categories": "Categories",
+      "registeredAt": "Registered on",
+      "approve": "Approve",
+      "approved": "{name} has been approved."
+    }
+  },
+  "accountDeletion": {
+    "title": "Delete account",
+    "description": "Your account will be deleted and your personal data (name, email, phone, profile picture) removed. Open requests are closed. Completed bookings, reviews and messages remain for the other party under “Deleted user”. This cannot be undone.",
+    "confirmWord": "DELETE",
+    "confirmLabel": "Type “{word}” to confirm",
+    "confirmError": "Please type “{word}” to confirm.",
+    "loginAgain": "Please log in again.",
+    "activeBookings": "You still have active bookings. Complete or cancel them before deleting your account.",
+    "error": "Your account could not be deleted. Please try again.",
+    "deleting": "Deleting...",
+    "submit": "Delete account"
   }
 }

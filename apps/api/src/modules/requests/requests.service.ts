@@ -17,6 +17,69 @@ import {
   getRequestSectorById,
   resolveRequestTaxonomy,
 } from "../../common/request-taxonomy";
+import { hasCoordinates, lookupPostcode } from "../../common/geo/postcode-geo";
+
+type PublicRequestSource = {
+  id: string;
+  categoryId: string;
+  requestSector: string | null;
+  requestBranch: string | null;
+  title: string;
+  description: string;
+  city: string;
+  postalCode: string;
+  preferredDate: Date | null;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  images: string[];
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  customer?: {
+    firstName: string;
+    lastName: string;
+    profileImage?: string | null;
+    createdAt?: Date;
+  } | null;
+  category?: unknown;
+  _count?: { quotes: number };
+};
+
+/**
+ * Shape of a request visible to people other than its owner: no street
+ * address, coordinates, customer id, surname, or quotes.
+ */
+export function toPublicRequest(request: PublicRequestSource) {
+  const { customer } = request;
+
+  return {
+    id: request.id,
+    categoryId: request.categoryId,
+    requestSector: request.requestSector,
+    requestBranch: request.requestBranch,
+    title: request.title,
+    description: request.description,
+    city: request.city,
+    postalCode: request.postalCode,
+    preferredDate: request.preferredDate,
+    budgetMin: request.budgetMin,
+    budgetMax: request.budgetMax,
+    images: request.images,
+    status: request.status,
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
+    customer: customer
+      ? {
+          firstName: customer.firstName,
+          lastName: customer.lastName ? `${customer.lastName.charAt(0)}.` : "",
+          profileImage: customer.profileImage ?? null,
+          ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
+        }
+      : null,
+    category: request.category,
+    ...(request._count ? { _count: request._count } : {}),
+  };
+}
 
 @Injectable()
 export class RequestsService {
@@ -24,6 +87,18 @@ export class RequestsService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
   ) {}
+
+  /**
+   * Coordinates come from the postcode so provider matching works even though
+   * the web client has no geocoder (it sends 0,0). Client coordinates are only
+   * used when the postcode is unknown.
+   */
+  private resolveLocation(postalCode?: string, lat?: number, lng?: number) {
+    const point = lookupPostcode(postalCode);
+    if (point) return point;
+    if (hasCoordinates(lat, lng)) return { lat: lat!, lng: lng! };
+    throw new BadRequestException("Unknown postal code");
+  }
 
   // Helper to check if a string is a valid UUID
   private isUUID(str: string): boolean {
@@ -115,10 +190,18 @@ export class RequestsService {
       ...requestData
     } = createRequestDto;
 
+    const location = this.resolveLocation(
+      requestData.postalCode,
+      requestData.lat,
+      requestData.lng,
+    );
+
     return this.prisma.serviceRequest.create({
       data: {
         customerId,
         ...requestData,
+        lat: location.lat,
+        lng: location.lng,
         categoryId: category.id,
         requestSector: resolvedTaxonomy.sectorId,
         requestBranch: resolvedTaxonomy.branchId,
@@ -162,14 +245,14 @@ export class RequestsService {
       lat,
       lng,
       radius,
-      status,
       page = 1,
       limit = 10,
     } = query;
     const skip = (page - 1) * limit;
 
+    // This endpoint is public, so only open requests are ever listed.
     const where: any = {
-      status: status || "open",
+      status: "open",
     };
 
     const resolvedCategorySlug = categorySlug || category;
@@ -221,7 +304,7 @@ export class RequestsService {
     const total = await this.prisma.serviceRequest.count({ where });
 
     return {
-      data: requests,
+      data: requests.map(toPublicRequest),
       meta: {
         total,
         page,
@@ -253,7 +336,7 @@ export class RequestsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, viewer: { id: string; userType: string }) {
     const request = await this.prisma.serviceRequest.findUnique({
       where: { id },
       include: {
@@ -291,7 +374,11 @@ export class RequestsService {
       throw new NotFoundException("Service request not found");
     }
 
-    return request;
+    if (request.customerId === viewer.id || viewer.userType === "admin") {
+      return request;
+    }
+
+    return toPublicRequest(request);
   }
 
   async update(id: string, userId: string, updateRequestDto: UpdateRequestDto) {
@@ -307,10 +394,20 @@ export class RequestsService {
       throw new ForbiddenException("Not authorized to update this request");
     }
 
+    const locationUpdate =
+      updateRequestDto.postalCode !== undefined
+        ? this.resolveLocation(
+            updateRequestDto.postalCode,
+            updateRequestDto.lat,
+            updateRequestDto.lng,
+          )
+        : {};
+
     return this.prisma.serviceRequest.update({
       where: { id },
       data: {
         ...updateRequestDto,
+        ...locationUpdate,
         preferredDate: updateRequestDto.preferredDate
           ? new Date(updateRequestDto.preferredDate)
           : undefined,
@@ -457,7 +554,7 @@ export class RequestsService {
     const total = requests.length;
 
     return {
-      data: requests,
+      data: requests.map(toPublicRequest),
       meta: {
         total,
         page,

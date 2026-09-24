@@ -28,7 +28,8 @@
     "myRequests": "Meine Anfragen",
     "bookings": "Buchungen",
     "messages": "Nachrichten",
-    "notifications": "Benachrichtigungen"
+    "notifications": "Benachrichtigungen",
+    "adminProviders": "Anbieter freigeben"
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -114,8 +115,11 @@
       "city": "Stadt",
       "cityPlaceholder": "z.B. Berlin",
       "priceMin": "Mindestpreis (€)",
-      "priceMax": "Maximalpreis (€)"
-    }
+      "priceMax": "Maximalpreis (€)",
+      "postalCode": "Postleitzahl",
+      "postalCodePlaceholder": "z.B. 10115"
+    },
+    "unknownPostalCode": "Diese Postleitzahl kennen wir nicht. Bitte prüfen Sie die Eingabe."
   },
   "requestsPage": {
     "title": "Offene Anfragen",
@@ -261,8 +265,8 @@
     "step3": "Überprüfen",
     "whatDoYouNeed": "Was brauchen Sie?",
     "selectCategory": "Wählen Sie eine Kategorie für Ihre Serviceanfrage.",
-    "selectSector": "Hauptbereich waehlen",
-    "selectBranch": "Dienstleistungsbereich waehlen",
+    "selectSector": "Hauptbereich wählen",
+    "selectBranch": "Dienstleistungsbereich wählen",
     "branchSearchPlaceholder": "Dienstleistungsbereich suchen",
     "noBranchMatch": "Kein passender Dienstleistungsbereich gefunden.",
     "loadingCategories": "Kategorien werden geladen...",
@@ -321,7 +325,10 @@
     "providerBlockedDescription": "Anbieterkonten können keine Serviceanfragen erstellen. Nutzen Sie Ihr Anbieter-Dashboard, um passende Kundenanfragen zu finden und Angebote abzugeben.",
     "providerBlockedAction": "Zum Anbieter-Dashboard",
     "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
-    "errorNoToken": "Kein Authentifizierungs-Token gefunden."
+    "errorNoToken": "Kein Authentifizierungs-Token gefunden.",
+    "draftRestored": "Ihre Angaben wurden wiederhergestellt. Bitte prüfen Sie sie und senden Sie die Anfrage ab.",
+    "draftPhotosLost": "Fotos konnten nicht gespeichert werden – bitte fügen Sie sie im Schritt „Details“ erneut hinzu.",
+    "unknownPostalCode": "Diese Postleitzahl kennen wir nicht. Bitte prüfen Sie die Eingabe."
   },
   "hero": {
     "title": "Finden Sie den perfekten Dienstleister",
@@ -574,11 +581,11 @@
       "bookingPending": "Buchungsdetails stehen noch aus",
       "completedOn": "Abgeschlossen am",
       "rate": "Bewerten",
-      "delete": "Loeschen",
-      "deleting": "Wird geloescht...",
-      "deleteConfirm": "Moechten Sie diese Anfrage wirklich loeschen?",
-      "deleteSuccess": "Anfrage erfolgreich geloescht.",
-      "deleteError": "Anfrage konnte nicht geloescht werden.",
+      "delete": "Löschen",
+      "deleting": "Wird gelöscht...",
+      "deleteConfirm": "Möchten Sie diese Anfrage wirklich löschen?",
+      "deleteSuccess": "Anfrage erfolgreich gelöscht.",
+      "deleteError": "Anfrage konnte nicht gelöscht werden.",
       "noRequests": "Keine Anfragen gefunden",
       "noRequestsHint": "Erstellen Sie eine neue Anfrage, um Angebote zu erhalten",
       "createRequest": "Anfrage erstellen",
@@ -633,7 +640,12 @@
         "tip1": "Vergleichen Sie nicht nur den Preis, sondern auch Bewertungen",
         "tip2": "Stellen Sie Rückfragen, wenn etwas unklar ist",
         "tip3": "Achten Sie auf die Erfahrung des Dienstleisters"
-      }
+      },
+      "flexible": "Flexibel",
+      "budgetRange": "{min}–{max} €",
+      "budgetFrom": "ab {min} €",
+      "budgetUpTo": "bis {max} €",
+      "acceptConfirm": "Angebot von {provider} über {price} € annehmen? Alle anderen Angebote für diese Anfrage werden dabei abgelehnt."
     },
     "bookings": {
       "title": "Meine Buchungen",
@@ -695,7 +707,7 @@
         "acceptedOnlyText": "Nur angenommene Angebote können in Buchungen umgewandelt werden.",
         "backToRequest": "Zurück zur Anfrage",
         "scheduleTitle": "Service terminieren",
-        "scheduleHint": "Wählen Sie, wann der Dienstleister kommen soll. Danach kann der Dienstleister den Termin bestätigen oder anpassen.",
+        "scheduleHint": "Wählen Sie, wann der Dienstleister kommen soll. Der Termin wird direkt gebucht – Details können Sie anschließend per Nachricht abstimmen.",
         "scheduledDate": "Datum und Uhrzeit",
         "scheduledDateHint": "Wählen Sie die gewünschte Ankunftszeit für die Dienstleistung.",
         "creating": "Buchung wird erstellt...",
@@ -789,12 +801,12 @@
   "provider": {
     "dashboard": {
       "title": "Übersicht",
-      "welcomeBack": "Willkommen zurück, {name}! 👋",
+      "welcomeBack": "Willkommen, {name}! 👋",
       "activityOverview": "Hier ist eine Übersicht Ihrer aktuellen Aktivitäten.",
       "noRequests": "Keine neuen Anzeigen.",
       "noAppointments": "Keine anstehenden Termine.",
       "noPendingOffers": "Keine ausstehenden Angebote.",
-      "pendingOfferValidUntil": "Gueltig bis {date}",
+      "pendingOfferValidUntil": "Gültig bis {date}",
       "pendingOffersUntitled": "Anzeige ohne Titel",
       "pendingOffersUnknownCustomer": "Unbekannter Kunde",
       "loading": "Lädt...",
@@ -850,7 +862,11 @@
         "today": "Heute",
         "yesterday": "Gestern",
         "twoDaysAgo": "Vor 2 Tagen"
-      }
+      },
+      "budgetRange": "{min}–{max} €",
+      "budgetFrom": "ab {min} €",
+      "budgetUpTo": "bis {max} €",
+      "budgetOnRequest": "Budget offen"
     },
     "requests": {
       "title": "Offene Anzeigen",
@@ -891,7 +907,7 @@
       "acceptanceRate": "Ihrer Angebote wurden bisher angenommen"
     },
     "placeholders": {
-      "comingSoon": "Dieser Bereich wird bald verfuegbar sein."
+      "comingSoon": "Dieser Bereich wird bald verfügbar sein."
     },
     "profile": {
       "title": "Profil bearbeiten",
@@ -1062,6 +1078,11 @@
       "preferredDate": "Wunschtermin",
       "notSpecified": "Nicht angegeben",
       "quotes": "Angebote"
+    },
+    "approval": {
+      "pendingTitle": "Ihr Anbieterprofil wird geprüft",
+      "pendingDescription": "Sie können Anfragen bereits ansehen. Angebote können Sie senden, sobald unser Team Ihr Profil freigegeben hat – in der Regel innerhalb von 1–2 Werktagen.",
+      "quoteBlocked": "Ihr Profil ist noch nicht freigegeben. Sie können Angebote senden, sobald die Prüfung abgeschlossen ist."
     }
   },
   "providerOnboarding": {
@@ -1122,5 +1143,35 @@
       "finish": "Onboarding abschließen",
       "submitting": "Konto wird erstellt..."
     }
+  },
+  "admin": {
+    "providers": {
+      "title": "Anbieter freigeben",
+      "subtitle": "Neue Anbieter können erst Angebote senden, nachdem sie hier freigegeben wurden.",
+      "loading": "Anbieter werden geladen...",
+      "loadError": "Anbieter konnten nicht geladen werden.",
+      "actionError": "Die Freigabe ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "forbidden": "Diese Seite ist nur für Administratoren verfügbar.",
+      "empty": "Keine Anbieter warten auf Freigabe.",
+      "location": "Ort",
+      "experience": "Erfahrung",
+      "years": "{count, plural, one {# Jahr} other {# Jahre}}",
+      "categories": "Kategorien",
+      "registeredAt": "Registriert am",
+      "approve": "Freigeben",
+      "approved": "{name} wurde freigegeben."
+    }
+  },
+  "accountDeletion": {
+    "title": "Konto löschen",
+    "description": "Ihr Konto wird gelöscht und Ihre persönlichen Daten (Name, E-Mail, Telefon, Profilbild) werden entfernt. Offene Anfragen werden geschlossen. Abgeschlossene Buchungen, Bewertungen und Nachrichten bleiben für die andere Seite unter „Gelöschter Nutzer“ erhalten. Dies kann nicht rückgängig gemacht werden.",
+    "confirmWord": "LÖSCHEN",
+    "confirmLabel": "Zur Bestätigung „{word}“ eingeben",
+    "confirmError": "Bitte geben Sie „{word}“ zur Bestätigung ein.",
+    "loginAgain": "Bitte melden Sie sich erneut an.",
+    "activeBookings": "Sie haben noch laufende Buchungen. Bitte schließen Sie diese ab oder stornieren Sie sie, bevor Sie Ihr Konto löschen.",
+    "error": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+    "deleting": "Wird gelöscht...",
+    "submit": "Konto löschen"
   }
 }

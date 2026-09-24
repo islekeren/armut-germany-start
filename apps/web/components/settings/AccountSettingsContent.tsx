@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts";
 import {
+  ApiError,
   authApi,
   getStoredAccessToken,
   uploadsApi,
@@ -32,6 +34,7 @@ interface AccountSettingsContentProps {
 
 export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProps) {
   const { user, refreshAuth, logout } = useAuth();
+  const tDelete = useTranslations("accountDeletion");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -204,8 +207,8 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
 
   const handleDeleteAccount = async () => {
     setDeleteMessage("");
-    if (deleteConfirm.trim().toUpperCase() !== "DELETE") {
-      setDeleteMessage('Type "DELETE" to confirm.');
+    if (deleteConfirm.trim().toUpperCase() !== tDelete("confirmWord")) {
+      setDeleteMessage(tDelete("confirmError", { word: tDelete("confirmWord") }));
       return;
     }
 
@@ -213,7 +216,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
     try {
       const token = getStoredAccessToken();
       if (!token) {
-        setDeleteMessage("Please log in again.");
+        setDeleteMessage(tDelete("loginAgain"));
         return;
       }
 
@@ -222,7 +225,11 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
       window.location.href = "/";
     } catch (error) {
       console.error("Failed to delete profile", error);
-      setDeleteMessage("Could not delete your account.");
+      setDeleteMessage(
+        error instanceof ApiError && error.status === 409
+          ? tDelete("activeBookings")
+          : tDelete("error"),
+      );
     } finally {
       setIsDeletingAccount(false);
     }
@@ -435,13 +442,13 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
       </PanelCard>
 
       <PanelCard className="space-y-4 border border-error/40">
-        <h2 className="text-lg font-semibold text-error">Danger zone</h2>
-        <p className="text-sm text-muted">
-          Delete this account permanently. This action cannot be undone.
-        </p>
+        <h2 className="text-lg font-semibold text-error">{tDelete("title")}</h2>
+        <p className="text-sm text-muted">{tDelete("description")}</p>
 
         <div>
-          <FormLabel htmlFor="settings-delete-confirm">Type DELETE to confirm</FormLabel>
+          <FormLabel htmlFor="settings-delete-confirm">
+            {tDelete("confirmLabel", { word: tDelete("confirmWord") })}
+          </FormLabel>
           <FormInput
             id="settings-delete-confirm"
             value={deleteConfirm}
@@ -457,7 +464,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
           disabled={isDeletingAccount}
           className="rounded-lg bg-error px-4 py-2 text-sm font-semibold text-white hover:bg-error/90 disabled:opacity-60"
         >
-          {isDeletingAccount ? "Deleting..." : "Delete account"}
+          {isDeletingAccount ? tDelete("deleting") : tDelete("submit")}
         </button>
       </PanelCard>
     </div>

@@ -54,8 +54,9 @@ export class RequestsController {
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.requestsService.findOne(id);
+  @UseGuards(JwtAuthGuard)
+  findOne(@Param("id") id: string, @Req() req: any) {
+    return this.requestsService.findOne(id, req.user);
   }
 
   @Put(":id")

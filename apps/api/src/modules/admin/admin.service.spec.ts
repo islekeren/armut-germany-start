@@ -1,8 +1,13 @@
+jest.mock("../users/account-deletion", () => ({
+  anonymizeUserAccount: jest.fn().mockResolvedValue({ id: "u1" }),
+}));
+
 import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
+import { anonymizeUserAccount } from "../users/account-deletion";
 import { AdminService } from "./admin.service";
 
 describe("AdminService", () => {
@@ -108,13 +113,13 @@ describe("AdminService", () => {
       isVerified: true,
       password: "hash",
     });
-    prisma.user.delete.mockResolvedValue({ id: "u1", password: "hash" });
 
     await expect(service.updateUser("u1", { isVerified: true })).resolves.toEqual({
       id: "u1",
       isVerified: true,
     });
     await expect(service.deleteUser("u1")).resolves.toEqual({ id: "u1" });
+    expect(anonymizeUserAccount).toHaveBeenCalledWith(prisma, "u1");
   });
 
   it("returns pending providers", async () => {

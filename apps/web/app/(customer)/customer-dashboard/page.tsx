@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Header, PanelCard } from "@/components";
 import {
   bookingsApi,
@@ -18,6 +18,7 @@ import {
 
 export default function CustomerDashboardPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -181,7 +182,7 @@ export default function CustomerDashboardPage() {
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">{t("nav.myRequests")}</h2>
                   <Link href="/my-requests" className="text-sm text-primary hover:underline">
-                    {t("common.learnMore")}
+                    {t("provider.dashboard.viewAll")}
                   </Link>
                 </div>
                 <div className="space-y-3">
@@ -212,13 +213,13 @@ export default function CustomerDashboardPage() {
                     <div className="rounded-lg border border-border p-3">
                       <p className="font-medium">{nextBooking.quote?.request?.title || t("customer.bookings.nextBooking")}</p>
                       <p className="text-sm text-muted">{nextBooking.provider?.companyName || nextBooking.provider?.user?.firstName || "-"}</p>
-                      <p className="mt-2 text-sm text-muted">{new Date(nextBooking.scheduledDate).toLocaleString()}</p>
+                      <p className="mt-2 text-sm text-muted">{new Date(nextBooking.scheduledDate).toLocaleString(locale)}</p>
                     </div>
                     <div className="space-y-2">
                       {upcomingBookings.slice(1, 4).map((booking) => (
                         <div key={booking.id} className="rounded-lg border border-border p-3">
                           <p className="font-medium">{booking.quote?.request?.title || t("customer.bookings.nextBooking")}</p>
-                          <p className="text-xs text-muted">{new Date(booking.scheduledDate).toLocaleString()}</p>
+                          <p className="text-xs text-muted">{new Date(booking.scheduledDate).toLocaleString(locale)}</p>
                         </div>
                       ))}
                     </div>
@@ -234,7 +235,7 @@ export default function CustomerDashboardPage() {
                     {t("customer.requestDetail.quotesReceived", { count: receivedQuotes.length })}
                   </h2>
                   <Link href="/my-requests" className="text-sm text-primary hover:underline">
-                    {t("common.learnMore")}
+                    {t("provider.dashboard.viewAll")}
                   </Link>
                 </div>
                 <div className="space-y-3">
@@ -245,7 +246,7 @@ export default function CustomerDashboardPage() {
                       <div key={quote.id} className="rounded-lg border border-border p-3">
                         <p className="font-medium">{quote.request?.title || t("provider.offers.untitledRequest")}</p>
                         <p className="mt-1 text-sm font-medium text-secondary">€{quote.price}</p>
-                        <p className="text-xs text-muted">{new Date(quote.createdAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted">{new Date(quote.createdAt).toLocaleDateString(locale)}</p>
                       </div>
                     ))
                   )}
@@ -254,7 +255,7 @@ export default function CustomerDashboardPage() {
             </div>
 
             <div className="mt-8 rounded-xl bg-secondary/10 p-6">
-              <h2 className="mb-4 text-lg font-semibold">Quick Actions</h2>
+              <h2 className="mb-4 text-lg font-semibold">{t("provider.dashboard.sections.quickActions")}</h2>
               <div className="flex flex-wrap gap-3">
                 <Link href="/create-request" className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow">
                   {t("nav.createRequest")}

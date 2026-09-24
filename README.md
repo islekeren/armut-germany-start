@@ -121,8 +121,38 @@ Observed in `apps/api/prisma/seed.ts`:
 - Customer
   - Email: `customer@test.com`
   - Password: `12345678`
+- Admin
+  - Email: `admin@test.com`
+  - Password: `12345678`
 
 The seed also creates request taxonomy categories, additional providers, quotes, bookings, reviews, conversations, and notifications-related data paths.
+
+## Provider Approval
+
+New providers start unapproved: they can browse requests but cannot send quotes, and their dashboard shows a "profile under review" notice. An admin approves them at `/admin/providers`.
+
+Admins cannot sign up through the app. Promote an existing, non-provider account against the target database with:
+
+```bash
+npm run admin:grant --workspace=api -- someone@example.com
+```
+
+## Location Matching
+
+Requests and providers are matched by distance. The API derives coordinates from German postcodes (client-sent coordinates are ignored when the postcode is known):
+
+- a request's location comes from its postcode; unknown postcodes are rejected
+- a provider's service-area centre comes from their business postcode, and their radius (`serviceAreaRadius`, default 25 km) limits the requests they see
+- `GET /api/providers?postalCode=12345` returns providers whose radius reaches that postcode
+- providers without a postcode are not filtered by distance
+
+Rows created before this existed are stored at 0,0. Fix them once per environment with:
+
+```bash
+npm run geo:backfill --workspace=api
+```
+
+Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); keep that attribution (e.g. on the imprint/privacy page). Regenerate the data with `apps/api/scripts/build-postcode-data.mjs`.
 
 ## Repository Map
 

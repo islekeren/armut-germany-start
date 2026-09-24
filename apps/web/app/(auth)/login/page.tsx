@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { FormInput, FormLabel, SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
+import { getSafeRedirect } from "@/lib/safe-redirect";
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -17,7 +18,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const redirectTo = searchParams.get("redirect") || "/";
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo = getSafeRedirect(redirectParam);
+  const registerHref = redirectParam
+    ? `/register?redirect=${encodeURIComponent(redirectTo)}`
+    : "/register";
 
   // Redirect if already logged in
   useEffect(() => {
@@ -115,7 +120,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center text-sm text-muted">
             {t("auth.login.noAccount")}{" "}
-            <Link href="/register" className="text-primary hover:underline">
+            <Link href={registerHref} className="text-primary hover:underline">
               {t("auth.login.registerNow")}
             </Link>
           </div>

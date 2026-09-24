@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ProviderApprovalNotice } from "@/components/provider/ProviderApprovalNotice";
 import { useEffect, useState } from "react";
 import {
   providerApi,
@@ -62,14 +63,26 @@ export default function ProviderDashboard() {
             quotesApi.getMyQuotes(token),
           ]);
           // Format dates for display
+          const isGerman = locale.startsWith("de");
+          const formatBudget = (min?: number | null, max?: number | null) =>
+            typeof min === "number" && typeof max === "number"
+              ? t("budgetRange", { min, max })
+              : typeof min === "number"
+                ? t("budgetFrom", { min })
+                : typeof max === "number"
+                  ? t("budgetUpTo", { max })
+                  : t("budgetOnRequest");
           const formattedData = {
             ...dashboardData,
             recentRequests: dashboardData.recentRequests.map(r => ({
               ...r,
+              category: (isGerman && r.categoryDe) || r.category,
+              budget: formatBudget(r.budgetMin, r.budgetMax),
               date: new Date(r.date).toLocaleDateString(locale),
             })),
             activeBookings: dashboardData.activeBookings.map(b => ({
               ...b,
+              service: (isGerman && b.serviceDe) || b.service,
               date: new Date(b.date).toLocaleDateString(locale),
               time: new Date(b.date).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
             }))
@@ -285,6 +298,8 @@ export default function ProviderDashboard() {
                 {t("activityOverview")}
               </p>
             </div>
+
+            <ProviderApprovalNotice className="mb-8" />
 
             {/* Stats */}
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
