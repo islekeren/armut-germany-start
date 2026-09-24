@@ -17,6 +17,7 @@ import {
   getBookingDisplayStatusClass,
   toBookingDisplayStatus,
 } from "@/lib/bookings";
+import { formatEuroAmount } from "@/lib/bookings";
 
 // Initial empty state
 const initialData: DashboardData = {
@@ -292,7 +293,7 @@ export default function ProviderDashboard() {
             {/* Welcome */}
             <div className="mb-8">
               <h1 className="text-xl font-bold sm:text-2xl">
-                {t("welcomeBack", { name: user?.firstName || "Provider" })}
+                {t("welcomeBack", { name: user?.firstName ?? "" })}
               </h1>
               <p className="text-sm text-muted sm:text-base">
                 {t("activityOverview")}
@@ -450,7 +451,7 @@ export default function ProviderDashboard() {
                           </span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm">
-                          <span className="font-medium text-secondary">€{offer.price}</span>
+                          <span className="font-medium text-secondary">{formatEuroAmount(offer.price, locale)}</span>
                           <span className="text-muted">{offer.createdAt}</span>
                         </div>
                         <p className="mt-2 text-xs text-muted">

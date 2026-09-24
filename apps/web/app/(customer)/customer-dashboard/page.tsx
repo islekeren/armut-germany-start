@@ -15,6 +15,7 @@ import {
   type Quote,
   type ServiceRequest,
 } from "@/lib/api";
+import { formatEuroAmount } from "@/lib/bookings";
 
 export default function CustomerDashboardPage() {
   const t = useTranslations();
@@ -245,7 +246,7 @@ export default function CustomerDashboardPage() {
                     receivedQuotes.map((quote) => (
                       <div key={quote.id} className="rounded-lg border border-border p-3">
                         <p className="font-medium">{quote.request?.title || t("provider.offers.untitledRequest")}</p>
-                        <p className="mt-1 text-sm font-medium text-secondary">€{quote.price}</p>
+                        <p className="mt-1 text-sm font-medium text-secondary">{formatEuroAmount(quote.price, locale)}</p>
                         <p className="text-xs text-muted">{new Date(quote.createdAt).toLocaleDateString(locale)}</p>
                       </div>
                     ))

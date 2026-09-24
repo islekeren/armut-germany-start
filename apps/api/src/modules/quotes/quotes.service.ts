@@ -94,6 +94,7 @@ export class QuotesService {
       message: `You received a new offer for "${request.title}".`,
       metadata: {
         requestId: request.id,
+        requestTitle: request.title,
         quoteId: createdQuote.id,
         providerId: provider.id,
       },
@@ -401,6 +402,7 @@ export class QuotesService {
           message: `Your offer for "${quote.request.title}" has been accepted.`,
           metadata: {
             requestId: quote.requestId,
+            requestTitle: quote.request.title,
             quoteId: quote.id,
           },
         });

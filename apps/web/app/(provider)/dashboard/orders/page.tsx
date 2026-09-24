@@ -13,11 +13,14 @@ import {
   getBookingDisplayStatusClass,
   toBookingDisplayStatus,
 } from "@/lib/bookings";
+import { useApiErrorMessage } from "@/lib/api-errors";
+import { formatEuroAmount } from "@/lib/bookings";
 
 type OrdersTab = "active" | "completed";
 
 export default function ProviderOrdersPage() {
   const tNav = useTranslations("provider.dashboard.navigation");
+  const describeError = useApiErrorMessage();
   const tOrders = useTranslations("provider.orders");
   const locale = useLocale();
   const [orders, setOrders] = useState<ProviderBooking[]>([]);
@@ -40,7 +43,7 @@ export default function ProviderOrdersPage() {
       }
     } catch (err) {
       console.error("Failed to load provider orders:", err);
-      setError(err instanceof Error ? err.message : tOrders("loadError"));
+      setError(describeError(err, tOrders("loadError")));
     } finally {
       setLoading(false);
     }
@@ -97,7 +100,7 @@ export default function ProviderOrdersPage() {
       await loadOrders();
     } catch (err) {
       console.error("Failed to request completion:", err);
-      setError(err instanceof Error ? err.message : tOrders("completeError"));
+      setError(describeError(err, tOrders("completeError")));
     } finally {
       setSubmitting(false);
     }
@@ -175,7 +178,7 @@ export default function ProviderOrdersPage() {
               <div className="mt-4 space-y-2 text-sm text-muted">
                 <p>{formatDate(selectedOrder.scheduledDate)}</p>
                 <p>{selectedOrder.address}</p>
-                <p>€{selectedOrder.totalPrice}</p>
+                <p>{formatEuroAmount(selectedOrder.totalPrice, locale)}</p>
               </div>
 
               {canRequestCompletion && (

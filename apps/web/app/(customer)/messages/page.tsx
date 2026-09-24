@@ -11,11 +11,13 @@ import {
   type ConversationItem,
   type MessageItem,
 } from "@/lib/api";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 const MESSAGE_POLL_INTERVAL_MS = 10_000;
 
 export default function MessagesPage() {
   const t = useTranslations("customer.messages");
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -102,11 +104,11 @@ export default function MessagesPage() {
       });
     } catch (err) {
       console.error("Failed to load conversations:", err);
-      setError(err instanceof Error ? err.message : t("loadError"));
+      setError(describeError(err, t("loadError")));
     } finally {
       setIsLoadingConversations(false);
     }
-  }, [searchParams, t]);
+  }, [searchParams, t, describeError]);
 
   const fetchMessages = useCallback(async (conversationId: string, options?: { silent?: boolean }) => {
     const token = getStoredAccessToken();
@@ -128,12 +130,12 @@ export default function MessagesPage() {
     } catch (err) {
       console.error("Failed to load messages:", err);
       if (!options?.silent) {
-        setError(err instanceof Error ? err.message : t("loadMessagesError"));
+        setError(describeError(err, t("loadMessagesError")));
       }
     } finally {
       setIsLoadingMessages(false);
     }
-  }, [t]);
+  }, [t, describeError]);
 
   useEffect(() => {
     fetchConversations();
@@ -185,7 +187,7 @@ export default function MessagesPage() {
       await fetchConversations();
     } catch (err) {
       console.error("Failed to send message:", err);
-      setError(err instanceof Error ? err.message : t("sendError"));
+      setError(describeError(err, t("sendError")));
     } finally {
       setIsSending(false);
     }

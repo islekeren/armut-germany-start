@@ -23,12 +23,14 @@ import {
   toBookingDisplayStatus,
   toDateTimeLocalValue,
 } from "@/lib/bookings";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("customer.bookings");
+  const describeError = useApiErrorMessage();
   const tDetail = useTranslations("customer.bookings.detail");
 
   const bookingId = params.id as string;
@@ -68,11 +70,11 @@ export default function BookingDetailPage() {
       setReviewComment(result.review?.comment || "");
     } catch (err) {
       console.error("Failed to load booking details:", err);
-      setError(err instanceof Error ? err.message : tDetail("loadError"));
+      setError(describeError(err, tDetail("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [bookingId, t, tDetail]);
+  }, [bookingId, t, tDetail, describeError]);
 
   useEffect(() => {
     loadBooking();
@@ -104,7 +106,7 @@ export default function BookingDetailPage() {
       router.push(`/messages?conversation=${conversation.id}`);
     } catch (err) {
       console.error("Failed to message provider:", err);
-      setError(err instanceof Error ? err.message : t("messageError"));
+      setError(describeError(err, t("messageError")));
     }
   };
 
@@ -135,7 +137,7 @@ export default function BookingDetailPage() {
       setSuccessMessage(tDetail("rescheduleSuccess"));
     } catch (err) {
       console.error("Failed to reschedule booking:", err);
-      setError(err instanceof Error ? err.message : tDetail("rescheduleError"));
+      setError(describeError(err, tDetail("rescheduleError")));
     } finally {
       setIsRescheduling(false);
     }
@@ -163,7 +165,7 @@ export default function BookingDetailPage() {
       setSuccessMessage(tDetail("cancelSuccess"));
     } catch (err) {
       console.error("Failed to cancel booking:", err);
-      setError(err instanceof Error ? err.message : tDetail("cancelError"));
+      setError(describeError(err, tDetail("cancelError")));
     } finally {
       setIsCancelling(false);
     }
@@ -208,7 +210,7 @@ export default function BookingDetailPage() {
       setReviewFiles([]);
     } catch (err) {
       console.error("Failed to submit review:", err);
-      setError(err instanceof Error ? err.message : tDetail("reviewError"));
+      setError(describeError(err, tDetail("reviewError")));
     } finally {
       setIsReviewing(false);
     }
@@ -231,7 +233,7 @@ export default function BookingDetailPage() {
     } catch (err) {
       console.error("Failed to confirm completion:", err);
       setError(
-        err instanceof Error ? err.message : tDetail("confirmCompletionError"),
+        describeError(err, tDetail("confirmCompletionError")),
       );
     }
   };
@@ -584,7 +586,7 @@ export default function BookingDetailPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={imageUrl}
-                          alt="review"
+                          alt={tDetail("reviewImageAlt")}
                           className="h-24 w-full object-cover"
                         />
                       </a>
@@ -615,7 +617,7 @@ export default function BookingDetailPage() {
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={imageUrl}
-                                  alt="provider-reply"
+                                  alt={tDetail("replyImageAlt")}
                                   className="h-24 w-full object-cover"
                                 />
                               </a>

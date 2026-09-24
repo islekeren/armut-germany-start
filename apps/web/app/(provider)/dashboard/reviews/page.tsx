@@ -83,7 +83,7 @@ export default function ReviewsPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        {t("loading") || "Loading..."}
+        {t("loading")}
       </div>
     );
   }
@@ -145,7 +145,7 @@ export default function ReviewsPage() {
             {reviews.length === 0 ? (
               <PanelCard className="p-8 text-center">
                 <div className="text-4xl mb-4">⭐</div>
-                <p className="text-muted">{t("noReviews") || "No reviews yet"}</p>
+                <p className="text-muted">{t("noReviews")}</p>
               </PanelCard>
             ) : (
               reviews.map((review) => (
@@ -190,7 +190,7 @@ export default function ReviewsPage() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imageUrl}
-                            alt="review"
+                            alt={t("reviewImageAlt")}
                             className="h-24 w-full object-cover"
                           />
                         </a>
@@ -217,7 +217,7 @@ export default function ReviewsPage() {
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={imageUrl}
-                                alt="provider-reply"
+                                alt={t("replyImageAlt")}
                                 className="h-24 w-full object-cover"
                               />
                             </a>
@@ -241,7 +241,7 @@ export default function ReviewsPage() {
                       <textarea
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder={t("replyPlaceholder") || "Write your reply..."}
+                        placeholder={t("replyPlaceholder")}
                         className="w-full rounded-lg border border-border p-3 text-sm focus:border-primary focus:outline-none"
                         rows={3}
                       />
@@ -264,7 +264,7 @@ export default function ReviewsPage() {
                           onClick={() => handleReply(review.id)}
                           className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-dark"
                         >
-                          {t("send") || "Send"}
+                          {t("send")}
                         </button>
                         <button 
                           onClick={() => {
@@ -274,7 +274,7 @@ export default function ReviewsPage() {
                           }}
                           className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-background"
                         >
-                          {t("cancel") || "Cancel"}
+                          {t("cancel")}
                         </button>
                       </div>
                     </div>

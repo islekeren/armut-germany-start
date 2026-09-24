@@ -9,7 +9,6 @@ import {
   useProviderApproval,
 } from "@/components";
 import {
-  ApiError,
   getStoredAccessToken,
   providerApi,
   quotesApi,
@@ -22,6 +21,8 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
+import { formatRelativeTime } from "@/lib/format";
 
 type DateFilter = "all" | "today" | "last7" | "thisMonth";
 type SortFilter = "newest" | "oldest" | "budgetAsc" | "budgetDesc";
@@ -37,6 +38,7 @@ function getBudgetValue(request: ProviderRequest) {
 export default function ListingsPage() {
   const locale = useLocale();
   const t = useTranslations("provider.requests");
+  const describeError = useApiErrorMessage();
   const tNav = useTranslations("provider.dashboard.navigation");
   const tFilters = useTranslations("provider.offers.filters");
   const tApproval = useTranslations("provider.approval");
@@ -78,7 +80,7 @@ export default function ListingsPage() {
       } catch (fetchError) {
         console.error("Failed to fetch requests", fetchError);
         setError(
-          fetchError instanceof Error ? fetchError.message : t("loadError"),
+          describeError(fetchError, t("loadError")),
         );
       } finally {
         setLoading(false);
@@ -86,7 +88,7 @@ export default function ListingsPage() {
     };
 
     fetchRequests();
-  }, [t]);
+  }, [t, describeError]);
 
   const categoryOptions = useMemo(() => {
     const map = new Map<string, number>();
@@ -100,24 +102,8 @@ export default function ListingsPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allRequests]);
 
-  // e.g. "vor 3 Stunden" / "3 hours ago", "jetzt" / "now".
-  const getTimeAgo = (dateString: string) => {
-    const diffMinutes = Math.floor(
-      (Date.now() - new Date(dateString).getTime()) / 60_000,
-    );
-    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-
-    if (diffMinutes >= 60 * 24) {
-      return formatter.format(-Math.floor(diffMinutes / (60 * 24)), "day");
-    }
-    if (diffMinutes >= 60) {
-      return formatter.format(-Math.floor(diffMinutes / 60), "hour");
-    }
-    if (diffMinutes >= 1) {
-      return formatter.format(-diffMinutes, "minute");
-    }
-    return formatter.format(0, "second");
-  };
+  const getTimeAgo = (dateString: string) =>
+    formatRelativeTime(dateString, locale);
 
   const filteredRequests = useMemo(() => {
     const min = minBudget ? Number(minBudget) : null;
@@ -267,13 +253,7 @@ export default function ListingsPage() {
       setSuccessMessage(t("quoteSent"));
     } catch (sendError) {
       console.error("Failed to send offer", sendError);
-      if (sendError instanceof ApiError && sendError.status === 403) {
-        setError(tApproval("quoteBlocked"));
-      } else {
-        setError(
-          sendError instanceof Error ? sendError.message : t("quoteError"),
-        );
-      }
+      setError(describeError(sendError, t("quoteError")));
     } finally {
       setSendingOffer(false);
     }
@@ -456,7 +436,7 @@ export default function ListingsPage() {
                     </h3>
                     {request.offerStatus === "pending" && (
                       <p className="mt-1 text-xs font-medium text-secondary">
-                        Pending offer sent
+                        {t("offerPending")}
                       </p>
                     )}
                   </div>
@@ -512,7 +492,7 @@ export default function ListingsPage() {
                   >
                     {request.offerStatus ? (
                       <div className="rounded-lg bg-white p-3 text-sm text-muted">
-                        You already sent an offer for this request. Check Pending Offers for status.
+                        {t("offerAlreadySent")}
                       </div>
                     ) : (
                       <>

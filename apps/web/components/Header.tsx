@@ -336,7 +336,7 @@ export function Header() {
                   onClick={() => setShowMobileMenu((prev) => !prev)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/30 text-white md:hidden"
                   aria-expanded={showMobileMenu}
-                  aria-label={showMobileMenu ? "Close menu" : "Open menu"}
+                  aria-label={showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")}
                 >
                   {showMobileMenu ? (
                     <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -374,7 +374,7 @@ export function Header() {
                   onClick={() => setShowMobileMenu((prev) => !prev)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/30 text-white md:hidden"
                   aria-expanded={showMobileMenu}
-                  aria-label={showMobileMenu ? "Close menu" : "Open menu"}
+                  aria-label={showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")}
                 >
                   {showMobileMenu ? (
                     <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -405,7 +405,7 @@ export function Header() {
           <button
             className="fixed inset-0 z-40 bg-black/35 md:hidden"
             onClick={() => setShowMobileMenu(false)}
-            aria-label="Close menu"
+            aria-label={t("nav.closeMenu")}
           />
           <div className="fixed inset-x-0 top-[68px] z-50 max-h-[calc(100dvh-68px)] overflow-y-auto border-t border-border bg-white text-foreground shadow-xl md:hidden">
             {isAuthenticated && user ? (

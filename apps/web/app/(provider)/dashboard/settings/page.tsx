@@ -8,7 +8,7 @@ export default function ProviderSettingsPage() {
 
   return (
     <ProviderSubpageShell title={tNav("settings")} backLabel={tNav("overview")}>
-      <AccountSettingsContent roleLabel="Provider" />
+      <AccountSettingsContent role="provider" />
     </ProviderSubpageShell>
   );
 }

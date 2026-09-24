@@ -12,6 +12,8 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { formatEuroAmount } from "@/lib/bookings";
+import { formatRelativeTime } from "@/lib/format";
 
 export default function RequestsPage() {
   const t = useTranslations("requestsPage");
@@ -65,17 +67,7 @@ export default function RequestsPage() {
     return requests.filter((request) => request.category?.slug === filter);
   }, [filter, requests]);
 
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffDays > 0) return `${diffDays}d`;
-    if (diffHours > 0) return `${diffHours}h`;
-    return "now";
-  };
+  const getTimeAgo = (dateString: string) => formatRelativeTime(dateString, locale);
 
   const getCategoryName = (request: ServiceRequest) => {
     if (!request.category) return "";
@@ -93,13 +85,13 @@ export default function RequestsPage() {
 
   const getBudgetText = (request: ServiceRequest) => {
     if (request.budgetMin != null && request.budgetMax != null) {
-      return `€${request.budgetMin}-€${request.budgetMax}`;
+      return `${formatEuroAmount(request.budgetMin, locale)} – ${formatEuroAmount(request.budgetMax, locale)}`;
     }
     if (request.budgetMin != null) {
-      return `€${request.budgetMin}+`;
+      return t("budgetFrom", { value: formatEuroAmount(request.budgetMin, locale) });
     }
     if (request.budgetMax != null) {
-      return t("budgetUpTo", { value: request.budgetMax });
+      return t("budgetUpTo", { value: formatEuroAmount(request.budgetMax, locale) });
     }
     return null;
   };

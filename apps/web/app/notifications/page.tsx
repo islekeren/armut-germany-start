@@ -10,9 +10,12 @@ import {
   notificationsApi,
   type NotificationItem,
 } from "@/lib/api";
+import { getNotificationTemplate } from "@/lib/notifications";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function NotificationsPage() {
   const t = useTranslations("notifications");
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -44,14 +47,14 @@ export default function NotificationsPage() {
         const data = await notificationsApi.getAll(token, { limit: 100 });
         setItems(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : t("errors.loadFailed"));
+        setError(describeError(err, t("errors.loadFailed")));
       } finally {
         setLoading(false);
       }
     };
 
     fetchNotifications();
-  }, [authLoading, isAuthenticated, router, t]);
+  }, [authLoading, isAuthenticated, router, t, describeError]);
 
   const markAsRead = async (id: string) => {
     const token = getStoredAccessToken();
@@ -77,6 +80,18 @@ export default function NotificationsPage() {
     }
   };
 
+  // Render in the user's language from the notification type; the stored
+  // (English) text is only used for types the web app does not know.
+  const getText = (item: NotificationItem) => {
+    const template = getNotificationTemplate(item);
+    if (!template) return { title: item.title, message: item.message };
+    const values = { title: template.requestTitle };
+    return {
+      title: t(`types.${template.key}.title`, values),
+      message: t(`types.${template.key}.message`, values),
+    };
+  };
+
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
       dateStyle: "medium",
@@ -91,7 +106,9 @@ export default function NotificationsPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-            <p className="text-muted">{t("subtitle", { count: unreadCount })}</p>
+            <p className="text-muted">
+              {t("subtitle", { count: unreadCount })}
+            </p>
           </div>
           <button
             type="button"
@@ -119,28 +136,34 @@ export default function NotificationsPage() {
 
         {!loading && !error && items.length > 0 && (
           <div className="space-y-3">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => markAsRead(item.id)}
-                className={`w-full rounded-xl border p-4 text-left shadow-sm transition ${
-                  item.isRead
-                    ? "border-border bg-white"
-                    : "border-primary/30 bg-primary/5"
-                }`}
-              >
-                <div className="mb-1 flex items-center justify-between gap-3">
-                  <h3 className="font-semibold text-foreground">{item.title}</h3>
-                  <span className="text-xs text-muted">{formatDate(item.createdAt)}</span>
-                </div>
-                <p className="text-sm text-muted">{item.message}</p>
-              </button>
-            ))}
+            {items.map((item) => {
+              const text = getText(item);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => markAsRead(item.id)}
+                  className={`w-full rounded-xl border p-4 text-left shadow-sm transition ${
+                    item.isRead
+                      ? "border-border bg-white"
+                      : "border-primary/30 bg-primary/5"
+                  }`}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-foreground">
+                      {text.title}
+                    </h3>
+                    <span className="text-xs text-muted">
+                      {formatDate(item.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted">{text.message}</p>
+                </button>
+              );
+            })}
           </div>
         )}
       </main>
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { formatEuroAmount } from "@/lib/bookings";
 
 export default function ProviderRequestDetailPage() {
   const params = useParams<{ id: string }>();
@@ -119,7 +120,7 @@ export default function ProviderRequestDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted">{t("status")}</p>
-                <p className="font-medium">{request.status}</p>
+                <p className="font-medium">{t(`statusValues.${request.status}`)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted">{t("location")}</p>
@@ -132,9 +133,14 @@ export default function ProviderRequestDetailPage() {
               <div>
                 <p className="text-sm text-muted">{t("budget")}</p>
                 <p className="font-medium">
-                  {request.budgetMin !== undefined || request.budgetMax !== undefined
-                    ? `€${request.budgetMin ?? "-"} - €${request.budgetMax ?? "-"}`
-                    : t("budgetFlexible")}
+                  {typeof request.budgetMin === "number" &&
+                  typeof request.budgetMax === "number"
+                    ? `${formatEuroAmount(request.budgetMin, locale)} – ${formatEuroAmount(request.budgetMax, locale)}`
+                    : typeof request.budgetMin === "number"
+                      ? t("budgetFrom", { value: formatEuroAmount(request.budgetMin, locale) })
+                      : typeof request.budgetMax === "number"
+                        ? t("budgetUpTo", { value: formatEuroAmount(request.budgetMax, locale) })
+                        : t("budgetFlexible")}
                 </p>
               </div>
               <div>

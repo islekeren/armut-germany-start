@@ -21,10 +21,11 @@ import {
   uploadsApi,
   getCategories,
   isApiUnavailableError,
-  ApiError,
   type Category,
 } from "@/lib/api";
 import { getCategoryDisplayName } from "@/lib/request-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
+import { formatEuroAmount } from "@/lib/bookings";
 
 // A guest's answers are parked here while they log in or register, so the
 // request is not lost on the way back. Files cannot be serialized, so only
@@ -108,6 +109,7 @@ function clearRequestDraft() {
 
 export default function CreateRequestPage() {
   const t = useTranslations();
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -459,13 +461,7 @@ export default function CreateRequestPage() {
       router.push("/my-requests");
     } catch (err) {
       console.error("Failed to create request:", err);
-      setError(
-        err instanceof ApiError && err.message === "Unknown postal code"
-          ? t("createRequest.unknownPostalCode")
-          : err instanceof Error
-            ? err.message
-            : t("createRequest.errorCreating"),
-      );
+      setError(describeError(err, t("createRequest.errorCreating")));
     } finally {
       setIsLoading(false);
     }
@@ -983,9 +979,9 @@ export default function CreateRequestPage() {
                       {t("createRequest.budgetLabel")}
                     </div>
                     <div className="font-medium">
-                      {formData.budgetMin && `${formData.budgetMin}€`}
+                      {formData.budgetMin && formatEuroAmount(Number(formData.budgetMin), locale)}
                       {formData.budgetMin && formData.budgetMax && " - "}
-                      {formData.budgetMax && `${formData.budgetMax}€`}
+                      {formData.budgetMax && formatEuroAmount(Number(formData.budgetMax), locale)}
                     </div>
                   </div>
                 )}

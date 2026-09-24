@@ -1,7 +1,9 @@
 {
   "metadata": {
     "title": "Elf Germany - Finden Sie die besten Dienstleister",
-    "description": "Elf Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr."
+    "description": "Elf Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr. Erhalten Sie kostenlose Angebote von verifizierten Dienstleistern.",
+    "keywords": "Dienstleister, Handwerker, Reinigung, Umzug, Renovierung, Deutschland",
+    "ogDescription": "Verbinden Sie sich mit qualifizierten Fachleuten für alle Ihre Dienstleistungsbedürfnisse."
   },
   "common": {
     "login": "Anmelden",
@@ -29,7 +31,10 @@
     "bookings": "Buchungen",
     "messages": "Nachrichten",
     "notifications": "Benachrichtigungen",
-    "adminProviders": "Anbieter freigeben"
+    "adminProviders": "Anbieter freigeben",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "backToConversations": "Zurück zu den Unterhaltungen"
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -40,6 +45,44 @@
     "errors": {
       "noToken": "Bitte melden Sie sich an, um Benachrichtigungen zu sehen.",
       "loadFailed": "Benachrichtigungen konnten nicht geladen werden."
+    },
+    "types": {
+      "quote_received": {
+        "title": "Neues Angebot erhalten",
+        "message": "Sie haben ein neues Angebot für „{title}“ erhalten."
+      },
+      "quote_accepted": {
+        "title": "Ihr Angebot wurde angenommen",
+        "message": "Ihr Angebot für „{title}“ wurde angenommen."
+      },
+      "booking_completion_pending": {
+        "title": "Bitte Abschluss bestätigen",
+        "message": "Der Dienstleister hat „{title}“ als erledigt markiert. Bitte bestätigen Sie den Abschluss."
+      },
+      "request_cancelled_customer": {
+        "title": "Anfrage storniert",
+        "message": "Ihre Anfrage „{title}“ wurde storniert."
+      },
+      "request_cancelled_provider": {
+        "title": "Anfrage storniert",
+        "message": "Ein Kunde hat die Anfrage „{title}“ storniert."
+      },
+      "booking_completed_customer": {
+        "title": "Auftrag abgeschlossen",
+        "message": "Die Buchung „{title}“ ist als abgeschlossen markiert."
+      },
+      "booking_completed_provider": {
+        "title": "Auftrag abgeschlossen",
+        "message": "Der Kunde hat den Abschluss von „{title}“ bestätigt."
+      },
+      "booking_cancelled_by_customer": {
+        "title": "Buchung storniert",
+        "message": "Die Buchung „{title}“ wurde vom Kunden storniert."
+      },
+      "booking_cancelled_by_provider": {
+        "title": "Buchung storniert",
+        "message": "Die Buchung „{title}“ wurde vom Dienstleister storniert."
+      }
     }
   },
   "categories": {
@@ -133,10 +176,11 @@
       "renovation": "Renovierung",
       "garden": "Garten"
     },
-    "postedAt": "Vor {time} erstellt",
+    "postedAt": "Erstellt {time}",
     "flexible": "Flexibel",
     "memberSince": "Mitglied seit {year}",
-    "budgetUpTo": "bis zu €{value}"
+    "budgetUpTo": "bis {value}",
+    "budgetFrom": "ab {value}"
   },
   "homePage": {
     "categoryCardDescription": "Finden Sie geprüfte Anbieter für {name}.",
@@ -589,7 +633,9 @@
       "noRequests": "Keine Anfragen gefunden",
       "noRequestsHint": "Erstellen Sie eine neue Anfrage, um Angebote zu erhalten",
       "createRequest": "Anfrage erstellen",
-      "loading": "Ihre Anfragen werden geladen..."
+      "loading": "Ihre Anfragen werden geladen...",
+      "loadError": "Ihre Anfragen konnten nicht geladen werden.",
+      "loginRequired": "Bitte melden Sie sich an, um Ihre Anfragen zu sehen."
     },
     "requestDetail": {
       "loadError": "Anfragedetails konnten nicht geladen werden",
@@ -777,7 +823,9 @@
         "confirmCompletionHint": "Ihr Dienstleister hat den Auftrag als erledigt gemeldet. Bestätigen Sie, um die Buchung abzuschließen.",
         "confirmCompletion": "Auftrag als abgeschlossen bestätigen",
         "confirmCompletionSuccess": "Buchung als abgeschlossen markiert.",
-        "confirmCompletionError": "Abschluss konnte nicht bestätigt werden."
+        "confirmCompletionError": "Abschluss konnte nicht bestätigt werden.",
+        "reviewImageAlt": "Foto zur Bewertung",
+        "replyImageAlt": "Foto zur Antwort des Anbieters"
       }
     },
     "messages": {
@@ -904,7 +952,9 @@
         "tip3": "Erwähnen Sie Ihre relevante Erfahrung",
         "tip4": "Stellen Sie Rückfragen wenn nötig"
       },
-      "acceptanceRate": "Ihrer Angebote wurden bisher angenommen"
+      "acceptanceRate": "Ihrer Angebote wurden bisher angenommen",
+      "offerPending": "Angebot gesendet – wartet auf Antwort",
+      "offerAlreadySent": "Sie haben für diese Anfrage bereits ein Angebot gesendet. Den Status sehen Sie unter „Ausstehende Angebote“."
     },
     "placeholders": {
       "comingSoon": "Dieser Bereich wird bald verfügbar sein."
@@ -919,7 +969,7 @@
       "phone": "Telefon",
       "description": "Beschreibung",
       "descriptionHint": "Beschreiben Sie Ihre Dienstleistungen und Erfahrung",
-      "services": "Services",
+      "services": "Leistungen",
       "categories": "Kategorien",
       "experienceYears": "Erfahrung (Jahre)",
       "priceFrom": "Preis ab (€/Std)",
@@ -936,7 +986,15 @@
       "cancel": "Abbrechen",
       "saveChanges": "Änderungen speichern",
       "saving": "Wird gespeichert...",
-      "required": "*"
+      "required": "*",
+      "fallbackName": "Anbieter",
+      "highlightsPlaceholder": "z.B. Geprüfter Anbieter, Schnelle Antwort",
+      "languagesPlaceholder": "z.B. Deutsch, Englisch",
+      "commaSeparated": "Mehrere Einträge mit Komma trennen",
+      "saveSuccess": "Profil erfolgreich aktualisiert.",
+      "saveError": "Profil konnte nicht aktualisiert werden.",
+      "companyAddress": "Firmenadresse",
+      "website": "Webseite"
     },
     "calendar": {
       "title": "Kalender",
@@ -984,7 +1042,8 @@
       "markCompleted": "Als erledigt markieren",
       "completing": "Wird gesendet...",
       "awaitingCustomer": "Abschlussanfrage an den Kunden gesendet. Warte auf Bestätigung.",
-      "completeError": "Auftragsstatus konnte nicht aktualisiert werden."
+      "completeError": "Auftragsstatus konnte nicht aktualisiert werden.",
+      "loadError": "Aufträge konnten nicht geladen werden."
     },
     "reviews": {
       "title": "Meine Bewertungen",
@@ -1002,7 +1061,9 @@
       "ratingBreakdown": "Bewertungsübersicht",
       "reviewedJob": "Bewerteter Auftrag",
       "customerComment": "Kundenkommentar",
-      "noComment": "Kein geschriebener Kommentar."
+      "noComment": "Kein geschriebener Kommentar.",
+      "reviewImageAlt": "Foto zur Bewertung",
+      "replyImageAlt": "Foto zur Antwort des Anbieters"
     },
     "messages": {
       "title": "Nachrichten",
@@ -1077,7 +1138,15 @@
       "createdAt": "Erstellt am",
       "preferredDate": "Wunschtermin",
       "notSpecified": "Nicht angegeben",
-      "quotes": "Angebote"
+      "quotes": "Angebote",
+      "budgetFrom": "ab {value}",
+      "budgetUpTo": "bis {value}",
+      "statusValues": {
+        "open": "Offen",
+        "in_progress": "In Bearbeitung",
+        "completed": "Abgeschlossen",
+        "cancelled": "Storniert"
+      }
     },
     "approval": {
       "pendingTitle": "Ihr Anbieterprofil wird geprüft",
@@ -1123,7 +1192,8 @@
       "description": "Kurzbeschreibung",
       "password": "Passwort",
       "confirmPassword": "Passwort bestätigen",
-      "agreeToTerms": "Ich stimme den <privacy>Datenschutzbestimmungen</privacy> und <terms>AGB</terms> zu."
+      "agreeToTerms": "Ich stimme den <privacy>Datenschutzbestimmungen</privacy> und <terms>AGB</terms> zu.",
+      "category": "Kategorie"
     },
     "errors": {
       "selectCategory": "Bitte wählen Sie mindestens eine Service-Kategorie.",
@@ -1142,7 +1212,8 @@
       "continue": "Weiter",
       "finish": "Onboarding abschließen",
       "submitting": "Konto wird erstellt..."
-    }
+    },
+    "loadingCategories": "Kategorien werden geladen..."
   },
   "admin": {
     "providers": {
@@ -1173,5 +1244,75 @@
     "error": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
     "deleting": "Wird gelöscht...",
     "submit": "Konto löschen"
+  },
+  "apiErrors": {
+    "unavailable": "Der Dienst ist vorübergehend nicht erreichbar. Bitte versuchen Sie es gleich noch einmal.",
+    "tooManyRequests": "Zu viele Anfragen in kurzer Zeit. Bitte warten Sie einen Moment.",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "notAuthorized": "Dafür fehlt Ihnen die Berechtigung.",
+    "notFound": "Der Eintrag wurde nicht gefunden oder ist nicht mehr verfügbar.",
+    "invalidCredentials": "E-Mail-Adresse oder Passwort ist falsch.",
+    "emailTaken": "Diese E-Mail-Adresse ist bereits registriert.",
+    "wrongPassword": "Das aktuelle Passwort ist nicht korrekt.",
+    "providerNotApproved": "Ihr Profil ist noch nicht freigegeben. Sie können Angebote senden, sobald die Prüfung abgeschlossen ist.",
+    "alreadyQuoted": "Sie haben für diese Anfrage bereits ein Angebot gesendet.",
+    "requestClosed": "Diese Anfrage nimmt keine Angebote mehr an.",
+    "quoteExpired": "Dieses Angebot ist abgelaufen.",
+    "validityInPast": "Das Gültigkeitsdatum muss in der Zukunft liegen.",
+    "dateInPast": "Bitte wählen Sie einen Termin in der Zukunft.",
+    "quoteNotPending": "Dieses Angebot kann nicht mehr geändert werden.",
+    "quoteNotAccepted": "Das Angebot muss zuerst angenommen werden.",
+    "bookingExists": "Für dieses Angebot gibt es bereits eine Buchung.",
+    "reviewExists": "Sie haben diese Buchung bereits bewertet.",
+    "reviewNotAllowed": "Nur abgeschlossene Buchungen können bewertet werden.",
+    "rescheduleNotAllowed": "Diese Buchung kann in ihrem aktuellen Status nicht verschoben werden.",
+    "completionNotRequested": "Der Dienstleister hat den Auftrag noch nicht als erledigt gemeldet.",
+    "cancelNotAllowed": "Nur offene Anfragen können geschlossen werden.",
+    "invalidStatusChange": "Diese Statusänderung ist nicht möglich.",
+    "roleNotAllowed": "Diese Aktion ist für Ihr Konto nicht vorgesehen.",
+    "unknownPostalCode": "Diese Postleitzahl kennen wir nicht. Bitte prüfen Sie die Eingabe.",
+    "providerProfileExists": "Für dieses Konto existiert bereits ein Anbieterprofil.",
+    "customersOnly": "Nur Kundenkonten können Anfragen erstellen.",
+    "invalidCategory": "Die gewählte Kategorie ist ungültig.",
+    "noFile": "Bitte wählen Sie eine Datei aus.",
+    "activeBookings": "Sie haben noch laufende Buchungen. Bitte schließen Sie diese ab oder stornieren Sie sie, bevor Sie Ihr Konto löschen."
+  },
+  "accountSettings": {
+    "loading": "Kontoeinstellungen werden geladen...",
+    "profileTitle": "Profil",
+    "profileDescriptionCustomer": "Aktualisieren Sie die Angaben Ihres Kundenkontos.",
+    "profileDescriptionProvider": "Aktualisieren Sie die Angaben Ihres Anbieterkontos.",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "email": "E-Mail",
+    "emailHint": "Die E-Mail-Adresse wird bei der Registrierung festgelegt.",
+    "phone": "Telefon",
+    "profileImage": "Profilbild",
+    "profilePreview": "Vorschau des Profilbilds",
+    "saving": "Wird gespeichert...",
+    "saveProfile": "Profil speichern",
+    "profileSaved": "Profil erfolgreich aktualisiert.",
+    "profileError": "Ihr Profil konnte nicht aktualisiert werden.",
+    "loginAgain": "Bitte melden Sie sich erneut an.",
+    "notificationsTitle": "Benachrichtigungen",
+    "notificationsDescription": "Legen Sie fest, welche Neuigkeiten wir Ihnen senden.",
+    "emailNotifications": "E-Mail-Benachrichtigungen",
+    "pushNotifications": "Push-Benachrichtigungen",
+    "smsNotifications": "SMS-Benachrichtigungen",
+    "marketingEmails": "Marketing-E-Mails",
+    "savePreferences": "Einstellungen speichern",
+    "preferencesSaved": "Einstellungen gespeichert.",
+    "preferencesError": "Einstellungen konnten nicht gespeichert werden.",
+    "securityTitle": "Sicherheit",
+    "securityDescription": "Ändern Sie Ihr Passwort.",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Neues Passwort bestätigen",
+    "updating": "Wird aktualisiert...",
+    "changePassword": "Passwort ändern",
+    "passwordTooShort": "Das neue Passwort muss mindestens 8 Zeichen lang sein.",
+    "passwordMismatch": "Die neuen Passwörter stimmen nicht überein.",
+    "passwordChanged": "Passwort erfolgreich geändert.",
+    "passwordError": "Ihr Passwort konnte nicht geändert werden."
   }
 }

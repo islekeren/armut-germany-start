@@ -15,6 +15,7 @@ import {
   PROVIDER_SERVICE_BRANCHES,
   getProviderServiceBranchLabel,
 } from "@/lib/provider-service-taxonomy";
+import { formatEuroAmount } from "@/lib/bookings";
 
 export default function FindProvidersPage() {
   const t = useTranslations("findProviders");
@@ -133,8 +134,8 @@ export default function FindProvidersPage() {
     const min = Math.min(...prices);
     const max = Math.max(...prices);
 
-    if (min === max) return `€${min}`;
-    return `€${min} - €${max}`;
+    if (min === max) return formatEuroAmount(min, locale);
+    return `${formatEuroAmount(min, locale)} – ${formatEuroAmount(max, locale)}`;
   };
 
   return (

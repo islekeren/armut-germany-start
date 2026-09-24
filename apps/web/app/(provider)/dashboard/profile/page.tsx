@@ -169,8 +169,8 @@ export default function ProviderProfilePage() {
 
   const companyDisplayName = useMemo(() => {
     if (formData.companyName.trim()) return formData.companyName.trim();
-    return formData.contactName.trim() || "Provider";
-  }, [formData.companyName, formData.contactName]);
+    return formData.contactName.trim() || t("fallbackName");
+  }, [formData.companyName, formData.contactName, t]);
 
   const updateOpeningHour = (
     index: number,
@@ -251,7 +251,7 @@ export default function ProviderProfilePage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        {t("loading") || "Loading..."}
+        {t("loading")}
       </div>
     );
   }
@@ -343,10 +343,10 @@ export default function ProviderProfilePage() {
                         highlightsText: e.target.value,
                       }))
                     }
-                    placeholder="Verified Provider, Fast Response"
+                    placeholder={t("highlightsPlaceholder")}
                     accent="primary"
                   />
-                  <p className="mt-1 text-xs text-muted">Comma separated</p>
+                  <p className="mt-1 text-xs text-muted">{t("commaSeparated")}</p>
                 </div>
                 <div>
                   <FormLabel>{tPublic("languages")}</FormLabel>
@@ -358,10 +358,10 @@ export default function ProviderProfilePage() {
                         languagesText: e.target.value,
                       }))
                     }
-                    placeholder="German, English"
+                    placeholder={t("languagesPlaceholder")}
                     accent="primary"
                   />
-                  <p className="mt-1 text-xs text-muted">Comma separated</p>
+                  <p className="mt-1 text-xs text-muted">{t("commaSeparated")}</p>
                 </div>
               </div>
             </PanelCard>
@@ -614,10 +614,10 @@ export default function ProviderProfilePage() {
 
         <div className="flex justify-end gap-4">
           {saveStatus === "success" ? (
-            <p className="self-center text-sm text-success">Profile updated successfully.</p>
+            <p className="self-center text-sm text-success">{t("saveSuccess")}</p>
           ) : null}
           {saveStatus === "error" ? (
-            <p className="self-center text-sm text-error">Failed to update profile.</p>
+            <p className="self-center text-sm text-error">{t("saveError")}</p>
           ) : null}
           <Link
             href="/dashboard"

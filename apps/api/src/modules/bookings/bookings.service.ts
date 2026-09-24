@@ -65,8 +65,10 @@ export class BookingsService {
         data: {
           conversationId: conversation.id,
           senderId: providerUserId,
+          // The recipient's language is unknown here, so the automated
+          // message carries both languages.
           content:
-            "I have completed this job. Please review and confirm completion.",
+            "Ich habe den Auftrag erledigt. Bitte prüfen und bestätigen Sie den Abschluss.\n\nI have completed this job. Please review and confirm completion.",
           attachments: [],
         },
       }),
@@ -534,6 +536,7 @@ export class BookingsService {
           metadata: {
             bookingId: updatedBooking.id,
             requestId,
+            requestTitle,
           },
         });
       }
@@ -557,6 +560,8 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
+              audience: "customer",
             },
           }),
         );
@@ -570,6 +575,8 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
+              audience: "provider",
             },
           }),
         );
@@ -597,7 +604,9 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
               previousStatus,
+              cancelledBy: actorLabel,
             },
           }),
         );
@@ -611,7 +620,9 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
               previousStatus,
+              cancelledBy: actorLabel,
             },
           }),
         );

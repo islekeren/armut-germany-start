@@ -22,6 +22,7 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 
@@ -113,6 +114,7 @@ const transformRequest = (
 
 export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const { isAuthenticated } = useAuth();
   const [filter, setFilter] = useState("booked");
@@ -125,7 +127,7 @@ export default function MyRequestsPage() {
   const fetchRequests = useCallback(async () => {
     const token = getStoredAccessToken();
     if (!token) {
-      setError("Please log in to view your requests");
+      setError(t("loginRequired"));
       setIsLoading(false);
       return;
     }
@@ -164,11 +166,11 @@ export default function MyRequestsPage() {
       setRequests(transformedRequests);
     } catch (err) {
       console.error("Failed to fetch requests:", err);
-      setError(err instanceof Error ? err.message : "Failed to load requests");
+      setError(describeError(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [locale]);
+  }, [locale, describeError, t]);
 
   useEffect(() => {
     fetchRequests();
@@ -204,7 +206,7 @@ export default function MyRequestsPage() {
       setSuccessMessage(t("deleteSuccess"));
     } catch (err) {
       console.error("Failed to delete request:", err);
-      setError(err instanceof Error ? err.message : t("deleteError"));
+      setError(describeError(err, t("deleteError")));
     } finally {
       setDeletingRequestId(null);
     }

@@ -12,13 +12,16 @@ type RequestLike =
   | null
   | undefined;
 
+// Shown when data is missing; a dash reads the same in every language.
+const MISSING_VALUE = "–";
+
 export function getProviderDisplayName(provider: ProviderLike) {
   if (!provider) {
-    return "Provider";
+    return MISSING_VALUE;
   }
 
   const fallbackName = `${provider.user.firstName} ${provider.user.lastName}`.trim();
-  return provider.companyName?.trim() || fallbackName || "Provider";
+  return provider.companyName?.trim() || fallbackName || MISSING_VALUE;
 }
 
 export function getProviderContactName(provider: ProviderLike) {
@@ -30,19 +33,19 @@ export function getProviderContactName(provider: ProviderLike) {
 }
 
 export function getRequestTitle(request: RequestLike) {
-  return request?.title?.trim() || "Service request";
+  return request?.title?.trim() || MISSING_VALUE;
 }
 
 export function getRequestLocation(request: RequestLike) {
   if (!request) {
-    return "Location not provided";
+    return MISSING_VALUE;
   }
 
   const location = [request.address, request.postalCode, request.city]
     .filter(Boolean)
     .join(", ");
 
-  return location || "Location not provided";
+  return location || MISSING_VALUE;
 }
 
 export function getBookingServiceTitle(booking: CustomerBooking) {

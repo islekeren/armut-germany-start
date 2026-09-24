@@ -7,9 +7,11 @@ import { useTranslations } from "next-intl";
 import { FormInput, FormLabel, SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
 import { getSafeRedirect } from "@/lib/safe-redirect";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function RegisterPage() {
   const t = useTranslations();
+  const describeError = useApiErrorMessage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
@@ -74,7 +76,7 @@ export default function RegisterPage() {
       await register(registerData);
       router.push(redirectTo);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("auth.register.errorDefault"));
+      setError(describeError(err, t("auth.register.errorDefault")));
     } finally {
       setIsLoading(false);
     }

@@ -22,6 +22,8 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
+import { formatEuroAmount } from "@/lib/bookings";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 type SortOption = "priceAsc" | "priceDesc" | "bestRating" | "newest";
@@ -111,6 +113,7 @@ const transformRequest = (
 
 export default function RequestDetailPage() {
   const t = useTranslations("customer.requestDetail");
+  const describeError = useApiErrorMessage();
   const tRequests = useTranslations("customer.requests");
   const locale = useLocale();
   const params = useParams();
@@ -162,11 +165,11 @@ export default function RequestDetailPage() {
       );
     } catch (err) {
       console.error("Failed to load request details:", err);
-      setError(err instanceof Error ? err.message : t("loadError"));
+      setError(describeError(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [locale, requestId, t]);
+  }, [locale, requestId, t, describeError]);
 
   useEffect(() => {
     loadData();
@@ -215,7 +218,7 @@ export default function RequestDetailPage() {
       router.push(`/bookings/new?quote=${quoteId}&accepted=1`);
     } catch (err) {
       console.error("Failed to accept quote:", err);
-      setError(err instanceof Error ? err.message : t("acceptError"));
+      setError(describeError(err, t("acceptError")));
     } finally {
       setIsAcceptingQuoteId(null);
     }
@@ -251,7 +254,7 @@ export default function RequestDetailPage() {
       router.push(`/messages?conversation=${conversation.id}`);
     } catch (err) {
       console.error("Failed to open conversation:", err);
-      setError(err instanceof Error ? err.message : t("messageError"));
+      setError(describeError(err, t("messageError")));
     }
   };
 
@@ -271,7 +274,7 @@ export default function RequestDetailPage() {
       router.push("/my-requests");
     } catch (err) {
       console.error("Failed to close request:", err);
-      setError(err instanceof Error ? err.message : t("closeError"));
+      setError(describeError(err, t("closeError")));
       setShowCloseConfirm(false);
     } finally {
       setIsClosing(false);
@@ -477,7 +480,7 @@ export default function RequestDetailPage() {
                   `${quote.provider?.user.firstName || ""} ${
                     quote.provider?.user.lastName || ""
                   }`.trim() ||
-                  "Provider";
+                  "–";
                 const providerContact = `${quote.provider?.user.firstName || ""} ${
                   quote.provider?.user.lastName || ""
                 }`.trim();
@@ -532,7 +535,7 @@ export default function RequestDetailPage() {
                       </div>
 
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">{quote.price}€</div>
+                        <div className="text-2xl font-bold text-primary">{formatEuroAmount(quote.price, locale)}</div>
                         <div className="text-sm text-muted">{t("fixedPrice")}</div>
                       </div>
                     </div>

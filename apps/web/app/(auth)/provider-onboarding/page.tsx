@@ -25,6 +25,7 @@ import {
   type ProviderServiceBranch as ServiceBranch,
   type ProviderServiceSector as ServiceSector,
 } from "@/lib/provider-service-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 type ProviderOnboardingData = {
   categories: string[];
@@ -52,6 +53,7 @@ const SERVICE_BRANCHES: ServiceBranch[] = PROVIDER_SERVICE_BRANCHES;
 
 export default function ProviderOnboardingPage() {
   const t = useTranslations("providerOnboarding");
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -272,7 +274,7 @@ export default function ProviderOnboardingPage() {
 
       router.push("/dashboard");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      setError(describeError(err, t("errors.generic")));
     } finally {
       setIsSubmitting(false);
     }
@@ -378,7 +380,7 @@ export default function ProviderOnboardingPage() {
                 <div>
                   <FormLabel className="text-foreground">{t("labels.category")}</FormLabel>
                   {loadingCategories ? (
-                    <div className="text-sm text-muted">Loading categories...</div>
+                    <div className="text-sm text-muted">{t("loadingCategories")}</div>
                   ) : categoriesError ? (
                     <AlertBanner>{categoriesError}</AlertBanner>
                   ) : (

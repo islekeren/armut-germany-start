@@ -363,6 +363,8 @@ describe("BookingsService", () => {
         metadata: {
           bookingId: "b1",
           requestId: "r1",
+          requestTitle: "Deep cleaning",
+          audience: "customer",
         },
       });
       expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
@@ -372,6 +374,8 @@ describe("BookingsService", () => {
         metadata: {
           bookingId: "b1",
           requestId: "r1",
+          requestTitle: "Deep cleaning",
+          audience: "provider",
         },
       });
     });
@@ -421,7 +425,9 @@ describe("BookingsService", () => {
         metadata: {
           bookingId: "b2",
           requestId: "r2",
+          requestTitle: "Window cleaning",
           previousStatus: "confirmed",
+          cancelledBy: "customer",
         },
       });
       expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
@@ -431,7 +437,9 @@ describe("BookingsService", () => {
         metadata: {
           bookingId: "b2",
           requestId: "r2",
+          requestTitle: "Window cleaning",
           previousStatus: "confirmed",
+          cancelledBy: "customer",
         },
       });
     });

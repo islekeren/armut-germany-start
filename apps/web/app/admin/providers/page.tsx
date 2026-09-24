@@ -10,9 +10,11 @@ import {
   getStoredAccessToken,
   type PendingProvider,
 } from "@/lib/api";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function AdminProvidersPage() {
   const t = useTranslations("admin.providers");
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -34,11 +36,11 @@ export default function AdminProvidersPage() {
       const response = await adminApi.getPendingProviders(token);
       setProviders(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("loadError"));
+      setError(describeError(err, t("loadError")));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, describeError]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -69,7 +71,7 @@ export default function AdminProvidersPage() {
         t("approved", { name: provider.companyName || provider.user.email }),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("actionError"));
+      setError(describeError(err, t("actionError")));
     } finally {
       setBusyId(null);
     }

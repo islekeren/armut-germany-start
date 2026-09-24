@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getLocale } from 'next-intl/server';
+import { getMessages, getLocale, getTranslations } from 'next-intl/server';
 import { AuthProvider } from "@/contexts";
 
 const outfit = Outfit({
@@ -16,26 +16,22 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
-export const metadata: Metadata = {
-  title: "Elf Germany - Finden Sie die besten Dienstleister",
-  description:
-    "Elf Germany verbindet Sie mit qualifizierten Fachleuten für Reinigung, Umzug, Renovierung und mehr. Erhalten Sie kostenlose Angebote von verifizierten Dienstleistern.",
-  keywords: [
-    "Dienstleister",
-    "Handwerker",
-    "Reinigung",
-    "Umzug",
-    "Renovierung",
-    "Deutschland",
-  ],
-  openGraph: {
-    title: "Elf Germany - Finden Sie die besten Dienstleister",
-    description:
-      "Verbinden Sie sich mit qualifizierten Fachleuten für alle Ihre Dienstleistungsbedürfnisse.",
-    locale: "de_DE",
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = await getTranslations("metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+    keywords: t("keywords").split(",").map((keyword) => keyword.trim()),
+    openGraph: {
+      title: t("title"),
+      description: t("ogDescription"),
+      locale: locale === "de" ? "de_DE" : "en_US",
+      type: "website",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

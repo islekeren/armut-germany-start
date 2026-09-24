@@ -17,12 +17,14 @@ export default function CustomerSettingsPage() {
             {t("nav.dashboard")}
           </Link>
           {" / "}
-          <span>Settings</span>
+          <span>{t("provider.dashboard.navigation.settings")}</span>
         </nav>
 
-        <h1 className="mb-8 text-2xl font-bold">Settings</h1>
+        <h1 className="mb-8 text-2xl font-bold">
+          {t("provider.dashboard.navigation.settings")}
+        </h1>
 
-        <AccountSettingsContent roleLabel="Customer" />
+        <AccountSettingsContent role="customer" />
       </div>
     </div>
   );

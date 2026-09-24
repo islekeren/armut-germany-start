@@ -475,14 +475,22 @@ export class RequestsService {
         type: "request_cancelled",
         title: "Request cancelled",
         message: `Your request "${request.title}" has been cancelled.`,
-        metadata: { requestId: request.id },
+        metadata: {
+          requestId: request.id,
+          requestTitle: request.title,
+          audience: "customer",
+        },
       }),
       ...providerUserIds.map((providerUserId) =>
         this.notificationsService.create(providerUserId, {
           type: "request_cancelled",
           title: "Request cancelled",
           message: `A customer cancelled the request "${request.title}".`,
-          metadata: { requestId: request.id },
+          metadata: {
+            requestId: request.id,
+            requestTitle: request.title,
+            audience: "provider",
+          },
         }),
       ),
     ]);

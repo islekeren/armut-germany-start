@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import type { ConversationItem, MessageItem } from "@/lib/api";
 
 interface MessagesWorkspaceProps {
@@ -66,6 +67,8 @@ export function MessagesWorkspace({
   composerClassName = "",
   wrapperClassName = "flex flex-1 overflow-hidden",
 }: MessagesWorkspaceProps) {
+  const t = useTranslations("nav");
+
   return (
     <div className={wrapperClassName}>
       <aside
@@ -211,7 +214,7 @@ export function MessagesWorkspace({
                 type="button"
                 onClick={() => onSelectConversation(null)}
                 className="rounded-full border border-border px-3 py-1 text-sm text-muted"
-                aria-label="Back to conversations"
+                aria-label={t("backToConversations")}
               >
                 ←
               </button>

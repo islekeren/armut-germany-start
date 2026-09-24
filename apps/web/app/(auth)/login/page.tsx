@@ -7,9 +7,11 @@ import { useTranslations } from "next-intl";
 import { FormInput, FormLabel, SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
 import { getSafeRedirect } from "@/lib/safe-redirect";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function LoginPage() {
   const t = useTranslations();
+  const describeError = useApiErrorMessage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -40,7 +42,7 @@ export default function LoginPage() {
       await login({ email, password });
       router.push(redirectTo);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("auth.login.errorDefault"));
+      setError(describeError(err, t("auth.login.errorDefault")));
     } finally {
       setIsLoading(false);
     }

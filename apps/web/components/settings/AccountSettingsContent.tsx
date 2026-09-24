@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts";
 import {
-  ApiError,
   authApi,
   getStoredAccessToken,
   uploadsApi,
@@ -13,6 +12,7 @@ import {
 import { FormInput } from "@/components/forms/FormInput";
 import { FormLabel } from "@/components/forms/FormLabel";
 import { PanelCard } from "@/components/ui/PanelCard";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 type NotificationPreferences = {
   emailNotifications: boolean;
@@ -29,12 +29,14 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
 };
 
 interface AccountSettingsContentProps {
-  roleLabel: string;
+  role: "customer" | "provider";
 }
 
-export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProps) {
+export function AccountSettingsContent({ role }: AccountSettingsContentProps) {
   const { user, refreshAuth, logout } = useAuth();
   const tDelete = useTranslations("accountDeletion");
+  const tS = useTranslations("accountSettings");
+  const describeError = useApiErrorMessage();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -118,7 +120,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
     try {
       const token = getStoredAccessToken();
       if (!token) {
-        setProfileMessage("Please log in again.");
+        setProfileMessage(tS("loginAgain"));
         return;
       }
 
@@ -142,10 +144,10 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
       setSelectedImage(null);
 
       await refreshAuth();
-      setProfileMessage("Profile updated successfully.");
+      setProfileMessage(tS("profileSaved"));
     } catch (error) {
       console.error("Failed to update settings profile", error);
-      setProfileMessage("Could not update your profile.");
+      setProfileMessage(describeError(error, tS("profileError")));
     } finally {
       setIsSavingProfile(false);
     }
@@ -158,10 +160,10 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
       if (preferenceStorageKey) {
         localStorage.setItem(preferenceStorageKey, JSON.stringify(preferences));
       }
-      setPreferencesMessage("Preferences saved.");
+      setPreferencesMessage(tS("preferencesSaved"));
     } catch (error) {
       console.error("Failed to save preferences", error);
-      setPreferencesMessage("Could not save preferences.");
+      setPreferencesMessage(tS("preferencesError"));
     } finally {
       setIsSavingPreferences(false);
     }
@@ -174,17 +176,17 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
     try {
       const token = getStoredAccessToken();
       if (!token) {
-        setPasswordMessage("Please log in again.");
+        setPasswordMessage(tS("loginAgain"));
         return;
       }
 
       if (newPassword.length < 8) {
-        setPasswordMessage("New password must be at least 8 characters.");
+        setPasswordMessage(tS("passwordTooShort"));
         return;
       }
 
       if (newPassword !== confirmPassword) {
-        setPasswordMessage("New passwords do not match.");
+        setPasswordMessage(tS("passwordMismatch"));
         return;
       }
 
@@ -196,10 +198,10 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setPasswordMessage("Password changed successfully.");
+      setPasswordMessage(tS("passwordChanged"));
     } catch (error) {
       console.error("Failed to change password", error);
-      setPasswordMessage("Could not change your password.");
+      setPasswordMessage(describeError(error, tS("passwordError")));
     } finally {
       setIsChangingPassword(false);
     }
@@ -225,11 +227,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
       window.location.href = "/";
     } catch (error) {
       console.error("Failed to delete profile", error);
-      setDeleteMessage(
-        error instanceof ApiError && error.status === 409
-          ? tDelete("activeBookings")
-          : tDelete("error"),
-      );
+      setDeleteMessage(describeError(error, tDelete("error")));
     } finally {
       setIsDeletingAccount(false);
     }
@@ -238,7 +236,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
   if (isLoading) {
     return (
       <PanelCard>
-        <p className="text-sm text-muted">Loading account settings...</p>
+        <p className="text-sm text-muted">{tS("loading")}</p>
       </PanelCard>
     );
   }
@@ -246,13 +244,13 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <PanelCard className="space-y-4">
-        <h2 className="text-lg font-semibold">Profile</h2>
+        <h2 className="text-lg font-semibold">{tS("profileTitle")}</h2>
         <p className="text-sm text-muted">
-          Update your {roleLabel.toLowerCase()} account details.
+          {tS(role === "provider" ? "profileDescriptionProvider" : "profileDescriptionCustomer")}
         </p>
 
         <div>
-          <FormLabel htmlFor="settings-first-name">First name</FormLabel>
+          <FormLabel htmlFor="settings-first-name">{tS("firstName")}</FormLabel>
           <FormInput
             id="settings-first-name"
             value={firstName}
@@ -261,7 +259,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </div>
 
         <div>
-          <FormLabel htmlFor="settings-last-name">Last name</FormLabel>
+          <FormLabel htmlFor="settings-last-name">{tS("lastName")}</FormLabel>
           <FormInput
             id="settings-last-name"
             value={lastName}
@@ -270,15 +268,15 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </div>
 
         <div>
-          <FormLabel htmlFor="settings-email">Email</FormLabel>
+          <FormLabel htmlFor="settings-email">{tS("email")}</FormLabel>
           <FormInput id="settings-email" value={email} readOnly />
           <p className="mt-1 text-xs text-muted">
-            Email is managed during account registration.
+            {tS("emailHint")}
           </p>
         </div>
 
         <div>
-          <FormLabel htmlFor="settings-phone">Phone</FormLabel>
+          <FormLabel htmlFor="settings-phone">{tS("phone")}</FormLabel>
           <FormInput
             id="settings-phone"
             value={phone}
@@ -287,7 +285,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </div>
 
         <div>
-          <FormLabel htmlFor="settings-profile-image">Profile image</FormLabel>
+          <FormLabel htmlFor="settings-profile-image">{tS("profileImage")}</FormLabel>
           <FormInput
             id="settings-profile-image"
             type="file"
@@ -301,7 +299,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={profileImage}
-              alt="Profile preview"
+              alt={tS("profilePreview")}
               className="mt-3 h-16 w-16 rounded-full border border-border object-cover"
             />
           ) : null}
@@ -315,18 +313,18 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
           disabled={isSavingProfile}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
         >
-          {isSavingProfile ? "Saving..." : "Save profile"}
+          {isSavingProfile ? tS("saving") : tS("saveProfile")}
         </button>
       </PanelCard>
 
       <PanelCard className="space-y-4">
-        <h2 className="text-lg font-semibold">Notifications</h2>
+        <h2 className="text-lg font-semibold">{tS("notificationsTitle")}</h2>
         <p className="text-sm text-muted">
-          Control which updates we send to you.
+          {tS("notificationsDescription")}
         </p>
 
         <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-          <span>Email notifications</span>
+          <span>{tS("emailNotifications")}</span>
           <input
             type="checkbox"
             checked={preferences.emailNotifications}
@@ -340,7 +338,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </label>
 
         <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-          <span>Push notifications</span>
+          <span>{tS("pushNotifications")}</span>
           <input
             type="checkbox"
             checked={preferences.pushNotifications}
@@ -354,7 +352,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </label>
 
         <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-          <span>SMS notifications</span>
+          <span>{tS("smsNotifications")}</span>
           <input
             type="checkbox"
             checked={preferences.smsNotifications}
@@ -368,7 +366,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </label>
 
         <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-          <span>Marketing emails</span>
+          <span>{tS("marketingEmails")}</span>
           <input
             type="checkbox"
             checked={preferences.marketingEmails}
@@ -391,16 +389,16 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
           disabled={isSavingPreferences}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
         >
-          {isSavingPreferences ? "Saving..." : "Save preferences"}
+          {isSavingPreferences ? tS("saving") : tS("savePreferences")}
         </button>
       </PanelCard>
 
       <PanelCard className="space-y-4">
-        <h2 className="text-lg font-semibold">Security</h2>
-        <p className="text-sm text-muted">Change your password.</p>
+        <h2 className="text-lg font-semibold">{tS("securityTitle")}</h2>
+        <p className="text-sm text-muted">{tS("securityDescription")}</p>
 
         <div>
-          <FormLabel htmlFor="settings-current-password">Current password</FormLabel>
+          <FormLabel htmlFor="settings-current-password">{tS("currentPassword")}</FormLabel>
           <FormInput
             id="settings-current-password"
             type="password"
@@ -410,7 +408,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </div>
 
         <div>
-          <FormLabel htmlFor="settings-new-password">New password</FormLabel>
+          <FormLabel htmlFor="settings-new-password">{tS("newPassword")}</FormLabel>
           <FormInput
             id="settings-new-password"
             type="password"
@@ -420,7 +418,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
         </div>
 
         <div>
-          <FormLabel htmlFor="settings-confirm-password">Confirm new password</FormLabel>
+          <FormLabel htmlFor="settings-confirm-password">{tS("confirmPassword")}</FormLabel>
           <FormInput
             id="settings-confirm-password"
             type="password"
@@ -437,7 +435,7 @@ export function AccountSettingsContent({ roleLabel }: AccountSettingsContentProp
           disabled={isChangingPassword}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
         >
-          {isChangingPassword ? "Updating..." : "Change password"}
+          {isChangingPassword ? tS("updating") : tS("changePassword")}
         </button>
       </PanelCard>
 
