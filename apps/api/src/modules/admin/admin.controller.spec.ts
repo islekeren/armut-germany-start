@@ -35,7 +35,9 @@ describe("AdminController", () => {
 
   it("gets users with query", async () => {
     adminService.getUsers.mockResolvedValue({ data: [] });
-    await expect(controller.getUsers(2, 10, "customer", "max")).resolves.toEqual({
+    await expect(
+      controller.getUsers(2, 10, "customer", "max"),
+    ).resolves.toEqual({
       data: [],
     });
     expect(adminService.getUsers).toHaveBeenCalledWith({
@@ -54,12 +56,12 @@ describe("AdminController", () => {
 
   it("updates user by id", async () => {
     adminService.updateUser.mockResolvedValue({ id: "u1", isVerified: true });
-    await expect(controller.updateUser("u1", { isVerified: true })).resolves.toEqual(
-      {
-        id: "u1",
-        isVerified: true,
-      }
-    );
+    await expect(
+      controller.updateUser("u1", { isVerified: true }),
+    ).resolves.toEqual({
+      id: "u1",
+      isVerified: true,
+    });
     expect(adminService.updateUser).toHaveBeenCalledWith("u1", {
       isVerified: true,
     });
@@ -116,9 +118,12 @@ describe("AdminController", () => {
   });
 
   it("approves provider", async () => {
-    adminService.approveProvider.mockResolvedValue({ id: "p1", isApproved: true });
+    adminService.approveProvider.mockResolvedValue({
+      id: "p1",
+      isApproved: true,
+    });
     await expect(
-      controller.approveProvider("p1", { approved: true })
+      controller.approveProvider("p1", { approved: true }),
     ).resolves.toEqual({
       id: "p1",
       isApproved: true,
@@ -147,13 +152,16 @@ describe("AdminController", () => {
   });
 
   it("updates category", async () => {
-    adminService.updateCategory.mockResolvedValue({ id: "c1", nameEn: "Updated" });
-    await expect(controller.updateCategory("c1", { nameEn: "Updated" })).resolves.toEqual(
-      {
-        id: "c1",
-        nameEn: "Updated",
-      }
-    );
+    adminService.updateCategory.mockResolvedValue({
+      id: "c1",
+      nameEn: "Updated",
+    });
+    await expect(
+      controller.updateCategory("c1", { nameEn: "Updated" }),
+    ).resolves.toEqual({
+      id: "c1",
+      nameEn: "Updated",
+    });
     expect(adminService.updateCategory).toHaveBeenCalledWith("c1", {
       nameEn: "Updated",
     });
@@ -161,18 +169,20 @@ describe("AdminController", () => {
 
   it("deletes category", async () => {
     adminService.deleteCategory.mockResolvedValue({ id: "c1" });
-    await expect(controller.deleteCategory("c1")).resolves.toEqual({ id: "c1" });
+    await expect(controller.deleteCategory("c1")).resolves.toEqual({
+      id: "c1",
+    });
     expect(adminService.deleteCategory).toHaveBeenCalledWith("c1");
   });
 
   it("gets revenue report with parsed date args", async () => {
     adminService.getRevenueReport.mockResolvedValue({ totalRevenue: 100 });
     await expect(
-      controller.getRevenueReport("2026-01-01", "2026-01-31")
+      controller.getRevenueReport("2026-01-01", "2026-01-31"),
     ).resolves.toEqual({ totalRevenue: 100 });
     expect(adminService.getRevenueReport).toHaveBeenCalledWith(
       new Date("2026-01-01"),
-      new Date("2026-01-31")
+      new Date("2026-01-31"),
     );
   });
 

@@ -4,6 +4,7 @@ jest.mock("../users/account-deletion", () => ({
 
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
@@ -16,6 +17,7 @@ describe("AdminService", () => {
       count: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
@@ -35,6 +37,7 @@ describe("AdminService", () => {
     },
     category: {
       findMany: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
       create: jest.fn(),
       update: jest.fn(),
       findUnique: jest.fn(),
@@ -52,7 +55,10 @@ describe("AdminService", () => {
   it("returns dashboard stats with computed completion rate", async () => {
     prisma.user.count.mockResolvedValueOnce(100).mockResolvedValueOnce(8);
     prisma.provider.count.mockResolvedValueOnce(25).mockResolvedValueOnce(4);
-    prisma.serviceRequest.count.mockResolvedValueOnce(40).mockResolvedValueOnce(12).mockResolvedValueOnce(6);
+    prisma.serviceRequest.count
+      .mockResolvedValueOnce(40)
+      .mockResolvedValueOnce(12)
+      .mockResolvedValueOnce(6);
     prisma.booking.count.mockResolvedValueOnce(30).mockResolvedValueOnce(18);
     prisma.booking.aggregate.mockResolvedValue({ _sum: { totalPrice: 9500 } });
 
@@ -89,7 +95,7 @@ describe("AdminService", () => {
         }),
         skip: 5,
         take: 5,
-      })
+      }),
     );
     expect(result.meta).toEqual({
       total: 11,
@@ -108,18 +114,46 @@ describe("AdminService", () => {
   });
 
   it("updates and deletes user", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "u1" });
     prisma.user.update.mockResolvedValue({
       id: "u1",
       isVerified: true,
       password: "hash",
     });
 
-    await expect(service.updateUser("u1", { isVerified: true })).resolves.toEqual({
+    await expect(
+      service.updateUser("u1", { isVerified: true }),
+    ).resolves.toEqual({
       id: "u1",
       isVerified: true,
     });
     await expect(service.deleteUser("u1")).resolves.toEqual({ id: "u1" });
     expect(anonymizeUserAccount).toHaveBeenCalledWith(prisma, "u1");
+  });
+
+  it("only writes known fields when updating a user", async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: "u1" });
+    prisma.user.update.mockResolvedValue({ id: "u1", isVerified: false });
+
+    await service.updateUser("u1", {
+      isVerified: false,
+      userType: "admin",
+      password: "plain",
+    } as any);
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { isVerified: false },
+    });
+  });
+
+  it("rejects updates to missing or deleted users", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateUser("missing", { isVerified: true }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("returns pending providers", async () => {
@@ -152,7 +186,7 @@ describe("AdminService", () => {
           isApproved: true,
           OR: expect.any(Array),
         }),
-      })
+      }),
     );
     expect(result.meta.total).toBe(1);
   });
@@ -168,7 +202,7 @@ describe("AdminService", () => {
       isApproved: true,
     });
     await expect(service.approveProvider("missing", true)).rejects.toThrow(
-      NotFoundException
+      NotFoundException,
     );
   });
 
@@ -198,7 +232,7 @@ describe("AdminService", () => {
         nameEn: "Electrician",
         icon: "⚡",
         parentId: "sector-1",
-      })
+      }),
     ).resolves.toEqual({ id: "c2" });
     expect(prisma.category.findUnique).toHaveBeenCalledWith({
       where: { id: "sector-1" },
@@ -219,7 +253,7 @@ describe("AdminService", () => {
       },
     });
     await expect(
-      service.updateCategory("c1", { nameDe: "Elektriker" })
+      service.updateCategory("c1", { nameDe: "Elektriker" }),
     ).resolves.toEqual({
       id: "c1",
       nameDe: "Elektriker",
@@ -235,7 +269,7 @@ describe("AdminService", () => {
         nameDe: "Custom",
         nameEn: "Custom",
         icon: "🧪",
-      })
+      }),
     ).rejects.toThrow(BadRequestException);
 
     expect(prisma.category.create).not.toHaveBeenCalled();
@@ -248,7 +282,7 @@ describe("AdminService", () => {
     });
 
     await expect(
-      service.updateCategory("c1", { nameDe: "Neu" })
+      service.updateCategory("c1", { nameDe: "Neu" }),
     ).rejects.toThrow(BadRequestException);
 
     expect(prisma.category.update).not.toHaveBeenCalled();
@@ -267,8 +301,12 @@ describe("AdminService", () => {
       });
     prisma.category.delete.mockResolvedValue({ id: "c2" });
 
-    await expect(service.deleteCategory("missing")).rejects.toThrow(NotFoundException);
-    await expect(service.deleteCategory("c1")).rejects.toThrow(ForbiddenException);
+    await expect(service.deleteCategory("missing")).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(service.deleteCategory("c1")).rejects.toThrow(
+      ForbiddenException,
+    );
     await expect(service.deleteCategory("c2")).resolves.toEqual({ id: "c2" });
   });
 
@@ -281,13 +319,19 @@ describe("AdminService", () => {
 
     const result = await service.getRevenueReport(
       new Date("2026-02-01"),
-      new Date("2026-02-28")
+      new Date("2026-02-28"),
     );
 
     expect(result.totalRevenue).toBe(190);
     expect(result.bookingsCount).toBe(3);
-    expect(result.dailyRevenue).toContainEqual({ date: "2026-02-10", revenue: 150 });
-    expect(result.dailyRevenue).toContainEqual({ date: "2026-02-11", revenue: 40 });
+    expect(result.dailyRevenue).toContainEqual({
+      date: "2026-02-10",
+      revenue: 150,
+    });
+    expect(result.dailyRevenue).toContainEqual({
+      date: "2026-02-11",
+      revenue: 40,
+    });
   });
 
   it("returns category report", async () => {
@@ -320,7 +364,21 @@ describe("AdminService", () => {
       expect.objectContaining({
         where: { isApproved: true },
         take: 10,
-      })
+      }),
     );
+  });
+  it("rejects duplicate categories with a conflict", async () => {
+    prisma.category.count.mockResolvedValueOnce(1);
+
+    await expect(
+      service.createCategory({
+        slug: "electrician",
+        nameDe: "Elektriker",
+        nameEn: "Electrician",
+        icon: "⚡",
+        parentId: "sector-1",
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.category.create).not.toHaveBeenCalled();
   });
 });
