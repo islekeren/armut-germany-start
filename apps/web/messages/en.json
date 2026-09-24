@@ -321,7 +321,9 @@
     "providerBlockedDescription": "Provider accounts cannot create service requests. Use your provider dashboard to discover and quote customer requests.",
     "providerBlockedAction": "Go to provider dashboard",
     "errorCreating": "Failed to create request. Please try again.",
-    "errorNoToken": "No authentication token found."
+    "errorNoToken": "No authentication token found.",
+    "draftRestored": "We restored your details. Please review them and submit your request.",
+    "draftPhotosLost": "Photos could not be saved – please add them again in the Details step."
   },
   "hero": {
     "title": "Find the Perfect Service Provider",

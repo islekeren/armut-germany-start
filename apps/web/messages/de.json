@@ -321,7 +321,9 @@
     "providerBlockedDescription": "Anbieterkonten können keine Serviceanfragen erstellen. Nutzen Sie Ihr Anbieter-Dashboard, um passende Kundenanfragen zu finden und Angebote abzugeben.",
     "providerBlockedAction": "Zum Anbieter-Dashboard",
     "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
-    "errorNoToken": "Kein Authentifizierungs-Token gefunden."
+    "errorNoToken": "Kein Authentifizierungs-Token gefunden.",
+    "draftRestored": "Ihre Angaben wurden wiederhergestellt. Bitte prüfen Sie sie und senden Sie die Anfrage ab.",
+    "draftPhotosLost": "Fotos konnten nicht gespeichert werden – bitte fügen Sie sie im Schritt „Details“ erneut hinzu."
   },
   "hero": {
     "title": "Finden Sie den perfekten Dienstleister",

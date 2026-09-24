@@ -25,6 +25,53 @@ import {
 } from "@/lib/api";
 import { getCategoryDisplayName } from "@/lib/request-taxonomy";
 
+// A guest's answers are parked here while they log in or register, so the
+// request is not lost on the way back. Files cannot be serialized, so only
+// the number of photos is remembered.
+const REQUEST_DRAFT_KEY = "armut_request_draft";
+
+type RequestDraft = {
+  category: string;
+  sectorId: string | null;
+  branchId: string | null;
+  title: string;
+  description: string;
+  postalCode: string;
+  city: string;
+  address: string;
+  preferredDate: string;
+  preferredDays: string[];
+  preferredTime: string;
+  budgetMin: string;
+  budgetMax: string;
+  imageCount: number;
+};
+
+function readRequestDraft(): RequestDraft | null {
+  try {
+    const raw = sessionStorage.getItem(REQUEST_DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as RequestDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRequestDraft(draft: RequestDraft) {
+  try {
+    sessionStorage.setItem(REQUEST_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Storage unavailable (private mode, quota): continue without a draft.
+  }
+}
+
+function clearRequestDraft() {
+  try {
+    sessionStorage.removeItem(REQUEST_DRAFT_KEY);
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
 export default function CreateRequestPage() {
   const t = useTranslations();
   const locale = useLocale();
@@ -65,6 +112,9 @@ export default function CreateRequestPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restoredDraft, setRestoredDraft] = useState<RequestDraft | null>(
+    null,
+  );
   const weekdayKeys = [
     "monday",
     "tuesday",
@@ -121,6 +171,33 @@ export default function CreateRequestPage() {
 
   const isProviderUser =
     !authLoading && isAuthenticated && user?.userType === "provider";
+
+  // Restore a draft saved before the login/register redirect.
+  useEffect(() => {
+    if (searchParams.get("draft") !== "1") return;
+
+    const draft = readRequestDraft();
+    if (!draft) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      category: draft.category,
+      title: draft.title,
+      description: draft.description,
+      postalCode: draft.postalCode,
+      city: draft.city,
+      address: draft.address,
+      preferredDate: draft.preferredDate,
+      preferredDays: draft.preferredDays,
+      preferredTime: draft.preferredTime,
+      budgetMin: draft.budgetMin,
+      budgetMax: draft.budgetMax,
+    }));
+    setSelectedSectorId(draft.sectorId);
+    setSelectedBranchId(draft.branchId);
+    setRestoredDraft(draft);
+    setStep(3);
+  }, [searchParams]);
 
   useEffect(() => {
     if (isProviderUser) {
@@ -227,8 +304,9 @@ export default function CreateRequestPage() {
       params.set("branch", selectedBranchId);
     }
 
-    const query = params.toString();
-    return query ? `/create-request?${query}` : "/create-request";
+    params.set("draft", "1");
+
+    return `/create-request?${params.toString()}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -242,6 +320,22 @@ export default function CreateRequestPage() {
 
     // Check if user is authenticated
     if (!isAuthenticated) {
+      writeRequestDraft({
+        category: formData.category,
+        sectorId: selectedSectorId,
+        branchId: selectedBranchId,
+        title: formData.title,
+        description: formData.description,
+        postalCode: formData.postalCode,
+        city: formData.city,
+        address: formData.address,
+        preferredDate: formData.preferredDate,
+        preferredDays: formData.preferredDays,
+        preferredTime: formData.preferredTime,
+        budgetMin: formData.budgetMin,
+        budgetMax: formData.budgetMax,
+        imageCount: formData.images.length,
+      });
       router.push(
         `/login?redirect=${encodeURIComponent(buildCreateRequestRedirect())}`,
       );
@@ -309,6 +403,7 @@ export default function CreateRequestPage() {
       };
 
       await requestsApi.create(requestData, token);
+      clearRequestDraft();
 
       // Redirect to my-requests page on success
       router.push("/my-requests");
@@ -850,6 +945,16 @@ export default function CreateRequestPage() {
                   </div>
                 </div>
               </div>
+
+              {restoredDraft && isAuthenticated && (
+                <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-800">
+                  {t("createRequest.draftRestored")}
+                  {restoredDraft.imageCount > 0 &&
+                    formData.images.length === 0 && (
+                      <> {t("createRequest.draftPhotosLost")}</>
+                    )}
+                </div>
+              )}
 
               {error && (
                 <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
