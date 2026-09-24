@@ -21,6 +21,32 @@ export enum UploadFolder {
   MESSAGES = "messages",
 }
 
+const MAX_FILE_SIZES: Record<UploadFolder, number> = {
+  [UploadFolder.PROFILES]: 5 * 1024 * 1024, // 5MB
+  [UploadFolder.PORTFOLIOS]: 10 * 1024 * 1024, // 10MB
+  [UploadFolder.DOCUMENTS]: 20 * 1024 * 1024, // 20MB
+  [UploadFolder.REQUESTS]: 10 * 1024 * 1024, // 10MB
+  [UploadFolder.MESSAGES]: 10 * 1024 * 1024, // 10MB
+};
+
+const ALLOWED_MIME_TYPES: Record<UploadFolder, string[]> = {
+  [UploadFolder.PROFILES]: ["image/jpeg", "image/png", "image/webp"],
+  [UploadFolder.PORTFOLIOS]: ["image/jpeg", "image/png", "image/webp"],
+  [UploadFolder.DOCUMENTS]: [
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+    "image/webp",
+  ],
+  [UploadFolder.REQUESTS]: ["image/jpeg", "image/png", "image/webp"],
+  [UploadFolder.MESSAGES]: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ],
+};
+
 export interface UploadResult {
   key: string;
   url: string;
@@ -48,6 +74,8 @@ export class UploadsService {
     this.s3Client = new S3Client({
       endpoint,
       region,
+      // MinIO and most S3 mocks only support path-style bucket addressing.
+      forcePathStyle: this.configService.get("S3_FORCE_PATH_STYLE") === "true",
       credentials: {
         accessKeyId: accessKeyId || "",
         secretAccessKey: secretAccessKey || "",
@@ -138,6 +166,15 @@ export class UploadsService {
     filename: string,
     contentType: string
   ): Promise<{ uploadUrl: string; key: string; publicUrl: string }> {
+    // The signed URL pins this content type, so checking it here applies the
+    // same allow-list as direct uploads. Size cannot be enforced on a
+    // presigned PUT.
+    if (!ALLOWED_MIME_TYPES[folder]?.includes(contentType)) {
+      throw new BadRequestException(
+        `File type not allowed. Allowed types: ${(ALLOWED_MIME_TYPES[folder] ?? []).join(", ")}`
+      );
+    }
+
     const ext = filename.split(".").pop();
     const uniqueFilename = `${randomUUID()}.${ext}`;
     const key = `${folder}/${userId}/${uniqueFilename}`;
@@ -167,41 +204,15 @@ export class UploadsService {
   }
 
   private validateFile(file: Express.Multer.File, folder: UploadFolder): void {
-    const maxSizes: Record<UploadFolder, number> = {
-      [UploadFolder.PROFILES]: 5 * 1024 * 1024, // 5MB
-      [UploadFolder.PORTFOLIOS]: 10 * 1024 * 1024, // 10MB
-      [UploadFolder.DOCUMENTS]: 20 * 1024 * 1024, // 20MB
-      [UploadFolder.REQUESTS]: 10 * 1024 * 1024, // 10MB
-      [UploadFolder.MESSAGES]: 10 * 1024 * 1024, // 10MB
-    };
-
-    const allowedMimeTypes: Record<UploadFolder, string[]> = {
-      [UploadFolder.PROFILES]: ["image/jpeg", "image/png", "image/webp"],
-      [UploadFolder.PORTFOLIOS]: ["image/jpeg", "image/png", "image/webp"],
-      [UploadFolder.DOCUMENTS]: [
-        "image/jpeg",
-        "image/png",
-        "application/pdf",
-        "image/webp",
-      ],
-      [UploadFolder.REQUESTS]: ["image/jpeg", "image/png", "image/webp"],
-      [UploadFolder.MESSAGES]: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "application/pdf",
-      ],
-    };
-
-    if (file.size > maxSizes[folder]) {
+    if (file.size > MAX_FILE_SIZES[folder]) {
       throw new BadRequestException(
-        `File size exceeds maximum allowed (${maxSizes[folder] / 1024 / 1024}MB)`
+        `File size exceeds maximum allowed (${MAX_FILE_SIZES[folder] / 1024 / 1024}MB)`
       );
     }
 
-    if (!allowedMimeTypes[folder].includes(file.mimetype)) {
+    if (!ALLOWED_MIME_TYPES[folder].includes(file.mimetype)) {
       throw new BadRequestException(
-        `File type not allowed. Allowed types: ${allowedMimeTypes[folder].join(", ")}`
+        `File type not allowed. Allowed types: ${ALLOWED_MIME_TYPES[folder].join(", ")}`
       );
     }
   }

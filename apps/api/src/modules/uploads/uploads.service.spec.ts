@@ -159,6 +159,20 @@ describe("UploadsService", () => {
     });
   });
 
+  it("rejects presigned uploads outside the folder's allowed types", async () => {
+    const service = new UploadsService(createConfigService());
+
+    await expect(
+      service.getPresignedUploadUrl(
+        UploadFolder.PROFILES,
+        "user-1",
+        "page.html",
+        "text/html",
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(getSignedUrl).not.toHaveBeenCalled();
+  });
+
   it("falls back to default S3 public url format when S3_PUBLIC_URL is missing", async () => {
     const service = new UploadsService(createConfigService(""));
     const sendSpy = jest
