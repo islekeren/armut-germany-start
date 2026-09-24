@@ -414,9 +414,11 @@ export const providersApi = {
     lat?: number;
     lng?: number;
     radius?: number;
+    postalCode?: string;
   }) => {
     const params = new URLSearchParams();
     if (query?.categoryId) params.append("categoryId", query.categoryId);
+    if (query?.postalCode) params.append("postalCode", query.postalCode);
     if (query?.minRating !== undefined)
       params.append("minRating", query.minRating.toString());
     if (query?.page) params.append("page", query.page.toString());

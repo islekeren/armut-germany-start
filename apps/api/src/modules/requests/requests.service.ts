@@ -17,6 +17,7 @@ import {
   getRequestSectorById,
   resolveRequestTaxonomy,
 } from "../../common/request-taxonomy";
+import { hasCoordinates, lookupPostcode } from "../../common/geo/postcode-geo";
 
 type PublicRequestSource = {
   id: string;
@@ -86,6 +87,18 @@ export class RequestsService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
   ) {}
+
+  /**
+   * Coordinates come from the postcode so provider matching works even though
+   * the web client has no geocoder (it sends 0,0). Client coordinates are only
+   * used when the postcode is unknown.
+   */
+  private resolveLocation(postalCode?: string, lat?: number, lng?: number) {
+    const point = lookupPostcode(postalCode);
+    if (point) return point;
+    if (hasCoordinates(lat, lng)) return { lat: lat!, lng: lng! };
+    throw new BadRequestException("Unknown postal code");
+  }
 
   // Helper to check if a string is a valid UUID
   private isUUID(str: string): boolean {
@@ -177,10 +190,18 @@ export class RequestsService {
       ...requestData
     } = createRequestDto;
 
+    const location = this.resolveLocation(
+      requestData.postalCode,
+      requestData.lat,
+      requestData.lng,
+    );
+
     return this.prisma.serviceRequest.create({
       data: {
         customerId,
         ...requestData,
+        lat: location.lat,
+        lng: location.lng,
         categoryId: category.id,
         requestSector: resolvedTaxonomy.sectorId,
         requestBranch: resolvedTaxonomy.branchId,
@@ -373,10 +394,20 @@ export class RequestsService {
       throw new ForbiddenException("Not authorized to update this request");
     }
 
+    const locationUpdate =
+      updateRequestDto.postalCode !== undefined
+        ? this.resolveLocation(
+            updateRequestDto.postalCode,
+            updateRequestDto.lat,
+            updateRequestDto.lng,
+          )
+        : {};
+
     return this.prisma.serviceRequest.update({
       where: { id },
       data: {
         ...updateRequestDto,
+        ...locationUpdate,
         preferredDate: updateRequestDto.preferredDate
           ? new Date(updateRequestDto.preferredDate)
           : undefined,

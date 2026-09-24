@@ -115,8 +115,11 @@
       "city": "City",
       "cityPlaceholder": "e.g. Berlin",
       "priceMin": "Min price (€)",
-      "priceMax": "Max price (€)"
-    }
+      "priceMax": "Max price (€)",
+      "postalCode": "Postcode",
+      "postalCodePlaceholder": "e.g. 10115"
+    },
+    "unknownPostalCode": "We don't recognise this postcode. Please check it."
   },
   "requestsPage": {
     "title": "Open Requests",
@@ -324,7 +327,8 @@
     "errorCreating": "Failed to create request. Please try again.",
     "errorNoToken": "No authentication token found.",
     "draftRestored": "We restored your details. Please review them and submit your request.",
-    "draftPhotosLost": "Photos could not be saved – please add them again in the Details step."
+    "draftPhotosLost": "Photos could not be saved – please add them again in the Details step.",
+    "unknownPostalCode": "We don't recognise this postcode. Please check it."
   },
   "hero": {
     "title": "Find the Perfect Service Provider",

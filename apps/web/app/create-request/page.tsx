@@ -21,6 +21,7 @@ import {
   uploadsApi,
   getCategories,
   isApiUnavailableError,
+  ApiError,
   type Category,
 } from "@/lib/api";
 import { getCategoryDisplayName } from "@/lib/request-taxonomy";
@@ -459,7 +460,11 @@ export default function CreateRequestPage() {
     } catch (err) {
       console.error("Failed to create request:", err);
       setError(
-        err instanceof Error ? err.message : t("createRequest.errorCreating"),
+        err instanceof ApiError && err.message === "Unknown postal code"
+          ? t("createRequest.unknownPostalCode")
+          : err instanceof Error
+            ? err.message
+            : t("createRequest.errorCreating"),
       );
     } finally {
       setIsLoading(false);
@@ -685,9 +690,14 @@ export default function CreateRequestPage() {
                     </FormLabel>
                     <FormInput
                       type="text"
+                      inputMode="numeric"
+                      maxLength={5}
                       value={formData.postalCode}
                       onChange={(e) =>
-                        setFormData({ ...formData, postalCode: e.target.value })
+                        setFormData({
+                          ...formData,
+                          postalCode: e.target.value.replace(/\D/g, ""),
+                        })
                       }
                       placeholder={t("createRequest.postalCodePlaceholder")}
                       accent="primary"

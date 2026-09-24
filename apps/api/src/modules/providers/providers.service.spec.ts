@@ -499,6 +499,30 @@ describe("ProvidersService", () => {
     });
   });
 
+  describe("findAll by customer postcode", () => {
+    it("keeps only providers whose service radius reaches the postcode", async () => {
+      prisma.provider.findMany.mockResolvedValue([
+        // Berlin, 25 km radius: covers 10115 (Berlin-Mitte).
+        { id: "berlin", serviceAreaLat: 52.52, serviceAreaLng: 13.405, serviceAreaRadius: 25 },
+        // Potsdam, 10 km radius: ~27 km away, does not reach Mitte.
+        { id: "potsdam", serviceAreaLat: 52.39, serviceAreaLng: 13.064, serviceAreaRadius: 10 },
+        // No location yet.
+        { id: "unknown", serviceAreaLat: 0, serviceAreaLng: 0, serviceAreaRadius: 100 },
+      ]);
+
+      const result = await service.findAll({ postalCode: "10115" } as any);
+
+      expect(result.data.map((provider: any) => provider.id)).toEqual(["berlin"]);
+      expect(result.meta.total).toBe(1);
+    });
+
+    it("rejects unknown postcodes", async () => {
+      await expect(
+        service.findAll({ postalCode: "00000" } as any),
+      ).rejects.toThrow("Unknown postal code");
+    });
+  });
+
   describe("getRequests", () => {
     it("limits provider requests to the provider's active service categories", async () => {
       prisma.provider.findUnique.mockResolvedValue({
@@ -518,6 +542,39 @@ describe("ProvidersService", () => {
           }),
         }),
       );
+    });
+
+    it("only returns requests inside the provider's service radius", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      // First call: bounding-box candidates; second call: the page itself.
+      prisma.serviceRequest.findMany
+        .mockResolvedValueOnce([
+          { id: "near", lat: 52.53, lng: 13.38 },
+          { id: "box-corner", lat: 52.72, lng: 13.73 },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getRequests("user-1", { page: 1, limit: 10 });
+
+      expect(prisma.serviceRequest.findMany).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            lat: { gte: expect.any(Number), lte: expect.any(Number) },
+            lng: { gte: expect.any(Number), lte: expect.any(Number) },
+          }),
+        }),
+      );
+      // The corner of the box is ~32 km away, outside the 25 km radius.
+      expect(prisma.serviceRequest.findMany).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ where: { id: { in: ["near"] } } }),
+      );
+      expect(result.meta.total).toBe(1);
+      expect(prisma.serviceRequest.count).not.toHaveBeenCalled();
     });
 
     it("returns an empty page when the requested category is outside the provider scope", async () => {
@@ -559,6 +616,8 @@ describe("ProvidersService", () => {
         id: "request-1",
         categoryId: "category-1",
         status: "open",
+        lat: 52.53,
+        lng: 13.38,
       });
 
       const result = await service.getRequestById("user-1", "request-1");
@@ -567,6 +626,8 @@ describe("ProvidersService", () => {
         id: "request-1",
         categoryId: "category-1",
         status: "open",
+        lat: 52.53,
+        lng: 13.38,
       });
       expect(prisma.serviceRequest.findFirst).toHaveBeenCalledWith({
         where: {
@@ -581,6 +642,25 @@ describe("ProvidersService", () => {
           },
         },
       });
+    });
+
+    it("hides requests outside the provider's service radius", async () => {
+      prisma.provider.findUnique.mockResolvedValue({
+        ...mockProvider,
+        services: [{ categoryId: "category-1" }],
+      });
+      // Munich is ~500 km from the Berlin-based mock provider (25 km radius).
+      prisma.serviceRequest.findFirst.mockResolvedValue({
+        id: "request-3",
+        categoryId: "category-1",
+        status: "open",
+        lat: 48.135,
+        lng: 11.571,
+      });
+
+      await expect(
+        service.getRequestById("user-1", "request-3"),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it("throws when the request is outside the provider scope", async () => {

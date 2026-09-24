@@ -20,7 +20,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "npx ts-node prisma/seed.ts",
-    "admin:grant": "npx ts-node scripts/grant-admin.ts"
+    "admin:grant": "npx ts-node scripts/grant-admin.ts",
+    "geo:backfill": "npx ts-node scripts/backfill-geo.ts"
   },
   "engines": {
     "node": ">=20.9.0"

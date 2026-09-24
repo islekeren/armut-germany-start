@@ -279,6 +279,11 @@ export class ProviderQueryDto {
   @IsNumber()
   radius?: number;
 
+  /** Customer postcode: only providers whose service area covers it. */
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
   @IsOptional()
   @IsString()
   categoryId?: string;

@@ -115,8 +115,11 @@
       "city": "Stadt",
       "cityPlaceholder": "z.B. Berlin",
       "priceMin": "Mindestpreis (€)",
-      "priceMax": "Maximalpreis (€)"
-    }
+      "priceMax": "Maximalpreis (€)",
+      "postalCode": "Postleitzahl",
+      "postalCodePlaceholder": "z.B. 10115"
+    },
+    "unknownPostalCode": "Diese Postleitzahl kennen wir nicht. Bitte prüfen Sie die Eingabe."
   },
   "requestsPage": {
     "title": "Offene Anfragen",
@@ -324,7 +327,8 @@
     "errorCreating": "Anfrage konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
     "errorNoToken": "Kein Authentifizierungs-Token gefunden.",
     "draftRestored": "Ihre Angaben wurden wiederhergestellt. Bitte prüfen Sie sie und senden Sie die Anfrage ab.",
-    "draftPhotosLost": "Fotos konnten nicht gespeichert werden – bitte fügen Sie sie im Schritt „Details“ erneut hinzu."
+    "draftPhotosLost": "Fotos konnten nicht gespeichert werden – bitte fügen Sie sie im Schritt „Details“ erneut hinzu.",
+    "unknownPostalCode": "Diese Postleitzahl kennen wir nicht. Bitte prüfen Sie die Eingabe."
   },
   "hero": {
     "title": "Finden Sie den perfekten Dienstleister",

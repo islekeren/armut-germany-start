@@ -41,6 +41,7 @@ describe("RequestsService", () => {
             categoryId: "home-cleaning",
             title: "Need cleaning",
             description: "flat",
+            postalCode: "10115",
           } as any,
           "provider",
         ),
@@ -65,6 +66,7 @@ describe("RequestsService", () => {
           categoryId,
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).resolves.toEqual({ id: "req-1" });
 
@@ -94,6 +96,7 @@ describe("RequestsService", () => {
         categoryId: "home-cleaning",
         title: "Need cleaning",
         description: "flat",
+        postalCode: "10115",
       } as any);
 
       expect(prisma.category.findUnique).toHaveBeenCalledWith({
@@ -114,6 +117,7 @@ describe("RequestsService", () => {
           categoryId: "cleaning",
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).rejects.toThrow(NotFoundException);
     });
@@ -126,6 +130,7 @@ describe("RequestsService", () => {
           categoryId: "home-cleaning",
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).rejects.toThrow(NotFoundException);
     });
@@ -143,6 +148,7 @@ describe("RequestsService", () => {
           categoryId: "home-cleaning",
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).rejects.toThrow(NotFoundException);
     });
@@ -160,6 +166,7 @@ describe("RequestsService", () => {
           categoryId: "custom-cleaning",
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).rejects.toThrow(BadRequestException);
 
@@ -180,6 +187,7 @@ describe("RequestsService", () => {
         requestBranch: "office-cleaning",
         title: "Need cleaning",
         description: "flat",
+        postalCode: "10115",
       } as any);
 
       expect(prisma.serviceRequest.create).toHaveBeenCalledWith(
@@ -207,6 +215,7 @@ describe("RequestsService", () => {
           requestBranch: "electrician",
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).rejects.toThrow(BadRequestException);
     });
@@ -226,8 +235,52 @@ describe("RequestsService", () => {
           requestBranch: "office-cleaning",
           title: "Need cleaning",
           description: "flat",
+          postalCode: "10115",
         } as any),
       ).rejects.toThrow(BadRequestException);
+    });
+    it("derives coordinates from the postcode instead of trusting 0,0", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "electrician",
+        parentId: "sector-1",
+        isActive: true,
+      });
+      prisma.serviceRequest.create.mockResolvedValue({ id: "req-geo" });
+
+      await service.create("user-1", {
+        categoryId: "electrician",
+        title: "Need an electrician",
+        description: "flat",
+        postalCode: "80331",
+        lat: 0,
+        lng: 0,
+      } as any);
+
+      const { data } = prisma.serviceRequest.create.mock.calls[0][0];
+      expect(data.lat).toBeCloseTo(48.14, 1);
+      expect(data.lng).toBeCloseTo(11.57, 1);
+    });
+
+    it("rejects an unknown postcode when no coordinates are given", async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        id: "cat-1",
+        slug: "electrician",
+        parentId: "sector-1",
+        isActive: true,
+      });
+
+      await expect(
+        service.create("user-1", {
+          categoryId: "electrician",
+          title: "Need an electrician",
+          description: "flat",
+          postalCode: "00000",
+          lat: 0,
+          lng: 0,
+        } as any),
+      ).rejects.toThrow("Unknown postal code");
+      expect(prisma.serviceRequest.create).not.toHaveBeenCalled();
     });
   });
 
