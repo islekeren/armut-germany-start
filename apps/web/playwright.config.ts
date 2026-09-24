@@ -10,6 +10,10 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
+    // Use a preinstalled Chromium instead of Playwright's bundled download.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+      : undefined,
   },
   webServer: [
     {
@@ -21,11 +25,15 @@ export default defineConfig({
         ...process.env,
         DATABASE_URL:
           process.env.DATABASE_URL ||
-          "postgresql://postgres:postgres@127.0.0.1:5432/armut_test",
+          "postgresql://postgres:postgres@127.0.0.1:5433/armut_e2e_web",
         JWT_SECRET: process.env.JWT_SECRET || "test-jwt-secret",
         JWT_REFRESH_SECRET:
           process.env.JWT_REFRESH_SECRET || "test-refresh-secret",
         PORT: process.env.PORT || "4000",
+        // Lets many test users log in from one IP without hitting the
+        // per-route auth rate limits. Only honoured when NODE_ENV=test.
+        NODE_ENV: "test",
+        THROTTLE_DISABLED: "true",
         CORS_ORIGINS:
           process.env.CORS_ORIGINS ||
           "http://localhost:3000,http://127.0.0.1:3000",

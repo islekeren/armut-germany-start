@@ -1,0 +1,36 @@
+# Throwaway services for the e2e suites. Ports are offset from
+# docker-compose.yml so the test stack can run next to the dev stack.
+#
+#   npm run test:e2e:services:up    # start and wait until healthy
+#   npm run test:e2e:setup          # apply migrations to both e2e databases
+#   npm run test:e2e:services:down  # stop and drop all data
+name: armut-e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./docker/test/postgres-init.sql:/docker-entrypoint-initdb.d/01-e2e-databases.sql:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d armut_e2e_web"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # S3-compatible mock for the uploads suite. Accepts any credentials and
+  # requires path-style addressing (S3_FORCE_PATH_STYLE=true).
+  s3:
+    image: adobe/s3mock:latest
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: armut-e2e-uploads
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "false"
+    ports:
+      - "9190:9090"

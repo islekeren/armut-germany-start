@@ -42,8 +42,9 @@ cp apps/api/.env.example apps/api/.env
 | `JWT_REFRESH_SECRET`          | Required                                    | refresh token signing                                                                     |
 | `PORT`                        | Optional                                    | defaults to `4000`                                                                        |
 | `NODE_ENV`                    | Optional                                    | runtime mode                                                                              |
-| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist read in `apps/api/src/main.ts`                                  |
+| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist read in `apps/api/src/app.setup.ts`                             |
 | `RATE_LIMIT_DEFAULT`          | Optional                                    | only throttler setting currently wired                                                    |
+| `THROTTLE_DISABLED`           | Test only                                   | `true` skips rate limiting, but only when `NODE_ENV=test`; set by the Playwright config   |
 | `S3_ENDPOINT`                 | Required for uploads                        | S3 or R2 endpoint                                                                         |
 | `S3_BUCKET`                   | Required for uploads                        | object storage bucket                                                                     |
 | `S3_REGION`                   | Optional for uploads                        | defaults to `auto`                                                                        |
@@ -164,7 +165,7 @@ The seed script creates:
 
 ## CORS
 
-Observed in `apps/api/src/main.ts`:
+Observed in `apps/api/src/app.setup.ts`:
 
 - `CORS_ORIGINS` is split by commas when provided
 - default fallback allows `http://localhost:3000` and `http://localhost:8081`

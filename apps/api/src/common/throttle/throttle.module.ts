@@ -17,6 +17,11 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
             limit: configService.get("RATE_LIMIT_DEFAULT") || 100,
           },
         ],
+        // Escape hatch for browser e2e runs, where many users log in from
+        // one IP. Only honoured when NODE_ENV=test.
+        skipIf: () =>
+          process.env.NODE_ENV === "test" &&
+          process.env.THROTTLE_DISABLED === "true",
       }),
     }),
   ],
