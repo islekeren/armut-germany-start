@@ -92,7 +92,9 @@ describe("BookingsController", () => {
     const req = { user: { id: "u1" } };
     bookingsService.reschedule.mockResolvedValue({ id: "b1" });
     await expect(
-      controller.reschedule("b1", req, "2026-02-24T12:00:00.000Z"),
+      controller.reschedule("b1", req, {
+        scheduledDate: "2026-02-24T12:00:00.000Z",
+      }),
     ).resolves.toEqual({ id: "b1" });
     expect(bookingsService.reschedule).toHaveBeenCalledWith(
       "b1",

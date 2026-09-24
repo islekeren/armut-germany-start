@@ -26,6 +26,11 @@ export class CreateBookingDto {
   scheduledDate: string;
 }
 
+export class RescheduleBookingDto {
+  @IsDateString()
+  scheduledDate: string;
+}
+
 export class UpdateBookingDto {
   @IsOptional()
   @IsDateString()
