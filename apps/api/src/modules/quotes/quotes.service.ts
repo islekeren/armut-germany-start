@@ -29,6 +29,10 @@ export class QuotesService {
       throw new ForbiddenException("Provider is not approved");
     }
 
+    if (new Date(createQuoteDto.validUntil).getTime() <= Date.now()) {
+      throw new BadRequestException("Quote validity date must be in the future");
+    }
+
     // Check if request exists and is open
     const request = await this.prisma.serviceRequest.findUnique({
       where: { id: createQuoteDto.requestId },
@@ -315,6 +319,13 @@ export class QuotesService {
       throw new BadRequestException("Can only update pending quotes");
     }
 
+    if (
+      updateQuoteDto.validUntil &&
+      new Date(updateQuoteDto.validUntil).getTime() <= Date.now()
+    ) {
+      throw new BadRequestException("Quote validity date must be in the future");
+    }
+
     return this.prisma.quote.update({
       where: { id },
       data: {
@@ -348,6 +359,14 @@ export class QuotesService {
 
     // If accepting, reject all other quotes for this request
     if (action === "accepted") {
+      if (quote.validUntil.getTime() < Date.now()) {
+        throw new BadRequestException("Quote has expired");
+      }
+
+      if (quote.request.status !== "open") {
+        throw new BadRequestException("Request is no longer open");
+      }
+
       await this.prisma.$transaction([
         // Update this quote to accepted
         this.prisma.quote.update({

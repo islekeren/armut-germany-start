@@ -9,6 +9,7 @@ describe("BookingsService", () => {
   const prisma = {
     quote: {
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
     booking: {
       findUnique: jest.fn(),
@@ -23,6 +24,7 @@ describe("BookingsService", () => {
     },
     serviceRequest: {
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     review: {
       create: jest.fn(),
@@ -53,8 +55,28 @@ describe("BookingsService", () => {
   describe("create", () => {
     const dto = {
       quoteId: "q1",
-      scheduledDate: "2026-03-01T10:00:00.000Z",
+      scheduledDate: "2099-03-01T10:00:00.000Z",
     } as any;
+
+    it("rejects a scheduled date in the past", async () => {
+      prisma.quote.findUnique.mockResolvedValue({
+        id: "q1",
+        customerId: "customer-1",
+        status: "accepted",
+        providerId: "p1",
+        price: 100,
+        request: {},
+      });
+      prisma.booking.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.create("customer-1", {
+          quoteId: "q1",
+          scheduledDate: "2020-01-01T10:00:00.000Z",
+        } as any),
+      ).rejects.toThrow("Scheduled date must be in the future");
+      expect(prisma.booking.create).not.toHaveBeenCalled();
+    });
 
     it("validates quote state before creating", async () => {
       prisma.quote.findUnique
@@ -357,11 +379,15 @@ describe("BookingsService", () => {
     it("notifies both parties when a booking is cancelled", async () => {
       prisma.booking.findUnique.mockResolvedValue({
         id: "b2",
+        quoteId: "q2",
         status: "confirmed",
         customerId: "customer-1",
         provider: { userId: "provider-user" },
         quote: { requestId: "r2" },
       });
+      prisma.quote.update.mockReturnValue("quote-update-op");
+      prisma.serviceRequest.updateMany.mockReturnValue("request-reopen-op");
+      prisma.$transaction.mockResolvedValue([]);
       prisma.booking.update.mockResolvedValue({
         id: "b2",
         status: "cancelled",
@@ -374,6 +400,19 @@ describe("BookingsService", () => {
       });
 
       await service.updateStatus("b2", "customer-1", "cancelled");
+
+      expect(prisma.quote.update).toHaveBeenCalledWith({
+        where: { id: "q2" },
+        data: { status: "rejected" },
+      });
+      expect(prisma.serviceRequest.updateMany).toHaveBeenCalledWith({
+        where: { id: "r2", status: "in_progress" },
+        data: { status: "open" },
+      });
+      expect(prisma.$transaction).toHaveBeenCalledWith([
+        "quote-update-op",
+        "request-reopen-op",
+      ]);
 
       expect(notificationsService.create).toHaveBeenNthCalledWith(1, "customer-1", {
         type: "booking_cancelled",
@@ -420,16 +459,16 @@ describe("BookingsService", () => {
       prisma.booking.update.mockResolvedValue({ id: "b1", status: "pending" });
 
       await expect(
-        service.reschedule("b1", "customer-1", "2026-03-02"),
+        service.reschedule("b1", "customer-1", "2099-03-02"),
       ).rejects.toThrow(NotFoundException);
       await expect(
-        service.reschedule("b1", "customer-1", "2026-03-02"),
+        service.reschedule("b1", "customer-1", "2099-03-02"),
       ).rejects.toThrow(ForbiddenException);
       await expect(
-        service.reschedule("b1", "customer-1", "2026-03-02"),
+        service.reschedule("b1", "customer-1", "2099-03-02"),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.reschedule("b1", "customer-1", "2026-03-02"),
+        service.reschedule("b1", "customer-1", "2099-03-02"),
       ).resolves.toEqual({
         id: "b1",
         status: "pending",

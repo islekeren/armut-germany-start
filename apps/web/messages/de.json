@@ -636,7 +636,12 @@
         "tip1": "Vergleichen Sie nicht nur den Preis, sondern auch Bewertungen",
         "tip2": "Stellen Sie Rückfragen, wenn etwas unklar ist",
         "tip3": "Achten Sie auf die Erfahrung des Dienstleisters"
-      }
+      },
+      "flexible": "Flexibel",
+      "budgetRange": "{min}–{max} €",
+      "budgetFrom": "ab {min} €",
+      "budgetUpTo": "bis {max} €",
+      "acceptConfirm": "Angebot von {provider} über {price} € annehmen? Alle anderen Angebote für diese Anfrage werden dabei abgelehnt."
     },
     "bookings": {
       "title": "Meine Buchungen",
@@ -698,7 +703,7 @@
         "acceptedOnlyText": "Nur angenommene Angebote können in Buchungen umgewandelt werden.",
         "backToRequest": "Zurück zur Anfrage",
         "scheduleTitle": "Service terminieren",
-        "scheduleHint": "Wählen Sie, wann der Dienstleister kommen soll. Danach kann der Dienstleister den Termin bestätigen oder anpassen.",
+        "scheduleHint": "Wählen Sie, wann der Dienstleister kommen soll. Der Termin wird direkt gebucht – Details können Sie anschließend per Nachricht abstimmen.",
         "scheduledDate": "Datum und Uhrzeit",
         "scheduledDateHint": "Wählen Sie die gewünschte Ankunftszeit für die Dienstleistung.",
         "creating": "Buchung wird erstellt...",

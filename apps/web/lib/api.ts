@@ -990,6 +990,7 @@ export interface Quote {
     companyName?: string | null;
     ratingAvg?: number;
     totalReviews?: number;
+    createdAt?: string;
     user: {
       id: string;
       firstName: string;

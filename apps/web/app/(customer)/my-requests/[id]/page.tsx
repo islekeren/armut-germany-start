@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Header } from "@/components";
 import {
   bookingsApi,
@@ -56,41 +56,63 @@ const mapApiStatus = (status: string): DisplayRequestStatus => {
   }
 };
 
-const transformRequest = (request: ServiceRequest): RequestViewModel => ({
-  id: request.id,
-  title: request.title,
-  category: request.category?.nameEn || request.category?.slug || request.categoryId,
-  categorySlug: request.category?.slug,
-  requestSector: request.requestSector,
-  requestBranch: request.requestBranch,
-  status: mapApiStatus(request.status),
-  createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }),
-  location: `${request.postalCode} ${request.city}`,
-  description: request.description,
-  preferredDate: request.preferredDate
-    ? new Date(request.preferredDate).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "Flexible",
-  budget:
-    request.budgetMin !== undefined && request.budgetMax !== undefined
-      ? `€${request.budgetMin}-${request.budgetMax}`
-      : request.budgetMin !== undefined
-        ? `€${request.budgetMin}+`
-        : request.budgetMax !== undefined
-          ? `Up to €${request.budgetMax}`
-          : "Flexible",
-});
+type RequestLabels = {
+  flexible: string;
+  budgetRange: (min: number, max: number) => string;
+  budgetFrom: (min: number) => string;
+  budgetUpTo: (max: number) => string;
+};
+
+const isAmount = (value: number | null | undefined): value is number =>
+  typeof value === "number";
+
+const transformRequest = (
+  request: ServiceRequest,
+  locale: string,
+  labels: RequestLabels,
+): RequestViewModel => {
+  const dateLocale = locale.startsWith("de") ? "de-DE" : "en-US";
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString(dateLocale, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  const categoryName = locale.startsWith("de")
+    ? request.category?.nameDe
+    : request.category?.nameEn;
+
+  return {
+    id: request.id,
+    title: request.title,
+    category: categoryName || request.category?.slug || request.categoryId,
+    categorySlug: request.category?.slug,
+    requestSector: request.requestSector,
+    requestBranch: request.requestBranch,
+    status: mapApiStatus(request.status),
+    createdAt: formatDate(request.createdAt),
+    location: `${request.postalCode} ${request.city}`,
+    description: request.description,
+    preferredDate: request.preferredDate
+      ? formatDate(request.preferredDate)
+      : labels.flexible,
+    // The API sends null for a missing budget, so check for numbers rather
+    // than `undefined` (which rendered "€null-null").
+    budget:
+      isAmount(request.budgetMin) && isAmount(request.budgetMax)
+        ? labels.budgetRange(request.budgetMin, request.budgetMax)
+        : isAmount(request.budgetMin)
+          ? labels.budgetFrom(request.budgetMin)
+          : isAmount(request.budgetMax)
+            ? labels.budgetUpTo(request.budgetMax)
+            : labels.flexible,
+  };
+};
 
 export default function RequestDetailPage() {
   const t = useTranslations("customer.requestDetail");
   const tRequests = useTranslations("customer.requests");
+  const locale = useLocale();
   const params = useParams();
   const router = useRouter();
 
@@ -126,7 +148,14 @@ export default function RequestDetailPage() {
         quotesApi.getByRequest(token, requestId),
         bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
       ]);
-      setRequest(transformRequest(apiRequest));
+      setRequest(
+        transformRequest(apiRequest, locale, {
+          flexible: t("flexible"),
+          budgetRange: (min, max) => t("budgetRange", { min, max }),
+          budgetFrom: (min) => t("budgetFrom", { min }),
+          budgetUpTo: (max) => t("budgetUpTo", { max }),
+        }),
+      );
       setQuotes(quoteData);
       setRequestBooking(
         bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
@@ -137,7 +166,7 @@ export default function RequestDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [requestId, t]);
+  }, [locale, requestId, t]);
 
   useEffect(() => {
     loadData();
@@ -160,10 +189,20 @@ export default function RequestDetailPage() {
     return result;
   }, [quotes, sortBy]);
 
-  const handleAcceptQuote = async (quoteId: string) => {
+  const handleAcceptQuote = async (quote: Quote, providerName: string) => {
+    const quoteId = quote.id;
     const token = getStoredAccessToken();
     if (!token) {
       setError(t("loginRequired"));
+      return;
+    }
+
+    // Accepting rejects every other quote on this request and cannot be undone.
+    if (
+      !window.confirm(
+        t("acceptConfirm", { provider: providerName, price: quote.price }),
+      )
+    ) {
       return;
     }
 
@@ -325,12 +364,12 @@ export default function RequestDetailPage() {
                       <>
                         {sector && (
                           <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
-                            {getSectorLabel(sector)}
+                            {getSectorLabel(sector, locale)}
                           </span>
                         )}
                         {branch && (
                           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                            {getBranchLabel(branch)}
+                            {getBranchLabel(branch, locale)}
                           </span>
                         )}
                       </>
@@ -442,9 +481,21 @@ export default function RequestDetailPage() {
                 const providerContact = `${quote.provider?.user.firstName || ""} ${
                   quote.provider?.user.lastName || ""
                 }`.trim();
-                const createdAt = new Date(quote.createdAt).toLocaleString();
-                const validUntil = new Date(quote.validUntil).toLocaleDateString();
-                const canAccept = quote.status === "pending";
+                const dateLocale = locale.startsWith("de") ? "de-DE" : "en-US";
+                const createdAt = new Date(quote.createdAt).toLocaleString(dateLocale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                });
+                const validUntil = new Date(quote.validUntil).toLocaleDateString(dateLocale);
+                const isExpired =
+                  quote.status === "expired" ||
+                  (quote.status === "pending" &&
+                    new Date(quote.validUntil).getTime() < Date.now());
+                const displayStatus = isExpired ? "expired" : quote.status;
+                const canAccept = quote.status === "pending" && !isExpired;
+                const memberSinceYear = quote.provider?.createdAt
+                  ? new Date(quote.provider.createdAt).getFullYear()
+                  : null;
                 const canBook = quote.status === "accepted";
 
                 return (
@@ -472,9 +523,11 @@ export default function RequestDetailPage() {
                               ({quote.provider?.totalReviews || 0} {t("reviews")})
                             </span>
                           </div>
-                          <p className="mt-1 text-xs text-muted">
-                            {t("memberSince")} -
-                          </p>
+                          {memberSinceYear && (
+                            <p className="mt-1 text-xs text-muted">
+                              {t("memberSince")} {memberSinceYear}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -502,7 +555,7 @@ export default function RequestDetailPage() {
                         <button
                           onClick={() =>
                             canAccept
-                              ? handleAcceptQuote(quote.id)
+                              ? handleAcceptQuote(quote, providerName)
                               : canBook
                                 ? handleBookingAction(quote.id)
                                 : undefined
@@ -520,7 +573,7 @@ export default function RequestDetailPage() {
                                 ? requestBooking
                                   ? t("viewBooking")
                                   : t("completeBooking")
-                                : t(`quoteStatus.${quote.status}`)}
+                                : t(`quoteStatus.${displayStatus}`)}
                         </button>
                       </div>
                     </div>

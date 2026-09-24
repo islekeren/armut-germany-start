@@ -636,7 +636,12 @@
         "tip1": "Compare not only prices but also reviews",
         "tip2": "Ask follow-up questions if something is unclear",
         "tip3": "Pay attention to the provider's experience"
-      }
+      },
+      "flexible": "Flexible",
+      "budgetRange": "€{min}–{max}",
+      "budgetFrom": "from €{min}",
+      "budgetUpTo": "up to €{max}",
+      "acceptConfirm": "Accept the quote from {provider} for €{price}? All other quotes for this request will be declined."
     },
     "bookings": {
       "title": "My Bookings",
@@ -698,7 +703,7 @@
         "acceptedOnlyText": "Only accepted quotes can be turned into bookings.",
         "backToRequest": "Back to Request",
         "scheduleTitle": "Schedule your service",
-        "scheduleHint": "Pick when you want the provider to arrive. The provider can confirm or ask for a different time afterward.",
+        "scheduleHint": "Pick when you want the provider to arrive. The booking is confirmed right away – you can agree on details by message afterwards.",
         "scheduledDate": "Date and time",
         "scheduledDateHint": "Choose the preferred arrival time for the service.",
         "creating": "Creating booking...",
