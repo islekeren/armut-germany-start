@@ -442,6 +442,17 @@ describe("Bookings (e2e)", () => {
         .expect(404);
     });
 
+    it("rejects out-of-range pagination", async () => {
+      await api()
+        .get("/api/bookings/customer?page=0")
+        .set(bearer(customerToken))
+        .expect(400);
+      await api()
+        .get("/api/bookings/provider?limit=-2")
+        .set(bearer(providerToken))
+        .expect(400);
+    });
+
     it("returns 404 on the provider list for non-providers", async () => {
       await api()
         .get("/api/bookings/provider")
