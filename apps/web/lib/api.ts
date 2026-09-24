@@ -32,6 +32,17 @@ export function isApiUnavailableError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.code === "unavailable";
 }
 
+/**
+ * Errors that say nothing about whether the session is valid (API down,
+ * rate limited). Callers should keep the stored session and retry later.
+ */
+export function isTransientApiError(error: unknown): error is ApiError {
+  return (
+    isApiUnavailableError(error) ||
+    (error instanceof ApiError && error.status === 429)
+  );
+}
+
 export function isApiNotFoundError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404;
 }
@@ -176,15 +187,15 @@ export async function apiRequest<T>(
               cache: cache ?? undefined,
               headers: retryHeaders,
             });
-          } else {
+          } else if ([400, 401, 403].includes(refreshResponse.status)) {
+            // Only a rejected refresh token ends the session; rate limits and
+            // server errors keep it so the next request can retry.
             localStorage.removeItem(ACCESS_TOKEN_KEY);
             localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
           }
         } catch {
-          localStorage.removeItem(ACCESS_TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
+          // Network failure while refreshing: keep the session for a retry.
         }
       }
     }
