@@ -13,6 +13,7 @@
     "test:unit": "vitest run",
     "test:e2e:prepare": "node ./scripts/prepare-e2e.mjs",
     "test:e2e": "npm run test:e2e:prepare && playwright test",
+    "test:e2e:smoke": "npm run test:e2e:prepare && playwright test --grep @smoke",
     "check-types": "next typegen && tsc --noEmit"
   },
   "engines": {
@@ -35,12 +36,15 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@prisma/client": "^6.19.3",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/bcrypt": "^5.0.2",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "bcrypt": "^5.1.1",
     "eslint": "^9.39.1",
     "tailwindcss": "^4.0.0",
     "typescript": "5.9.2"

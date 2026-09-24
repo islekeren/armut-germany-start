@@ -23,6 +23,11 @@
     "S3_SECRET_ACCESS_KEY",
     "THROTTLE_DISABLED"
   ],
+  "globalPassThroughEnv": [
+    "E2E_ALLOW_RESET",
+    "E2E_DEV_SERVERS",
+    "E2E_SKIP_BUILD"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
