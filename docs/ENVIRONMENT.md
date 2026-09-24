@@ -1,6 +1,6 @@
 # Environment
 
-Audited against the repository on April 10, 2026.
+Audited against the current checkout on September 11, 2026.
 
 ## Local Services
 
@@ -17,7 +17,7 @@ docker compose up -d postgres redis
 
 ## Recommended Local Baseline
 
-- Node.js 20.x is the safest local baseline because that is what CI uses
+- Node.js `>=20.9.0` is required by the root and active app manifests; CI uses Node 20.x
 - npm workspaces are the active package manager model
 - the root project declares `npm@10.9.2`
 
@@ -35,52 +35,56 @@ cp apps/api/.env.example apps/api/.env
 
 ### API variables actively used in code
 
-| Variable | Status | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | Required | Prisma datasource |
-| `JWT_SECRET` | Required | access token signing |
-| `JWT_REFRESH_SECRET` | Required | refresh token signing |
-| `PORT` | Optional | defaults to `4000` |
-| `NODE_ENV` | Optional | runtime mode |
-| `CORS_ORIGINS` | Optional | comma-separated allowlist read in `apps/api/src/main.ts` |
-| `RATE_LIMIT_DEFAULT` | Optional | only throttler setting currently wired |
-| `S3_ENDPOINT` | Required for uploads | S3 or R2 endpoint |
-| `S3_BUCKET` | Required for uploads | object storage bucket |
-| `S3_REGION` | Optional for uploads | defaults to `auto` |
-| `S3_ACCESS_KEY_ID` | Required for uploads | used by `UploadsService` |
-| `S3_SECRET_ACCESS_KEY` | Required for uploads | used by `UploadsService` |
-| `S3_PUBLIC_URL` | Optional for uploads | used to build public URLs |
+| Variable                      | Status                                      | Notes                                                                                     |
+| ----------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                | Required                                    | Prisma datasource                                                                         |
+| `JWT_SECRET`                  | Required                                    | access token signing                                                                      |
+| `JWT_REFRESH_SECRET`          | Required                                    | refresh token signing                                                                     |
+| `PORT`                        | Optional                                    | defaults to `4000`                                                                        |
+| `NODE_ENV`                    | Optional                                    | runtime mode                                                                              |
+| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist read in `apps/api/src/main.ts`                                  |
+| `RATE_LIMIT_DEFAULT`          | Optional                                    | only throttler setting currently wired                                                    |
+| `S3_ENDPOINT`                 | Required for uploads                        | S3 or R2 endpoint                                                                         |
+| `S3_BUCKET`                   | Required for uploads                        | object storage bucket                                                                     |
+| `S3_REGION`                   | Optional for uploads                        | defaults to `auto`                                                                        |
+| `S3_ACCESS_KEY_ID`            | Required for uploads                        | used by `UploadsService`                                                                  |
+| `S3_SECRET_ACCESS_KEY`        | Required for uploads                        | used by `UploadsService`                                                                  |
+| `S3_PUBLIC_URL`               | Optional for uploads                        | used to build public URLs                                                                 |
+| `STRIPE_SECRET_KEY`           | Required for payments in the feature branch | prefer a least-privilege `rk_test_` key; `sk_test_` is accepted for initial sandbox setup |
+| `STRIPE_WEBHOOK_SECRET`       | Required for payments in the feature branch | Stripe CLI or Dashboard endpoint signing secret                                           |
+| `STRIPE_CONNECT_RETURN_URL`   | Required for payments in the feature branch | hosted onboarding completion URL                                                          |
+| `STRIPE_CONNECT_REFRESH_URL`  | Required for payments in the feature branch | expired onboarding-link recovery URL                                                      |
+| `STRIPE_CHECKOUT_SUCCESS_URL` | Required for payments in the feature branch | must contain `{bookingId}`                                                                |
+| `STRIPE_CHECKOUT_CANCEL_URL`  | Required for payments in the feature branch | must contain `{bookingId}`                                                                |
+| `PLATFORM_COMMISSION_RATE`    | Optional for payments in the feature branch | defaults to `0.15`; must be between 0 and 1                                               |
+
+See [STRIPE_SANDBOX.md](./STRIPE_SANDBOX.md) for the local Connect onboarding, webhook, payment, and delayed-transfer test flow.
+
+These payment variables describe the current `codex/stripe-connect-payments` checkout. The payment implementation has not yet been merged into `origin/main`, so production configuration should follow only after that branch is synchronized, reviewed, validated, and merged.
 
 ### API variables present in `.env.example` but not wired as written
 
-| Variable | Status | Notes |
-| --- | --- | --- |
-| `JWT_EXPIRES_IN` | Example only | current auth code uses hardcoded token lifetimes |
+| Variable                 | Status       | Notes                                            |
+| ------------------------ | ------------ | ------------------------------------------------ |
+| `JWT_EXPIRES_IN`         | Example only | current auth code uses hardcoded token lifetimes |
 | `JWT_REFRESH_EXPIRES_IN` | Example only | current auth code uses hardcoded token lifetimes |
-| `RATE_LIMIT_STRICT` | Example only | not read by current throttle module |
-| `RATE_LIMIT_RELAXED` | Example only | not read by current throttle module |
-| `REDIS_URL` | Example only | cache is currently configured in memory |
-| `STRIPE_SECRET_KEY` | Example only | no payments module was found |
-| `STRIPE_WEBHOOK_SECRET` | Example only | no payments module was found |
-| `SENDGRID_API_KEY` | Example only | no email integration was found |
-| `EMAIL_FROM` | Example only | no email integration was found |
-| `MEILISEARCH_HOST` | Example only | no active search module was found |
-| `MEILISEARCH_API_KEY` | Example only | no active search module was found |
-| `GOOGLE_MAPS_API_KEY` | Example only | no active Google Maps integration was found |
+| `RATE_LIMIT_STRICT`      | Example only | not read by current throttle module              |
+| `RATE_LIMIT_RELAXED`     | Example only | not read by current throttle module              |
+| `REDIS_URL`              | Example only | cache is currently configured in memory          |
+| `SENDGRID_API_KEY`       | Example only | no email integration was found                   |
+| `EMAIL_FROM`             | Example only | no email integration was found                   |
+| `MEILISEARCH_HOST`       | Example only | no active search module was found                |
+| `MEILISEARCH_API_KEY`    | Example only | no active search module was found                |
+| `GOOGLE_MAPS_API_KEY`    | Example only | no active Google Maps integration was found      |
 
-### Upload env mismatch to know about
+### Upload env alignment
 
-`apps/api/.env.example` currently documents:
-
-- `S3_ACCESS_KEY`
-- `S3_SECRET_KEY`
-
-But `apps/api/src/modules/uploads/uploads.service.ts` currently expects:
+`apps/api/.env.example` and `UploadsService` now use the same credential names:
 
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 
-If uploads stop working, check this mismatch first.
+This resolves the previous example/code mismatch. Existing external environments that still use `S3_ACCESS_KEY` or `S3_SECRET_KEY` must be migrated to the current names.
 
 ## Web Environment
 
@@ -96,12 +100,12 @@ cp apps/web/.env.example apps/web/.env.local
 
 ### Web variables
 
-| Variable | Status | Notes |
-| --- | --- | --- |
-| `API_URL` | Recommended | server-side API origin used by `apps/web/lib/api.ts` |
-| `NEXT_PUBLIC_API_URL` | Recommended | browser-side API origin and rewrite target |
-| `API_TIMEOUT_MS` | Optional | server-side API timeout override |
-| `NEXT_PUBLIC_API_TIMEOUT_MS` | Optional | client-side API timeout override |
+| Variable                     | Status      | Notes                                                |
+| ---------------------------- | ----------- | ---------------------------------------------------- |
+| `API_URL`                    | Recommended | server-side API origin used by `apps/web/lib/api.ts` |
+| `NEXT_PUBLIC_API_URL`        | Recommended | browser-side API origin and rewrite target           |
+| `API_TIMEOUT_MS`             | Optional    | server-side API timeout override                     |
+| `NEXT_PUBLIC_API_TIMEOUT_MS` | Optional    | client-side API timeout override                     |
 
 Recommended local values:
 
@@ -120,12 +124,7 @@ Observed behavior:
 
 `apps/web/tsconfig.json` includes `.next/types/**/*.ts`.
 
-Observed on April 10, 2026:
-
-- `npm run check-types` initially failed on a fresh state because `.next/types/cache-life.d.ts` was missing
-- after running `npm run build`, `npm run check-types` passed in this workspace
-
-If web type-checking fails with a missing `.next/types` file, run a build once and retry.
+The current web `check-types` command runs `next typegen` before `tsc --noEmit`, and it passes in this checkout. If a fresh checkout reports missing `.next/types` files, inspect stale generated state and preserve the exact error rather than assuming that build-first is an architectural requirement.
 
 ## Mobile Stub
 
