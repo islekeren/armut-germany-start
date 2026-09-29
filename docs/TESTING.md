@@ -49,7 +49,7 @@ Notes:
 
 - defaults live in `apps/api/test/setup-e2e.ts`, `apps/web/playwright.config.ts`, and `apps/web/scripts/prepare-e2e.mjs`; an explicit `DATABASE_URL` overrides them (CI does this)
 - `test:e2e:setup` accepts `E2E_API_DATABASE_URL` and `E2E_WEB_DATABASE_URL` overrides
-- the web prepare step truncates every table in the target database before seeding. It refuses databases whose name does not contain `e2e` or `test` unless `E2E_ALLOW_RESET=true`
+- the web prepare step truncates every table in the target database before seeding. It refuses databases whose name does not start with `armut_e2e_` unless `E2E_ALLOW_RESET=true`
 - Playwright serves production builds (`node dist/main`, `next start`) by default; the prepare step builds them through turbo, which caches repeat runs. `E2E_SKIP_BUILD=true` skips the build, and `E2E_DEV_SERVERS=true` uses watch-mode dev servers instead (no build)
 - Playwright starts the API with `NODE_ENV=test` and `THROTTLE_DISABLED=true` so the per-IP auth rate limits do not trip when many test users log in
 - if your Playwright version has no matching bundled browser, point it at a local Chromium with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`

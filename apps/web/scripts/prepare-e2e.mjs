@@ -23,12 +23,15 @@ const run = (command, args, cwd) =>
   execFileSync(command, args, { cwd, stdio: "inherit", env });
 
 // Start every run from a clean, seeded database so records created by earlier
-// runs cannot push fresh test data off paginated lists. Refuse to wipe
-// anything that does not look like a disposable test database.
+// runs cannot push fresh test data off paginated lists. Only databases that
+// follow the e2e naming convention are wiped without an explicit opt-in.
 const databaseName = new URL(env.DATABASE_URL).pathname.slice(1);
-if (!/e2e|test/i.test(databaseName) && process.env.E2E_ALLOW_RESET !== "true") {
+if (
+  !databaseName.startsWith("armut_e2e_") &&
+  process.env.E2E_ALLOW_RESET !== "true"
+) {
   throw new Error(
-    `Refusing to reset "${databaseName}". Point DATABASE_URL at an e2e/test database or set E2E_ALLOW_RESET=true.`,
+    `Refusing to reset "${databaseName}". Use a database named armut_e2e_* or set E2E_ALLOW_RESET=true.`,
   );
 }
 run(npx, ["prisma", "migrate", "deploy"], apiDir);
