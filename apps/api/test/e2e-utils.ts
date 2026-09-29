@@ -1,38 +1,51 @@
-import { ValidationPipe } from "@nestjs/common";
-import { Test, type TestingModule } from "@nestjs/testing";
-import { PrismaClient, type UserType } from "@prisma/client";
+import { type INestApplication } from "@nestjs/common";
+import { Test, type TestingModuleBuilder } from "@nestjs/testing";
+import {
+  PrismaClient,
+  type BookingStatus,
+  type QuoteStatus,
+  type RequestStatus,
+  type UserType,
+} from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
-import { REQUEST_BRANCHES, REQUEST_SECTORS } from "../src/common/request-taxonomy";
+import { configureApp } from "../src/app.setup";
+import {
+  REQUEST_BRANCHES,
+  REQUEST_SECTORS,
+} from "../src/common/request-taxonomy";
 
 const TEST_PASSWORD = "Password123!";
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const prisma = new PrismaClient();
 
-export async function createTestApp() {
-  const moduleFixture: TestingModule = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
+/** ISO timestamp `days` from now; quotes and bookings must be future-dated. */
+export const daysFromNow = (days: number) =>
+  new Date(Date.now() + days * DAY_MS).toISOString();
+
+/**
+ * Boots the full AppModule with the same HTTP configuration as `main.ts`.
+ * Pass `override` to swap providers (e.g. a mocked PrismaService).
+ */
+export async function createTestApp(
+  override?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
+): Promise<INestApplication> {
+  let builder = Test.createTestingModule({ imports: [AppModule] });
+  if (override) {
+    builder = override(builder);
+  }
+  const moduleFixture = await builder.compile();
 
   const app = moduleFixture.createNestApplication();
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
-  app.setGlobalPrefix("api");
+  configureApp(app);
   await app.init();
 
   return app;
 }
 
-export async function closeTestApp(app?: { close: () => Promise<void> }) {
+export async function closeTestApp(app?: INestApplication) {
   if (app) {
     await app.close();
   }
@@ -205,7 +218,9 @@ export async function createCompletedReviewFixture(input: {
   rating?: number;
   title?: string;
 }) {
-  const category = await getCategoryBySlug(input.categorySlug ?? "home-cleaning");
+  const category = await getCategoryBySlug(
+    input.categorySlug ?? "home-cleaning",
+  );
   const serviceRequest = await prisma.serviceRequest.create({
     data: {
       customerId: input.customerId,
@@ -271,7 +286,11 @@ export async function createCompletedReviewFixture(input: {
   return { serviceRequest, quote, booking, review };
 }
 
-export async function loginAs(app: any, email: string, password = TEST_PASSWORD) {
+export async function loginAs(
+  app: INestApplication,
+  email: string,
+  password = TEST_PASSWORD,
+) {
   const response = await request(app.getHttpServer())
     .post("/api/auth/login")
     .send({ email, password })
@@ -282,6 +301,159 @@ export async function loginAs(app: any, email: string, password = TEST_PASSWORD)
     refreshToken: string;
     user: { id: string; email: string };
   };
+}
+
+export function bearer(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function createAdminFixture(input: {
+  email: string;
+  password?: string;
+}) {
+  return createUserFixture({
+    email: input.email,
+    password: input.password,
+    firstName: "Ada",
+    lastName: "Admin",
+    userType: "admin",
+  });
+}
+
+export async function createRequestFixture(input: {
+  customerId: string;
+  categorySlug?: string;
+  title?: string;
+  status?: RequestStatus;
+  budgetMin?: number;
+  budgetMax?: number;
+}) {
+  const categorySlug = input.categorySlug ?? "home-cleaning";
+  const category = await getCategoryBySlug(categorySlug);
+  const branch = REQUEST_BRANCHES.find((b) => b.categorySlug === categorySlug);
+
+  return prisma.serviceRequest.create({
+    data: {
+      customerId: input.customerId,
+      categoryId: category.id,
+      requestSector: branch?.sectorId ?? null,
+      requestBranch: branch?.id ?? null,
+      title: input.title ?? "Apartment cleaning",
+      description: "Fixture request created directly in the database.",
+      address: "Torstrasse 1",
+      city: "Berlin",
+      postalCode: "10115",
+      lat: 52.52,
+      lng: 13.405,
+      budgetMin: input.budgetMin ?? 100,
+      budgetMax: input.budgetMax ?? 200,
+      status: input.status ?? "open",
+      images: [],
+    },
+  });
+}
+
+export async function createQuoteFixture(input: {
+  requestId: string;
+  providerId: string;
+  customerId: string;
+  price?: number;
+  status?: QuoteStatus;
+  validUntil?: string;
+}) {
+  return prisma.quote.create({
+    data: {
+      requestId: input.requestId,
+      providerId: input.providerId,
+      customerId: input.customerId,
+      price: input.price ?? 150,
+      message: "Fixture quote.",
+      validUntil: input.validUntil ?? daysFromNow(7),
+      status: input.status ?? "pending",
+    },
+  });
+}
+
+export async function createBookingFixture(input: {
+  quoteId: string;
+  customerId: string;
+  providerId: string;
+  status?: BookingStatus;
+  totalPrice?: number;
+  scheduledDate?: string;
+}) {
+  return prisma.booking.create({
+    data: {
+      quoteId: input.quoteId,
+      customerId: input.customerId,
+      providerId: input.providerId,
+      scheduledDate: input.scheduledDate ?? daysFromNow(3),
+      status: input.status ?? "pending",
+      totalPrice: input.totalPrice ?? 150,
+    },
+  });
+}
+
+/**
+ * Builds the common marketplace state in one call: an open request by the
+ * customer and a quote on it from the provider (pending unless overridden),
+ * plus a booking when `bookingStatus` is given.
+ */
+export async function createDealFixture(input: {
+  customerId: string;
+  providerId: string;
+  quoteStatus?: QuoteStatus;
+  bookingStatus?: BookingStatus;
+  requestStatus?: RequestStatus;
+}) {
+  const serviceRequest = await createRequestFixture({
+    customerId: input.customerId,
+    status: input.requestStatus,
+  });
+  const quote = await createQuoteFixture({
+    requestId: serviceRequest.id,
+    providerId: input.providerId,
+    customerId: input.customerId,
+    status: input.quoteStatus ?? (input.bookingStatus ? "accepted" : "pending"),
+  });
+  const booking = input.bookingStatus
+    ? await createBookingFixture({
+        quoteId: quote.id,
+        customerId: input.customerId,
+        providerId: input.providerId,
+        status: input.bookingStatus,
+      })
+    : null;
+
+  return { serviceRequest, quote, booking };
+}
+
+export async function createConversationFixture(input: {
+  participantIds: string[];
+  requestId?: string;
+  messages?: { senderId: string; content: string }[];
+}) {
+  const conversation = await prisma.conversation.create({
+    data: {
+      requestId: input.requestId,
+      participants: {
+        create: input.participantIds.map((userId) => ({ userId })),
+      },
+    },
+  });
+
+  for (const message of input.messages ?? []) {
+    await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: message.senderId,
+        content: message.content,
+        attachments: [],
+      },
+    });
+  }
+
+  return conversation;
 }
 
 export { TEST_PASSWORD };

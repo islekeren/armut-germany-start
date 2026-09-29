@@ -17,6 +17,7 @@ import {
   CreateReviewDto,
   ProviderReplyDto,
   BookingQueryDto,
+  RescheduleBookingDto,
 } from "./dto/booking.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
@@ -75,9 +76,13 @@ export class BookingsController {
   reschedule(
     @Param("id") id: string,
     @Req() req: any,
-    @Body("scheduledDate") scheduledDate: string
+    @Body() rescheduleDto: RescheduleBookingDto
   ) {
-    return this.bookingsService.reschedule(id, req.user.id, scheduledDate);
+    return this.bookingsService.reschedule(
+      id,
+      req.user.id,
+      rescheduleDto.scheduledDate,
+    );
   }
 
   @Post(":id/review")

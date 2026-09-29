@@ -29,13 +29,13 @@ Practical meaning:
 
 Observed in `.github/workflows/ci.yml`:
 
-- triggers on pushes and pull requests to `main` and `develop`
+- triggers on pushes and pull requests to `main` and `develop`, nightly, and on manual dispatch
 - uses Node `20.x`
 - runs lint and type-check first
 - runs API and web unit tests
 - builds the web and API
-- runs API and Playwright e2e tests with a seeded test database
-- exposes `deploy-staging` on `develop` and `deploy-production` on `main`
+- runs API e2e tests (Postgres + S3 mock) and Playwright e2e tests against production builds: the `@smoke` subset on pull requests, the full suite otherwise
+- exposes `deploy-staging` on `develop` and `deploy-production` on `main`, for pushes only, after both e2e jobs pass
 
 Both deploy jobs remain placeholders. They only print deployment text and do not publish an application.
 

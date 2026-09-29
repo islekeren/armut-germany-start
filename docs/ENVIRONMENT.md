@@ -42,14 +42,16 @@ cp apps/api/.env.example apps/api/.env
 | `JWT_REFRESH_SECRET`          | Required                                    | refresh token signing                                                                     |
 | `PORT`                        | Optional                                    | defaults to `4000`                                                                        |
 | `NODE_ENV`                    | Optional                                    | runtime mode                                                                              |
-| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist read in `apps/api/src/main.ts`                                  |
+| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist read in `apps/api/src/app.setup.ts`                             |
 | `RATE_LIMIT_DEFAULT`          | Optional                                    | only throttler setting currently wired                                                    |
+| `THROTTLE_DISABLED`           | Test only                                   | `true` skips rate limiting, but only when `NODE_ENV=test`; set by the Playwright config   |
 | `S3_ENDPOINT`                 | Required for uploads                        | S3 or R2 endpoint                                                                         |
 | `S3_BUCKET`                   | Required for uploads                        | object storage bucket                                                                     |
 | `S3_REGION`                   | Optional for uploads                        | defaults to `auto`                                                                        |
 | `S3_ACCESS_KEY_ID`            | Required for uploads                        | used by `UploadsService`                                                                  |
 | `S3_SECRET_ACCESS_KEY`        | Required for uploads                        | used by `UploadsService`                                                                  |
 | `S3_PUBLIC_URL`               | Optional for uploads                        | used to build public URLs                                                                 |
+| `S3_FORCE_PATH_STYLE`         | Optional for uploads                        | `true` for MinIO or S3 mocks that need path-style bucket URLs; the e2e suite sets it      |
 | `STRIPE_SECRET_KEY`           | Required for payments in the feature branch | prefer a least-privilege `rk_test_` key; `sk_test_` is accepted for initial sandbox setup |
 | `STRIPE_WEBHOOK_SECRET`       | Required for payments in the feature branch | Stripe CLI or Dashboard endpoint signing secret                                           |
 | `STRIPE_CONNECT_RETURN_URL`   | Required for payments in the feature branch | hosted onboarding completion URL                                                          |
@@ -164,7 +166,7 @@ The seed script creates:
 
 ## CORS
 
-Observed in `apps/api/src/main.ts`:
+Observed in `apps/api/src/app.setup.ts`:
 
 - `CORS_ORIGINS` is split by commas when provided
 - default fallback allows `http://localhost:3000` and `http://localhost:8081`

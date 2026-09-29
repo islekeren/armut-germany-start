@@ -9,10 +9,28 @@ import {
   Param,
   Query,
   UseGuards,
+  BadRequestException,
+  ParseIntPipe,
 } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "./admin.guard";
+import {
+  AdminApproveProviderDto,
+  AdminCreateCategoryDto,
+  AdminUpdateCategoryDto,
+  AdminUpdateUserDto,
+} from "./dto/admin.dto";
+
+const optionalInt = () => new ParseIntPipe({ optional: true });
+
+function parseReportDate(value: string, name: string) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) {
+    throw new BadRequestException(`${name} must be a valid date`);
+  }
+  return date;
+}
 
 @Controller("admin")
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -30,10 +48,10 @@ export class AdminController {
 
   @Get("users")
   getUsers(
-    @Query("page") page?: number,
-    @Query("limit") limit?: number,
+    @Query("page", optionalInt()) page?: number,
+    @Query("limit", optionalInt()) limit?: number,
     @Query("userType") userType?: string,
-    @Query("search") search?: string
+    @Query("search") search?: string,
   ) {
     return this.adminService.getUsers({ page, limit, userType, search });
   }
@@ -44,7 +62,7 @@ export class AdminController {
   }
 
   @Patch("users/:id")
-  updateUser(@Param("id") id: string, @Body() data: { isVerified?: boolean }) {
+  updateUser(@Param("id") id: string, @Body() data: AdminUpdateUserDto) {
     return this.adminService.updateUser(id, data);
   }
 
@@ -57,23 +75,28 @@ export class AdminController {
 
   @Get("providers")
   getProviders(
-    @Query("page") page?: number,
-    @Query("limit") limit?: number,
+    @Query("page", optionalInt()) page?: number,
+    @Query("limit", optionalInt()) limit?: number,
     @Query("isApproved") isApproved?: string,
-    @Query("search") search?: string
+    @Query("search") search?: string,
   ) {
     return this.adminService.getProviders({
       page,
       limit,
-      isApproved: isApproved === "true" ? true : isApproved === "false" ? false : undefined,
+      isApproved:
+        isApproved === "true"
+          ? true
+          : isApproved === "false"
+            ? false
+            : undefined,
       search,
     });
   }
 
   @Get("providers/pending")
   getPendingProviders(
-    @Query("page") page?: number,
-    @Query("limit") limit?: number
+    @Query("page", optionalInt()) page?: number,
+    @Query("limit", optionalInt()) limit?: number,
   ) {
     return this.adminService.getPendingProviders({ page, limit });
   }
@@ -81,7 +104,7 @@ export class AdminController {
   @Patch("providers/:id/approve")
   approveProvider(
     @Param("id") id: string,
-    @Body() data: { approved: boolean }
+    @Body() data: AdminApproveProviderDto,
   ) {
     return this.adminService.approveProvider(id, data.approved);
   }
@@ -94,29 +117,14 @@ export class AdminController {
   }
 
   @Post("categories")
-  createCategory(
-    @Body()
-    data: {
-      slug: string;
-      nameDe: string;
-      nameEn: string;
-      icon: string;
-      parentId?: string;
-    }
-  ) {
+  createCategory(@Body() data: AdminCreateCategoryDto) {
     return this.adminService.createCategory(data);
   }
 
   @Put("categories/:id")
   updateCategory(
     @Param("id") id: string,
-    @Body()
-    data: {
-      nameDe?: string;
-      nameEn?: string;
-      icon?: string;
-      isActive?: boolean;
-    }
+    @Body() data: AdminUpdateCategoryDto,
   ) {
     return this.adminService.updateCategory(id, data);
   }
@@ -131,11 +139,11 @@ export class AdminController {
   @Get("reports/revenue")
   getRevenueReport(
     @Query("startDate") startDate: string,
-    @Query("endDate") endDate: string
+    @Query("endDate") endDate: string,
   ) {
     return this.adminService.getRevenueReport(
-      new Date(startDate),
-      new Date(endDate)
+      parseReportDate(startDate, "startDate"),
+      parseReportDate(endDate, "endDate"),
     );
   }
 
@@ -145,7 +153,7 @@ export class AdminController {
   }
 
   @Get("reports/top-providers")
-  getTopProviders(@Query("limit") limit?: number) {
+  getTopProviders(@Query("limit", optionalInt()) limit?: number) {
     return this.adminService.getTopProviders(limit);
   }
 }

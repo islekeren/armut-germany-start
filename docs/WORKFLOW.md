@@ -85,7 +85,7 @@ Observed in `.github/workflows/ci.yml`:
 - API unit tests run
 - API e2e tests run
 - web build runs
-- Playwright only runs when config and tests exist
+- Playwright runs the `@smoke` subset on pull requests and the full suite on pushes and nightly
 - deploy jobs are placeholders
 
 Use CI as a real validation signal, but do not treat it as a real deployment system yet.
