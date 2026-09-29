@@ -28,7 +28,7 @@ Do not overwrite unrelated user changes.
 - root `npm run check-types` passes in the current workspace
 - API `check-types`, `build`, and `test -- --watchman=false` pass
 - API `lint` passes with warnings
-- API e2e (15 suites, 289 tests) and web Playwright e2e (51 tests) passed on September 24, 2026 against `docker-compose.test.yml`; see [TESTING.md](./docs/TESTING.md) for setup
+- API e2e (15 suites, 289 tests) and web Playwright e2e (52 tests) passed on September 29, 2026 against `docker-compose.test.yml`; see [TESTING.md](./docs/TESTING.md) for setup
 - API e2e can fail in a restricted sandbox with `EPERM`; the suite passed outside the sandbox on April 10, 2026
 - `authorization.e2e-spec.ts` fails when a new controller route is not added to its route tables; that is intentional
 - web `lint` and `build` pass

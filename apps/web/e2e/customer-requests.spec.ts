@@ -46,9 +46,9 @@ test.describe("customer requests", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Submit Request" }).click();
 
+    // The list opens on the "Active" tab, so the new request is visible
+    // straight away.
     await expect(page).toHaveURL(/\/my-requests$/);
-    // The list opens on the "Booked" tab; new requests live under "Active".
-    await page.getByRole("button", { name: "Active" }).click();
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
     const stored = await db().serviceRequest.findFirstOrThrow({
@@ -61,7 +61,10 @@ test.describe("customer requests", () => {
     });
   });
 
-  test("lists requests by status tab", async ({ page, loginAs }) => {
+  test("lists requests by status tab and keeps the tab in the URL", async ({
+    page,
+    loginAs,
+  }) => {
     const customer = await createUser({ label: "tabs" });
     const open = await createRequest({
       customerId: customer.id,
@@ -74,20 +77,47 @@ test.describe("customer requests", () => {
     });
     await loginAs(customer);
 
+    // Active is the default tab.
     await page.goto("/my-requests");
-    await page.getByRole("button", { name: "Active" }).click();
     await expect(page.getByRole("heading", { name: open.title })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: cancelled.title }),
     ).toHaveCount(0);
 
     await page.getByRole("button", { name: "Cancelled" }).click();
+    await expect(page).toHaveURL(/\/my-requests\?tab=cancelled$/);
     await expect(
       page.getByRole("heading", { name: cancelled.title }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: open.title })).toHaveCount(
       0,
     );
+
+    // The tab survives a reload and can be linked to directly.
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: cancelled.title }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Active" }).click();
+    await expect(page).toHaveURL(/\/my-requests$/);
+    await expect(page.getByRole("heading", { name: open.title })).toBeVisible();
+  });
+
+  test("falls back to the Active tab for unknown tab values", async ({
+    page,
+    loginAs,
+  }) => {
+    const customer = await createUser({ label: "tabs-unknown" });
+    const open = await createRequest({
+      customerId: customer.id,
+      title: `Fallback job ${Date.now()}`,
+    });
+    await loginAs(customer);
+
+    await page.goto("/my-requests?tab=nonsense");
+
+    await expect(page.getByRole("heading", { name: open.title })).toBeVisible();
   });
 
   test("accepting a quote leads to booking creation", async ({

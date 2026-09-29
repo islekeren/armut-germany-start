@@ -19,7 +19,7 @@ Audited against the current checkout on September 11, 2026. E2E sections updated
 | `cd apps/api && npm run build`                        | api                   | Pass                     | Nest build succeeds                                                                                         |
 | `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 32 suites, 287 tests on September 24, 2026                                                                  |
 | `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 15 suites, 289 tests on September 24, 2026 against `docker-compose.test.yml`                                |
-| `cd apps/web && npm run test:e2e`                     | web Playwright e2e    | Pass                     | 51 tests (6 tagged `@smoke`) on September 24, 2026 against production builds                                |
+| `cd apps/web && npm run test:e2e`                     | web Playwright e2e    | Pass                     | 52 tests (6 tagged `@smoke`) on September 24, 2026 against production builds                                |
 | `cd packages/shared && npm run test`                  | shared unit tests     | Pass                     | 4 tests passed                                                                                              |
 | `cd packages/ui && npm run test`                      | UI package unit tests | Pass                     | 3 tests passed                                                                                              |
 
@@ -96,19 +96,19 @@ Known gaps: payments (not on `main`), and socket behaviour for deleted accounts 
 
 ### Web e2e coverage
 
-| Spec                        | Covers                                                                                                       |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `public.spec.ts`            | home, categories, category and find-provider search, provider profile, request board privacy, 404            |
-| `auth.spec.ts`              | register (customer, provider hand-off, password mismatch), login redirect and off-site guard, logout         |
-| `customer-requests.spec.ts` | request wizard, status tabs, accept quote → create booking, unbookable pending quote, foreign request        |
-| `customer-bookings.spec.ts` | bookings list and filters, reschedule, cancel, confirm completion, review                                    |
-| `customer-account.spec.ts`  | profile, password change, account deletion and its active-booking guard, notifications                       |
-| `provider.spec.ts`          | send offer, unapproved provider blocked, complete an order, reply to a review, edit profile, dashboard pages |
-| `messaging.spec.ts`         | customer and provider exchange messages in two browser contexts; starting a chat from a quote                |
-| `admin.spec.ts`             | provider approval and the non-admin notice                                                                   |
-| `i18n.spec.ts`              | German default, language toggle, no raw message keys on public and signed-in pages in both locales           |
-| `resilience.spec.ts`        | API 500, unreachable API, expired session                                                                    |
-| `journey.spec.ts`           | full cross-role loop: request → offer → booking → completion → review → provider reply                       |
+| Spec                        | Covers                                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `public.spec.ts`            | home, categories, category and find-provider search, provider profile, request board privacy, 404                                          |
+| `auth.spec.ts`              | register (customer, provider hand-off, password mismatch), login redirect and off-site guard, logout                                       |
+| `customer-requests.spec.ts` | request wizard, status tabs (Active default, `?tab=` deep links), accept quote → create booking, unbookable pending quote, foreign request |
+| `customer-bookings.spec.ts` | bookings list and filters, reschedule, cancel, confirm completion, review                                                                  |
+| `customer-account.spec.ts`  | profile, password change, account deletion and its active-booking guard, notifications                                                     |
+| `provider.spec.ts`          | send offer, unapproved provider blocked, complete an order, reply to a review, edit profile, dashboard pages                               |
+| `messaging.spec.ts`         | customer and provider exchange messages in two browser contexts; starting a chat from a quote                                              |
+| `admin.spec.ts`             | provider approval and the non-admin notice                                                                                                 |
+| `i18n.spec.ts`              | German default, language toggle, no raw message keys on public and signed-in pages in both locales                                         |
+| `resilience.spec.ts`        | API 500, unreachable API, expired session                                                                                                  |
+| `journey.spec.ts`           | full cross-role loop: request → offer → booking → completion → review → provider reply                                                     |
 
 ## Current Caveats
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Header } from "@/components";
 import { useAuth } from "@/contexts";
@@ -112,12 +113,39 @@ const transformRequest = (
   };
 };
 
+const REQUEST_TABS = ["active", "booked", "completed", "cancelled"] as const;
+type RequestTab = (typeof REQUEST_TABS)[number];
+
+// Open requests are where the customer has something to do (compare and
+// accept offers), and where a freshly created request lands, so they are the
+// default. Other tabs are addressable via ?tab=.
+function parseRequestTab(value: string | null): RequestTab {
+  return REQUEST_TABS.includes(value as RequestTab)
+    ? (value as RequestTab)
+    : "active";
+}
+
 export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
   const describeError = useApiErrorMessage();
   const locale = useLocale();
   const { isAuthenticated } = useAuth();
-  const [filter, setFilter] = useState("booked");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const filter = parseRequestTab(searchParams.get("tab"));
+  const setFilter = (tab: RequestTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "active") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  };
   const [requests, setRequests] = useState<RequestCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -272,22 +300,17 @@ export default function MyRequestsPage() {
 
         {/* Filters */}
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
-          {[
-            { id: "active", label: t("filters.active") },
-            { id: "booked", label: t("filters.booked") },
-            { id: "completed", label: t("filters.completed") },
-            { id: "cancelled", label: t("filters.cancelled") },
-          ].map((f) => (
+          {REQUEST_TABS.map((tab) => (
             <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
+              key={tab}
+              onClick={() => setFilter(tab)}
               className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ${
-                filter === f.id
+                filter === tab
                   ? "bg-primary text-white"
                   : "bg-white text-muted hover:bg-background"
               }`}
             >
-              {f.label}
+              {t(`filters.${tab}`)}
             </button>
           ))}
         </div>
