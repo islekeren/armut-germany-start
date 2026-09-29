@@ -38,6 +38,10 @@ describe("PaymentsService", () => {
     constructWebhookEvent: jest.fn(),
   };
 
+  const stripeConnectService = {
+    syncProvider: jest.fn(),
+  };
+
   let service: PaymentsService;
 
   const booking = {
@@ -86,7 +90,17 @@ describe("PaymentsService", () => {
     jest.clearAllMocks();
     stripeService.getCommissionRate.mockReturnValue(0.15);
     prisma.$transaction.mockImplementation((callback) => callback(prisma));
-    service = new PaymentsService(prisma as any, stripeService as any);
+    stripeConnectService.syncProvider.mockResolvedValue({
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "ready",
+      stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
+    });
+    service = new PaymentsService(
+      prisma as any,
+      stripeService as any,
+      stripeConnectService as any,
+    );
   });
 
   it("calculates integer cent amounts and commission", () => {
@@ -538,6 +552,114 @@ describe("PaymentsService", () => {
       await expect(
         service.requestRefund({ id: "admin-1", userType: "admin" }, "booking-1"),
       ).resolves.toEqual({ refundId: "re_2", status: "pending" });
+    });
+  });
+  describe("live provider readiness", () => {
+    it("blocks checkout when Stripe reports the account is no longer ready", async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking);
+      stripeConnectService.syncProvider.mockResolvedValue({
+        stripeAccountId: "acct_test",
+        stripeOnboardingStatus: "restricted",
+        stripeTransfersEnabled: false,
+        stripePayoutsEnabled: true,
+      });
+
+      await expect(
+        service.createCheckoutSession("customer-1", booking.id),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.payment.upsert).not.toHaveBeenCalled();
+    });
+
+    it("blocks the provider transfer when Stripe reports the account is no longer ready", async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        ...payment,
+        status: "paid",
+        stripePaymentIntentId: "pi_1",
+        stripeChargeId: "ch_1",
+        provider: booking.provider,
+      });
+      stripeConnectService.syncProvider.mockResolvedValue({
+        stripeAccountId: "acct_test",
+        stripeOnboardingStatus: "pending",
+        stripeTransfersEnabled: true,
+        stripePayoutsEnabled: false,
+      });
+
+      await expect(service.releaseProviderFunds(booking.id)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(stripeService.createTransfer).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("transfer reversal outside the transaction", () => {
+    it("keeps the event unprocessed when the reversal fails so Stripe redelivers it", async () => {
+      prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ id: "evt_r" });
+      prisma.payment.findUnique.mockResolvedValue({
+        ...payment,
+        status: "paid",
+        stripePaymentIntentId: "pi_1",
+        stripeTransferId: "tr_1",
+        provider: { userId: "provider-user-1" },
+      });
+      prisma.payment.update.mockResolvedValue(payment);
+      prisma.booking.update.mockResolvedValue(booking);
+      stripeService.reverseTransfer.mockRejectedValue(new Error("stripe down"));
+
+      await expect(
+        service.processWebhook({
+          id: "evt_r",
+          type: "charge.refunded",
+          data: {
+            object: {
+              id: "ch_1",
+              amount: payment.grossAmount,
+              amount_refunded: payment.grossAmount,
+              currency: payment.currency,
+              payment_intent: "pi_1",
+            },
+          },
+        } as any),
+      ).rejects.toThrow("stripe down");
+
+      expect(prisma.stripeWebhookEvent.update).not.toHaveBeenCalled();
+    });
+
+    it("marks the event processed only after the reversal is stored", async () => {
+      prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ id: "evt_r" });
+      prisma.stripeWebhookEvent.update.mockResolvedValue({ id: "evt_r" });
+      prisma.payment.findUnique.mockResolvedValue({
+        ...payment,
+        status: "paid",
+        stripePaymentIntentId: "pi_1",
+        stripeTransferId: "tr_1",
+        provider: { userId: "provider-user-1" },
+      });
+      prisma.payment.update.mockResolvedValue(payment);
+      prisma.booking.update.mockResolvedValue(booking);
+      stripeService.reverseTransfer.mockResolvedValue({ id: "trr_9" });
+
+      await service.processWebhook({
+        id: "evt_r",
+        type: "charge.refunded",
+        data: {
+          object: {
+            id: "ch_1",
+            amount: payment.grossAmount,
+            amount_refunded: payment.grossAmount,
+            currency: payment.currency,
+            payment_intent: "pi_1",
+          },
+        },
+      } as any);
+
+      const order = (fn: jest.Mock) => fn.mock.invocationCallOrder.at(-1)!;
+      expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledTimes(1);
+      expect(order(stripeService.reverseTransfer)).toBeLessThan(
+        order(prisma.stripeWebhookEvent.update),
+      );
     });
   });
 });

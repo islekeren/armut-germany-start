@@ -58,6 +58,16 @@ describe("Stripe Connect payments (e2e)", () => {
     jest.clearAllMocks();
     stripeService.getCommissionRate.mockReturnValue(0.15);
     stripeService.constructWebhookEvent.mockImplementation(() => webhookEvent);
+    // Checkout and transfer release re-read the account from Stripe.
+    stripeService.retrieveConnectedAccount.mockResolvedValue({});
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_ready",
+      onboardingStatus: "ready",
+      transfersEnabled: true,
+      payoutsEnabled: true,
+      requirementsDue: [],
+      onboardedAt: new Date(),
+    });
     await resetAndSeedDatabase();
   });
 
@@ -72,6 +82,7 @@ describe("Stripe Connect payments (e2e)", () => {
 
     const { provider } = await createProviderFixture({
       email: "stripe-provider@example.com",
+      stripeReady: false,
     });
     const auth = await loginAs(app, "stripe-provider@example.com");
     const account = { id: "acct_test_provider" };

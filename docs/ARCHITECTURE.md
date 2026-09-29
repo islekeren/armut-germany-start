@@ -181,6 +181,10 @@ The current `codex/stripe-connect-payments` checkout contains:
 - `POST /api/payments/refund`: full refund by the booking's customer (only before the provider transfer is released) or by an admin; payment state flips to `refunded` only when the signed `charge.refunded` webhook arrives, and a released transfer is reversed then
 - a dispute (`charge.dispute.created`) sets `Payment.disputedAt`, which blocks releasing the provider transfer until the dispute is won (`charge.dispute.closed`)
 - webhook events for objects without platform metadata are acknowledged and ignored
+- transfer reversals run after the webhook's database transaction commits; the event is only marked processed once the reversal is stored, so a Stripe failure makes Stripe redeliver it
+- accepting a quote requires the provider to be Stripe-ready (`ready`, transfers and payouts enabled)
+- checkout and transfer release re-read the connected account from Stripe instead of trusting stored flags
+- after returning from Checkout the booking page polls until the webhook marks the booking paid
 - paid bookings must be refunded before cancellation
 
 Release boundary:
@@ -190,9 +194,9 @@ Release boundary:
 
 Known reliability work before production use:
 
-- block quote acceptance when the selected provider cannot receive Stripe payments
-- distinguish a returned Checkout session from a webhook-confirmed payment instead of showing an active payment state too early
 - avoid coupling booking-completion HTTP latency to a synchronous provider transfer
+- handle partial refunds and the case where a dispute is won after the provider transfer was already reversed (both need a business rule)
+- react to Stripe account-update events instead of relying on live re-checks at checkout and transfer time
 
 ### Messaging
 

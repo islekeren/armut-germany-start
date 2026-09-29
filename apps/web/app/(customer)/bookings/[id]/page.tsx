@@ -84,14 +84,43 @@ export default function BookingDetailPage() {
     loadBooking();
   }, [loadBooking]);
 
+  const returnedFromCheckout = searchParams.get("payment") === "success";
+  const paymentStatus = booking?.paymentStatus;
+
+  // Returning from Stripe Checkout is not proof of payment: the booking only
+  // becomes paid once Stripe's signed webhook arrives, so poll briefly for it.
+  useEffect(() => {
+    if (!returnedFromCheckout || !bookingId || paymentStatus === "paid") return;
+
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      const token = getStoredAccessToken();
+      if (!token || attempts > 10) {
+        clearInterval(timer);
+        return;
+      }
+      try {
+        setBooking(await bookingsApi.getById(token, bookingId));
+      } catch {
+        // Keep the last known state; the next tick or a reload retries.
+      }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [returnedFromCheckout, bookingId, paymentStatus]);
+
   useEffect(() => {
     const paymentResult = searchParams.get("payment");
     if (paymentResult === "success") {
-      setSuccessMessage(tDetail("paymentReturnSuccess"));
+      setSuccessMessage(
+        paymentStatus === "paid"
+          ? tDetail("paymentConfirmed")
+          : tDetail("paymentReturnSuccess"),
+      );
     } else if (paymentResult === "cancel") {
       setError(tDetail("paymentReturnCancel"));
     }
-  }, [searchParams, tDetail]);
+  }, [searchParams, tDetail, paymentStatus]);
 
   const formatDateTime = (value?: string | null) =>
     value
@@ -140,7 +169,7 @@ export default function BookingDetailPage() {
       );
       window.location.assign(checkout.checkoutUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : tDetail("paymentError"));
+      setError(describeError(err, tDetail("paymentError")));
       setIsPaying(false);
     }
   };

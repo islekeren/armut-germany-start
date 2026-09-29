@@ -9,9 +9,23 @@ import {
 import { PaymentStatus, Prisma } from "@prisma/client";
 import Stripe from "stripe";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { StripeConnectService } from "./stripe-connect.service";
 import { StripeService } from "./stripe.service";
 
 const MINIMUM_EUR_AMOUNT = 50;
+
+interface ReversiblePayment {
+  id: string;
+  bookingId: string;
+  stripeTransferId: string | null;
+  stripeTransferReversalId: string | null;
+  transferReversedAt: Date | null;
+}
+
+interface PendingReversal {
+  payment: ReversiblePayment;
+  reason: "refund" | "dispute";
+}
 
 @Injectable()
 export class PaymentsService {
@@ -20,7 +34,48 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
+    private readonly stripeConnectService: StripeConnectService,
   ) {}
+
+  private isProviderReady(provider: {
+    stripeAccountId: string | null;
+    stripeOnboardingStatus: string;
+    stripeTransfersEnabled: boolean;
+    stripePayoutsEnabled: boolean;
+  }) {
+    return (
+      !!provider.stripeAccountId &&
+      provider.stripeOnboardingStatus === "ready" &&
+      provider.stripeTransfersEnabled &&
+      provider.stripePayoutsEnabled
+    );
+  }
+
+  /**
+   * Cheap check on the stored flags first, then a live read from Stripe:
+   * onboarding state is only refreshed when a provider opens their finances
+   * page, so the stored flags alone can be stale.
+   */
+  private async ensureProviderReady(
+    provider: {
+      id: string;
+      stripeAccountId: string | null;
+      stripeOnboardingStatus: string;
+      stripeTransfersEnabled: boolean;
+      stripePayoutsEnabled: boolean;
+      stripeOnboardedAt: Date | null;
+    },
+    message: string,
+  ) {
+    if (!this.isProviderReady(provider)) throw new BadRequestException(message);
+
+    const fresh = await this.stripeConnectService.syncProvider({
+      id: provider.id,
+      stripeAccountId: provider.stripeAccountId!,
+      stripeOnboardedAt: provider.stripeOnboardedAt,
+    });
+    if (!this.isProviderReady(fresh)) throw new BadRequestException(message);
+  }
 
   calculateAmounts(totalPrice: number) {
     const grossAmount = Math.round(totalPrice * 100);
@@ -64,16 +119,10 @@ export class PaymentsService {
     if (booking.quote.status !== "accepted") {
       throw new BadRequestException("Quote must still be accepted");
     }
-    if (
-      !booking.provider.stripeAccountId ||
-      booking.provider.stripeOnboardingStatus !== "ready" ||
-      !booking.provider.stripeTransfersEnabled ||
-      !booking.provider.stripePayoutsEnabled
-    ) {
-      throw new BadRequestException(
-        "Provider is not ready to receive Stripe payments",
-      );
-    }
+    await this.ensureProviderReady(
+      booking.provider,
+      "Provider is not ready to receive Stripe payments",
+    );
     if (["paid", "refunded"].includes(booking.paymentStatus)) {
       throw new ConflictException("Booking payment is already finalized");
     }
@@ -213,6 +262,12 @@ export class PaymentsService {
     });
     if (existing?.processedAt) return { received: true, duplicate: true };
 
+    // Transfer reversals call Stripe, so they run after the database
+    // transaction commits instead of holding it open. If one fails the event
+    // stays unprocessed and Stripe redelivers it; the status updates above are
+    // idempotent and the reversal has a stable idempotency key.
+    const reversals: PendingReversal[] = [];
+
     await this.prisma.$transaction(async (tx) => {
       const inTransaction = await tx.stripeWebhookEvent.findUnique({
         where: { id: event.id },
@@ -265,12 +320,14 @@ export class PaymentsService {
           await this.handleRefundedCharge(
             tx,
             event.data.object as Stripe.Charge,
+            reversals,
           );
           break;
         case "charge.dispute.created":
           await this.handleDisputeCreated(
             tx,
             event.data.object as Stripe.Dispute,
+            reversals,
           );
           break;
         case "charge.dispute.closed":
@@ -283,11 +340,23 @@ export class PaymentsService {
           break;
       }
 
-      await tx.stripeWebhookEvent.update({
+      if (!reversals.length) {
+        await tx.stripeWebhookEvent.update({
+          where: { id: event.id },
+          data: { processedAt: new Date() },
+        });
+      }
+    });
+
+    if (reversals.length) {
+      for (const reversal of reversals) {
+        await this.reverseProviderTransfer(reversal.payment, reversal.reason);
+      }
+      await this.prisma.stripeWebhookEvent.update({
         where: { id: event.id },
         data: { processedAt: new Date() },
       });
-    });
+    }
 
     return { received: true, duplicate: false };
   }
@@ -398,6 +467,7 @@ export class PaymentsService {
   private async handleRefundedCharge(
     tx: Prisma.TransactionClient,
     charge: Stripe.Charge,
+    reversals: PendingReversal[],
   ) {
     if (charge.amount_refunded !== charge.amount) return;
     const paymentIntentId =
@@ -412,7 +482,7 @@ export class PaymentsService {
     });
     if (!payment) return;
     this.validateAmount(payment, charge.amount, charge.currency);
-    await this.reverseProviderTransfer(tx, payment, "refund");
+    reversals.push({ payment, reason: "refund" });
     await tx.payment.update({
       where: { id: payment.id },
       data: { stripeChargeId: charge.id },
@@ -441,6 +511,7 @@ export class PaymentsService {
   private async handleDisputeCreated(
     tx: Prisma.TransactionClient,
     dispute: Stripe.Dispute,
+    reversals: PendingReversal[],
   ) {
     const payment = await this.findPaymentForDispute(tx, dispute);
     if (!payment) return;
@@ -453,7 +524,7 @@ export class PaymentsService {
         data: { disputedAt: new Date() },
       });
     }
-    await this.reverseProviderTransfer(tx, payment, "dispute");
+    reversals.push({ payment, reason: "dispute" });
   }
 
   private async handleDisputeClosed(
@@ -471,14 +542,7 @@ export class PaymentsService {
   }
 
   private async reverseProviderTransfer(
-    tx: Prisma.TransactionClient,
-    payment: {
-      id: string;
-      bookingId: string;
-      stripeTransferId: string | null;
-      stripeTransferReversalId: string | null;
-      transferReversedAt: Date | null;
-    },
+    payment: ReversiblePayment,
     reason: "refund" | "dispute",
   ) {
     if (
@@ -500,7 +564,7 @@ export class PaymentsService {
       },
       `provider-transfer-reversal:${payment.id}`,
     );
-    await tx.payment.update({
+    await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
         stripeTransferReversalId: reversal.id,
@@ -577,16 +641,10 @@ export class PaymentsService {
       );
     }
     if (payment.stripeTransferId && payment.transferredAt) return payment;
-    if (
-      !payment.provider.stripeAccountId ||
-      payment.provider.stripeOnboardingStatus !== "ready" ||
-      !payment.provider.stripeTransfersEnabled ||
-      !payment.provider.stripePayoutsEnabled
-    ) {
-      throw new BadRequestException(
-        "Provider is not ready to receive Stripe transfers",
-      );
-    }
+    await this.ensureProviderReady(
+      payment.provider,
+      "Provider is not ready to receive Stripe transfers",
+    );
     if (!payment.stripePaymentIntentId) {
       throw new ConflictException("Stripe payment intent is missing");
     }

@@ -19,6 +19,15 @@ import { StripeService } from "../src/modules/payments/stripe.service";
 const stripeService = {
   createTransfer: jest.fn(async () => ({ id: "tr_bookings_e2e" })),
   retrievePaymentIntent: jest.fn(),
+  retrieveConnectedAccount: jest.fn(async () => ({})),
+  toAccountSnapshot: jest.fn(() => ({
+    accountId: "acct_bookings_e2e",
+    onboardingStatus: "ready",
+    transfersEnabled: true,
+    payoutsEnabled: true,
+    requirementsDue: [],
+    onboardedAt: new Date(),
+  })),
 };
 
 describe("Bookings (e2e)", () => {

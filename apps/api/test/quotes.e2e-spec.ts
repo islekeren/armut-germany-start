@@ -339,6 +339,37 @@ describe("Quotes (e2e)", () => {
       ).toBe(1);
     });
 
+    it("refuses to accept an offer from a provider that has not finished Stripe onboarding", async () => {
+      const serviceRequest = await createRequestFixture({ customerId });
+      const { provider: unready } = await createProviderFixture({
+        email: "unready-provider@example.com",
+        stripeReady: false,
+      });
+      const quote = await createQuoteFixture({
+        requestId: serviceRequest.id,
+        providerId: unready.id,
+        customerId,
+      });
+
+      await api()
+        .post(`/api/quotes/${quote.id}/respond`)
+        .set(bearer(customerToken))
+        .send({ action: "accepted" })
+        .expect(400);
+
+      expect(
+        (await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } }))
+          .status,
+      ).toBe("pending");
+      expect(
+        (
+          await prisma.serviceRequest.findUniqueOrThrow({
+            where: { id: serviceRequest.id },
+          })
+        ).status,
+      ).toBe("open");
+    });
+
     it("rejecting a quote leaves the request open", async () => {
       const serviceRequest = await createRequestFixture({ customerId });
       const quote = await createQuoteFixture({

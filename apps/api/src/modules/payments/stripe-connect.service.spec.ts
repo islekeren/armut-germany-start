@@ -114,4 +114,33 @@ describe("StripeConnectService", () => {
       data: expect.objectContaining({ stripeOnboardedAt: original }),
     });
   });
+
+  it("re-reads the account from Stripe and stores the snapshot", async () => {
+    stripeService.retrieveConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "restricted",
+      transfersEnabled: false,
+      payoutsEnabled: true,
+      requirementsDue: [{ description: "id" }],
+      onboardedAt: null,
+    });
+    prisma.provider.update.mockResolvedValue({ ...provider });
+
+    await service.syncProvider({
+      id: "provider-1",
+      stripeAccountId: "acct_test",
+      stripeOnboardedAt: new Date(),
+    });
+
+    expect(stripeService.retrieveConnectedAccount).toHaveBeenCalledWith("acct_test");
+    expect(prisma.provider.update).toHaveBeenCalledWith({
+      where: { id: "provider-1" },
+      data: expect.objectContaining({
+        stripeOnboardingStatus: "restricted",
+        stripeTransfersEnabled: false,
+        stripeOnboardedAt: null,
+      }),
+    });
+  });
 });

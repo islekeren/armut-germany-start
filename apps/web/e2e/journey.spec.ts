@@ -1,4 +1,10 @@
-import { createProvider, createUser, db, disconnectDb } from "./support/data";
+import {
+  createProvider,
+  createUser,
+  db,
+  disconnectDb,
+  markBookingPaid,
+} from "./support/data";
 import { expect, signIn, test, setEnglishLocale } from "./support/test";
 
 test.afterAll(disconnectDb);
@@ -100,6 +106,14 @@ test("request → offer → booking → completion → review → reply @smoke",
     where: { quote: { requestId: serviceRequest.id } },
   });
   expect(booking).toMatchObject({ status: "confirmed", totalPrice: 180 });
+
+  await test.step("customer is asked to pay; Stripe's confirmation is simulated", async () => {
+    await expect(
+      customerPage.getByRole("button", { name: "Pay and confirm booking" }),
+    ).toBeVisible();
+    // The browser suite cannot reach Stripe Checkout or its webhook.
+    await markBookingPaid(booking.id);
+  });
 
   await test.step("provider marks the job as completed", async () => {
     await providerPage.goto("/dashboard/orders");

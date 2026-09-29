@@ -107,6 +107,26 @@ export class StripeConnectService {
     return this.response(updated);
   }
 
+  /**
+   * Re-reads the connected account from Stripe and stores the result, so
+   * payment decisions do not rely on capability flags that may have gone
+   * stale since the provider last opened the finances page.
+   */
+  async syncProvider(provider: {
+    id: string;
+    stripeAccountId: string;
+    stripeOnboardedAt: Date | null;
+  }) {
+    const account = await this.stripeService.retrieveConnectedAccount(
+      provider.stripeAccountId,
+    );
+    return this.persistSnapshot(
+      provider.id,
+      this.stripeService.toAccountSnapshot(account),
+      provider.stripeOnboardedAt,
+    );
+  }
+
   async createDashboardLoginLink(userId: string) {
     const provider = await this.getProvider(userId);
     if (

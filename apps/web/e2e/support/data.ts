@@ -74,6 +74,11 @@ export async function createProvider(input: {
   isApproved?: boolean;
   /** Rate 5.0 so the provider sorts ahead of seeded ones in paged lists. */
   topRated?: boolean;
+  /**
+   * Stripe-ready by default because accepting a quote requires it; pass
+   * `false` for a provider that has not finished Stripe onboarding.
+   */
+  stripeReady?: boolean;
 }) {
   const user = await createUser({
     label: input.label,
@@ -95,6 +100,14 @@ export async function createProvider(input: {
       isApproved: input.isApproved ?? true,
       documents: [],
       ...(input.topRated ? { ratingAvg: 5, totalReviews: 50 } : {}),
+      ...(input.stripeReady === false
+        ? {}
+        : {
+            stripeAccountId: `acct_e2e_${randomUUID().slice(0, 8)}`,
+            stripeOnboardingStatus: "ready" as const,
+            stripeTransfersEnabled: true,
+            stripePayoutsEnabled: true,
+          }),
     },
   });
 
@@ -208,6 +221,48 @@ export async function createBooking(input: {
   });
 }
 
+/**
+ * Marks a booking as paid, as the Stripe webhook would. Completion releases
+ * the provider share, and the browser suite has no Stripe to talk to, so the
+ * payment is recorded with the transfer already released; the release step is
+ * then a no-op. Real transfer creation is covered by the API e2e suite.
+ */
+export async function markBookingPaid(
+  bookingId: string,
+  options: { released?: boolean } = {},
+) {
+  const booking = await db().booking.findUniqueOrThrow({
+    where: { id: bookingId },
+  });
+  const grossAmount = Math.round(booking.totalPrice * 100);
+  const platformFeeAmount = Math.round(grossAmount * 0.15);
+  const released = options.released ?? true;
+  const now = new Date();
+  const suffix = bookingId.slice(0, 8);
+
+  await db().payment.create({
+    data: {
+      bookingId,
+      providerId: booking.providerId,
+      customerId: booking.customerId,
+      grossAmount,
+      platformFeeAmount,
+      providerAmount: grossAmount - platformFeeAmount,
+      status: "paid",
+      paidAt: now,
+      stripePaymentIntentId: `pi_e2e_${suffix}`,
+      stripeChargeId: `ch_e2e_${suffix}`,
+      ...(released
+        ? { stripeTransferId: `tr_e2e_${suffix}`, transferredAt: now }
+        : {}),
+    },
+  });
+  return db().booking.update({
+    where: { id: bookingId },
+    data: { paymentStatus: "paid" },
+  });
+}
+
 /** Customer + approved provider + request + quote, optionally booked. */
 export async function createDeal(input: {
   label: string;
@@ -215,10 +270,15 @@ export async function createDeal(input: {
   bookingStatus?: BookingStatus;
   requestStatus?: RequestStatus;
   title?: string;
+  /** Record a paid payment for the booking (see `markBookingPaid`). */
+  paid?: boolean;
+  /** Set to `false` for a provider that has not finished Stripe onboarding. */
+  providerStripeReady?: boolean;
 }) {
   const customer = await createUser({ label: `${input.label}-customer` });
   const { user: providerUser, provider } = await createProvider({
     label: `${input.label}-provider`,
+    stripeReady: input.providerStripeReady,
   });
   const serviceRequest = await createRequest({
     customerId: customer.id,
@@ -240,6 +300,7 @@ export async function createDeal(input: {
         status: input.bookingStatus,
       })
     : null;
+  if (booking && input.paid) await markBookingPaid(booking.id);
 
   return { customer, providerUser, provider, serviceRequest, quote, booking };
 }

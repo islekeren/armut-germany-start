@@ -149,6 +149,11 @@ export async function createProviderFixture(input: {
   categories?: string[];
   withProfile?: boolean;
   isApproved?: boolean;
+  /**
+   * Stripe-ready by default because accepting a quote requires it; pass
+   * `false` for a provider that has not finished Stripe onboarding.
+   */
+  stripeReady?: boolean;
 }) {
   const { user, password } = await createUserFixture({
     email: input.email,
@@ -170,6 +175,14 @@ export async function createProviderFixture(input: {
       serviceAreaRadius: 25,
       isApproved: input.isApproved ?? true,
       documents: [],
+      ...(input.stripeReady === false
+        ? {}
+        : {
+            stripeAccountId: `acct_fixture_${user.id.slice(0, 8)}`,
+            stripeOnboardingStatus: "ready" as const,
+            stripeTransfersEnabled: true,
+            stripePayoutsEnabled: true,
+          }),
     },
   });
 

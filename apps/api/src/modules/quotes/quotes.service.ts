@@ -368,6 +368,29 @@ export class QuotesService {
         throw new BadRequestException("Request is no longer open");
       }
 
+      // Payment is part of every booking, so an offer from a provider who
+      // cannot receive Stripe transfers is not acceptable yet.
+      const quoteProvider = await this.prisma.provider.findUnique({
+        where: { id: quote.providerId },
+        select: {
+          userId: true,
+          stripeAccountId: true,
+          stripeOnboardingStatus: true,
+          stripeTransfersEnabled: true,
+          stripePayoutsEnabled: true,
+        },
+      });
+      if (
+        !quoteProvider?.stripeAccountId ||
+        quoteProvider.stripeOnboardingStatus !== "ready" ||
+        !quoteProvider.stripeTransfersEnabled ||
+        !quoteProvider.stripePayoutsEnabled
+      ) {
+        throw new BadRequestException(
+          "Provider is not ready to receive payments yet",
+        );
+      }
+
       await this.prisma.$transaction([
         // Update this quote to accepted
         this.prisma.quote.update({
@@ -390,23 +413,16 @@ export class QuotesService {
         }),
       ]);
 
-      const providerUser = await this.prisma.provider.findUnique({
-        where: { id: quote.providerId },
-        select: { userId: true },
+      await this.notificationsService.create(quoteProvider.userId, {
+        type: "quote_accepted",
+        title: "Your offer was accepted",
+        message: `Your offer for "${quote.request.title}" has been accepted.`,
+        metadata: {
+          requestId: quote.requestId,
+          requestTitle: quote.request.title,
+          quoteId: quote.id,
+        },
       });
-
-      if (providerUser) {
-        await this.notificationsService.create(providerUser.userId, {
-          type: "quote_accepted",
-          title: "Your offer was accepted",
-          message: `Your offer for "${quote.request.title}" has been accepted.`,
-          metadata: {
-            requestId: quote.requestId,
-            requestTitle: quote.request.title,
-            quoteId: quote.id,
-          },
-        });
-      }
 
       return this.findOne(id, userId);
     }
