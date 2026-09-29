@@ -1,0 +1,7 @@
+{
+  // Type-checked separately (see the web check-types script) so that test
+  // helpers, which need the generated Prisma client, never affect next build.
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts", "../playwright.config.ts"],
+  "exclude": []
+}

@@ -124,6 +124,8 @@ The root `tsconfig.json` still extends `expo/tsconfig.base` even though `apps/mo
 
 The web `check-types` script now runs `next typegen` before TypeScript, which removes the previously documented build-first dependency. If a fresh checkout still reports missing `.next/types` files, rerun the command after clearing stale generated state and record the exact failure.
 
+The Playwright helpers in `apps/web/e2e/support` import Prisma's generated types, so web `check-types` needs the Prisma client generated first (`npm run db:generate`, which CI's Type Check job now runs).
+
 ### API e2e caveat in restricted environments
 
 Observed sequence on April 10, 2026:

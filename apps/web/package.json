@@ -14,7 +14,7 @@
     "test:e2e:prepare": "node ./scripts/prepare-e2e.mjs",
     "test:e2e": "npm run test:e2e:prepare && playwright test",
     "test:e2e:smoke": "npm run test:e2e:prepare && playwright test --grep @smoke",
-    "check-types": "next typegen && tsc --noEmit"
+    "check-types": "next typegen && tsc --noEmit && tsc --noEmit -p e2e/tsconfig.json"
   },
   "engines": {
     "node": ">=20.9.0"
