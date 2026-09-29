@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { PaymentStatus, Prisma } from "@prisma/client";
@@ -14,6 +15,8 @@ const MINIMUM_EUR_AMOUNT = 50;
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
@@ -270,6 +273,12 @@ export class PaymentsService {
             event.data.object as Stripe.Dispute,
           );
           break;
+        case "charge.dispute.closed":
+          await this.handleDisputeClosed(
+            tx,
+            event.data.object as Stripe.Dispute,
+          );
+          break;
         default:
           break;
       }
@@ -287,14 +296,20 @@ export class PaymentsService {
     tx: Prisma.TransactionClient,
     metadata: Stripe.Metadata | null,
   ) {
+    // Events for objects this platform did not create (no paymentId metadata,
+    // or an id we do not know) are acknowledged and ignored. Throwing would
+    // make Stripe retry them indefinitely.
     const paymentId = metadata?.paymentId;
-    if (!paymentId) throw new BadRequestException("Missing payment metadata");
+    if (!paymentId) return null;
 
     const payment = await tx.payment.findUnique({
       where: { id: paymentId },
       include: { provider: { select: { userId: true } } },
     });
-    if (!payment) throw new NotFoundException("Payment not found");
+    if (!payment) {
+      this.logger.warn(`Ignoring Stripe event for unknown payment ${paymentId}`);
+      return null;
+    }
     if (
       metadata.bookingId !== payment.bookingId ||
       metadata.providerId !== payment.providerId ||
@@ -321,6 +336,7 @@ export class PaymentsService {
     status: "paid" | "failed" | null,
   ) {
     const payment = await this.paymentFromMetadata(tx, session.metadata);
+    if (!payment) return;
     this.validateAmount(payment, session.amount_total, session.currency);
 
     const paymentIntentId =
@@ -343,6 +359,7 @@ export class PaymentsService {
     paymentIntent: Stripe.PaymentIntent,
   ) {
     const payment = await this.paymentFromMetadata(tx, paymentIntent.metadata);
+    if (!payment) return;
     this.validateAmount(payment, paymentIntent.amount, paymentIntent.currency);
 
     const chargeId =
@@ -373,7 +390,7 @@ export class PaymentsService {
         include: { provider: { select: { userId: true } } },
       });
     }
-    if (!payment) throw new NotFoundException("Payment not found");
+    if (!payment) return;
     this.validateAmount(payment, paymentIntent.amount, paymentIntent.currency);
     await this.setPaymentStatus(tx, payment, "failed");
   }
@@ -393,7 +410,7 @@ export class PaymentsService {
       where: { stripePaymentIntentId: paymentIntentId },
       include: { provider: { select: { userId: true } } },
     });
-    if (!payment) throw new NotFoundException("Payment not found");
+    if (!payment) return;
     this.validateAmount(payment, charge.amount, charge.currency);
     await this.reverseProviderTransfer(tx, payment, "refund");
     await tx.payment.update({
@@ -403,18 +420,54 @@ export class PaymentsService {
     await this.setPaymentStatus(tx, payment, "refunded");
   }
 
-  private async handleDisputeCreated(
+  private async findPaymentForDispute(
     tx: Prisma.TransactionClient,
     dispute: Stripe.Dispute,
   ) {
     const chargeId =
-      typeof dispute.charge === "string" ? dispute.charge : dispute.charge.id;
-    const payment = await tx.payment.findUnique({
-      where: { stripeChargeId: chargeId },
-      include: { provider: { select: { userId: true } } },
-    });
-    if (!payment) throw new NotFoundException("Payment not found");
+      typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+    const paymentIntentId =
+      typeof dispute.payment_intent === "string"
+        ? dispute.payment_intent
+        : dispute.payment_intent?.id;
+    const lookups: Prisma.PaymentWhereInput[] = [];
+    if (chargeId) lookups.push({ stripeChargeId: chargeId });
+    if (paymentIntentId) lookups.push({ stripePaymentIntentId: paymentIntentId });
+    if (!lookups.length) return null;
+
+    return tx.payment.findFirst({ where: { OR: lookups } });
+  }
+
+  private async handleDisputeCreated(
+    tx: Prisma.TransactionClient,
+    dispute: Stripe.Dispute,
+  ) {
+    const payment = await this.findPaymentForDispute(tx, dispute);
+    if (!payment) return;
+
+    // Hold the payout even when nothing was transferred yet, so a later
+    // completion confirmation cannot release disputed funds.
+    if (!payment.disputedAt) {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { disputedAt: new Date() },
+      });
+    }
     await this.reverseProviderTransfer(tx, payment, "dispute");
+  }
+
+  private async handleDisputeClosed(
+    tx: Prisma.TransactionClient,
+    dispute: Stripe.Dispute,
+  ) {
+    if (dispute.status !== "won") return;
+    const payment = await this.findPaymentForDispute(tx, dispute);
+    if (!payment?.disputedAt) return;
+
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { disputedAt: null },
+    });
   }
 
   private async reverseProviderTransfer(
@@ -456,6 +509,55 @@ export class PaymentsService {
     });
   }
 
+  async requestRefund(
+    user: { id: string; userType?: string },
+    bookingId: string,
+  ) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { bookingId },
+      include: { booking: { select: { status: true } } },
+    });
+    if (!payment) throw new NotFoundException("Payment not found");
+
+    const isAdmin = user.userType === "admin";
+    if (!isAdmin && payment.customerId !== user.id) {
+      throw new ForbiddenException("Not authorized to refund this booking");
+    }
+    if (payment.status === "refunded") {
+      throw new ConflictException("Booking payment is already refunded");
+    }
+    if (payment.status !== "paid") {
+      throw new BadRequestException("Only paid bookings can be refunded");
+    }
+    if (
+      !isAdmin &&
+      (payment.stripeTransferId || payment.booking.status === "completed")
+    ) {
+      throw new ForbiddenException(
+        "Released payments can only be refunded by an admin",
+      );
+    }
+    if (!payment.stripePaymentIntentId) {
+      throw new ConflictException("Stripe payment intent is missing");
+    }
+
+    // Payment and booking state flip to `refunded` (and any released transfer
+    // is reversed) when the signed charge.refunded webhook arrives.
+    const refund = await this.stripeService.createRefund(
+      {
+        payment_intent: payment.stripePaymentIntentId,
+        metadata: {
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+          requestedBy: user.id,
+        },
+      },
+      `payment-refund:${payment.id}`,
+    );
+
+    return { refundId: refund.id, status: refund.status };
+  }
+
   async releaseProviderFunds(bookingId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { bookingId },
@@ -468,6 +570,11 @@ export class PaymentsService {
     }
     if (payment.stripeTransferReversalId || payment.transferReversedAt) {
       throw new ConflictException("Provider transfer has already been reversed");
+    }
+    if (payment.disputedAt) {
+      throw new ConflictException(
+        "Provider transfer is on hold while the payment is disputed",
+      );
     }
     if (payment.stripeTransferId && payment.transferredAt) return payment;
     if (

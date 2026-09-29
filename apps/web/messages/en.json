@@ -819,6 +819,11 @@
         "paymentError": "Could not start Stripe Checkout",
         "paymentReturnSuccess": "Payment submitted. We are waiting for Stripe's secure confirmation.",
         "paymentReturnCancel": "Checkout was cancelled. No payment status was changed.",
+        "refundAction": "Request a full refund",
+        "refunding": "Requesting refund...",
+        "refundConfirm": "Refund this payment? Once Stripe confirms it, you can cancel the booking.",
+        "refundRequested": "Refund requested. It will be confirmed by Stripe shortly; after that you can cancel the booking.",
+        "refundError": "Could not request the refund",
         "statusHelp": {
           "pending": "Waiting for provider confirmation.",
           "confirmed": "Your booking is confirmed.",

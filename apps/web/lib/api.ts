@@ -1290,6 +1290,16 @@ export const bookingsApi = {
 };
 
 export const paymentsApi = {
+  requestRefund: (token: string, bookingId: string) =>
+    apiRequest<{ refundId: string; status: string | null }>(
+      "/payments/refund",
+      {
+        method: "POST",
+        body: JSON.stringify({ bookingId }),
+        token,
+      },
+    ),
+
   createCheckoutSession: (token: string, bookingId: string) =>
     apiRequest<{ checkoutUrl: string; paymentId: string; reused: boolean }>(
       "/payments/checkout-session",

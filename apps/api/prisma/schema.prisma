@@ -327,6 +327,7 @@ model Payment {
   paidAt                   DateTime?
   failedAt                 DateTime?
   refundedAt               DateTime?
+  disputedAt               DateTime?
   transferredAt            DateTime?
   transferReversedAt       DateTime?
   createdAt                DateTime      @default(now())

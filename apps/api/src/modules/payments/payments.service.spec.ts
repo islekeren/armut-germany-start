@@ -12,6 +12,7 @@ describe("PaymentsService", () => {
       upsert: jest.fn(),
       update: jest.fn(),
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     notification: { createMany: jest.fn() },
     stripeWebhookEvent: {
@@ -33,6 +34,7 @@ describe("PaymentsService", () => {
     retrievePaymentIntent: jest.fn(),
     createTransfer: jest.fn(),
     reverseTransfer: jest.fn(),
+    createRefund: jest.fn(),
     constructWebhookEvent: jest.fn(),
   };
 
@@ -371,5 +373,171 @@ describe("PaymentsService", () => {
       service.processWebhook({ id: "evt_duplicate" } as any),
     ).resolves.toEqual({ received: true, duplicate: true });
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  describe("webhook events that are not ours", () => {
+    beforeEach(() => {
+      prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ id: "evt_x" });
+      prisma.stripeWebhookEvent.update.mockResolvedValue({ id: "evt_x" });
+    });
+
+    it("acknowledges a payment intent without platform metadata", async () => {
+      await expect(
+        service.processWebhook({
+          id: "evt_x",
+          type: "payment_intent.succeeded",
+          data: { object: { id: "pi_other", amount: 100, currency: "eur", metadata: {} } },
+        } as any),
+      ).resolves.toEqual({ received: true, duplicate: false });
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+      expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith({
+        where: { id: "evt_x" },
+        data: { processedAt: expect.any(Date) },
+      });
+    });
+
+    it("acknowledges a refund for an unknown payment intent", async () => {
+      prisma.payment.findUnique.mockResolvedValue(null);
+      await expect(
+        service.processWebhook({
+          id: "evt_x",
+          type: "charge.refunded",
+          data: {
+            object: { id: "ch_x", amount: 100, amount_refunded: 100, currency: "eur", payment_intent: "pi_unknown" },
+          },
+        } as any),
+      ).resolves.toEqual({ received: true, duplicate: false });
+    });
+  });
+
+  describe("disputes", () => {
+    const paidPayment = {
+      ...payment,
+      status: "paid",
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: "ch_1",
+      disputedAt: null,
+    };
+
+    beforeEach(() => {
+      prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ id: "evt_d" });
+      prisma.stripeWebhookEvent.update.mockResolvedValue({ id: "evt_d" });
+    });
+
+    it("holds the payout when a dispute arrives before any transfer", async () => {
+      prisma.payment.findFirst.mockResolvedValue(paidPayment);
+      prisma.payment.update.mockResolvedValue(paidPayment);
+
+      await service.processWebhook({
+        id: "evt_d",
+        type: "charge.dispute.created",
+        data: { object: { id: "dp_1", charge: "ch_1", payment_intent: "pi_1" } },
+      } as any);
+
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: payment.id },
+        data: { disputedAt: expect.any(Date) },
+      });
+      expect(stripeService.reverseTransfer).not.toHaveBeenCalled();
+    });
+
+    it("refuses to release funds while disputed", async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        ...paidPayment,
+        disputedAt: new Date(),
+        provider: booking.provider,
+      });
+
+      await expect(service.releaseProviderFunds(booking.id)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(stripeService.createTransfer).not.toHaveBeenCalled();
+    });
+
+    it("lifts the hold when the dispute is won", async () => {
+      prisma.payment.findFirst.mockResolvedValue({
+        ...paidPayment,
+        disputedAt: new Date(),
+      });
+      prisma.payment.update.mockResolvedValue(paidPayment);
+
+      await service.processWebhook({
+        id: "evt_d",
+        type: "charge.dispute.closed",
+        data: { object: { id: "dp_1", status: "won", charge: "ch_1", payment_intent: "pi_1" } },
+      } as any);
+
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: payment.id },
+        data: { disputedAt: null },
+      });
+    });
+
+    it("keeps the hold when the dispute is lost", async () => {
+      await service.processWebhook({
+        id: "evt_d",
+        type: "charge.dispute.closed",
+        data: { object: { id: "dp_1", status: "lost", charge: "ch_1" } },
+      } as any);
+
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("requestRefund", () => {
+    const paidPayment = {
+      ...payment,
+      status: "paid",
+      stripePaymentIntentId: "pi_1",
+      booking: { status: "confirmed" },
+    };
+
+    it("refunds the customer's own paid booking once via an idempotency key", async () => {
+      prisma.payment.findUnique.mockResolvedValue(paidPayment);
+      stripeService.createRefund.mockResolvedValue({ id: "re_1", status: "succeeded" });
+
+      await expect(
+        service.requestRefund({ id: "customer-1", userType: "customer" }, "booking-1"),
+      ).resolves.toEqual({ refundId: "re_1", status: "succeeded" });
+      expect(stripeService.createRefund).toHaveBeenCalledWith(
+        expect.objectContaining({ payment_intent: "pi_1" }),
+        "payment-refund:payment-1",
+      );
+      // State only changes once the signed webhook arrives.
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects other customers", async () => {
+      prisma.payment.findUnique.mockResolvedValue(paidPayment);
+      await expect(
+        service.requestRefund({ id: "someone-else", userType: "customer" }, "booking-1"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejects unpaid and already refunded payments", async () => {
+      prisma.payment.findUnique.mockResolvedValueOnce({ ...paidPayment, status: "pending" });
+      await expect(
+        service.requestRefund({ id: "customer-1", userType: "customer" }, "booking-1"),
+      ).rejects.toThrow(BadRequestException);
+
+      prisma.payment.findUnique.mockResolvedValueOnce({ ...paidPayment, status: "refunded" });
+      await expect(
+        service.requestRefund({ id: "customer-1", userType: "customer" }, "booking-1"),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("lets only admins refund after the provider transfer was released", async () => {
+      const released = { ...paidPayment, stripeTransferId: "tr_1" };
+      prisma.payment.findUnique.mockResolvedValue(released);
+      stripeService.createRefund.mockResolvedValue({ id: "re_2", status: "pending" });
+
+      await expect(
+        service.requestRefund({ id: "customer-1", userType: "customer" }, "booking-1"),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.requestRefund({ id: "admin-1", userType: "admin" }, "booking-1"),
+      ).resolves.toEqual({ refundId: "re_2", status: "pending" });
+    });
   });
 });

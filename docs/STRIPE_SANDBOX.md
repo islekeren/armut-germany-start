@@ -45,7 +45,7 @@ Copy the displayed `whsec_...` value into `apps/api/.env`:
 STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
-Keep `stripe listen` running while testing. The implementation consumes Checkout completion and asynchronous-result events, PaymentIntent success and failure, full refunds, and newly created disputes.
+Keep `stripe listen` running while testing. The implementation consumes Checkout completion and asynchronous-result events, PaymentIntent success and failure, full refunds, and disputes (created and closed).
 
 ## 4. Start and test the applications
 
@@ -65,6 +65,12 @@ Expected lifecycle:
 4. The customer confirms completion.
 5. One idempotent transfer sends the configured provider share (85% by default) to the provider account.
 6. A later full refund or dispute reverses that transfer once.
+
+Refunds and disputes:
+
+- The customer can call `POST /api/payments/refund` (booking detail page: "Request a full refund") while the booking is paid and the provider transfer has not been released; admins can refund at any time. The booking becomes cancellable once the `charge.refunded` webhook marks the payment `refunded`.
+- A dispute (`charge.dispute.created`) puts the payment on hold, so completing the booking will not release funds until the dispute is won (`charge.dispute.closed`). A transfer that was already released is reversed.
+- Partial refunds are not handled; only full refunds change payment state.
 
 ## 5. Inspect the sandbox
 

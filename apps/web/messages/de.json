@@ -819,6 +819,11 @@
         "paymentError": "Stripe Checkout konnte nicht gestartet werden",
         "paymentReturnSuccess": "Zahlung gesendet. Wir warten auf die sichere Bestätigung von Stripe.",
         "paymentReturnCancel": "Der Checkout wurde abgebrochen. Der Zahlungsstatus wurde nicht geändert.",
+        "refundAction": "Volle Rückerstattung anfordern",
+        "refunding": "Rückerstattung wird angefordert...",
+        "refundConfirm": "Diese Zahlung erstatten? Sobald Stripe dies bestätigt, können Sie die Buchung stornieren.",
+        "refundRequested": "Rückerstattung angefordert. Stripe bestätigt sie in Kürze; danach können Sie die Buchung stornieren.",
+        "refundError": "Die Rückerstattung konnte nicht angefordert werden",
         "statusHelp": {
           "pending": "Wartet auf die Bestätigung des Dienstleisters.",
           "confirmed": "Ihre Buchung ist bestätigt.",

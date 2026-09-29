@@ -88,4 +88,30 @@ describe("StripeConnectService", () => {
       url: "https://connect.stripe.test/express/login",
     });
   });
+
+  it("keeps the original onboardedAt when a ready account is refreshed", async () => {
+    const original = new Date("2026-01-01T00:00:00Z");
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardedAt: original,
+    });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "ready",
+      transfersEnabled: true,
+      payoutsEnabled: true,
+      requirementsDue: [],
+      onboardedAt: new Date(),
+    });
+    prisma.provider.update.mockResolvedValue(provider);
+
+    await service.refreshStatus("user-1");
+
+    expect(prisma.provider.update).toHaveBeenCalledWith({
+      where: { id: "provider-1" },
+      data: expect.objectContaining({ stripeOnboardedAt: original }),
+    });
+  });
 });

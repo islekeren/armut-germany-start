@@ -178,6 +178,9 @@ The current `codex/stripe-connect-payments` checkout contains:
 - hosted Checkout sessions using separate charges and transfers
 - signed webhook processing that records successful booking payments
 - delayed provider transfer after customer-confirmed completion
+- `POST /api/payments/refund`: full refund by the booking's customer (only before the provider transfer is released) or by an admin; payment state flips to `refunded` only when the signed `charge.refunded` webhook arrives, and a released transfer is reversed then
+- a dispute (`charge.dispute.created`) sets `Payment.disputedAt`, which blocks releasing the provider transfer until the dispute is won (`charge.dispute.closed`)
+- webhook events for objects without platform metadata are acknowledged and ignored
 - paid bookings must be refunded before cancellation
 
 Release boundary:

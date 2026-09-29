@@ -247,6 +247,10 @@ export class StripeService implements OnModuleInit {
     });
   }
 
+  async createRefund(params: Stripe.RefundCreateParams, idempotencyKey: string) {
+    return this.stripe.refunds.create(params, { idempotencyKey });
+  }
+
   async createExpressDashboardLoginLink(accountId: string) {
     return this.stripe.accounts.createLoginLink(accountId);
   }

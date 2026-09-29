@@ -47,6 +47,7 @@ export default function BookingDetailPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+  const [isRefunding, setIsRefunding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -141,6 +142,30 @@ export default function BookingDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : tDetail("paymentError"));
       setIsPaying(false);
+    }
+  };
+
+  const handleRefund = async () => {
+    const token = getStoredAccessToken();
+    if (!token || !booking) {
+      setError(t("loginRequired"));
+      return;
+    }
+
+    if (!window.confirm(tDetail("refundConfirm"))) {
+      return;
+    }
+
+    setIsRefunding(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await paymentsApi.requestRefund(token, booking.id);
+      setSuccessMessage(tDetail("refundRequested"));
+    } catch (err) {
+      setError(describeError(err, tDetail("refundError")));
+    } finally {
+      setIsRefunding(false);
     }
   };
 
@@ -303,6 +328,12 @@ export default function BookingDetailPage() {
     : "/my-requests";
   const canManageSchedule = ["pending", "confirmed"].includes(booking.status);
   const canCancel = canManageSchedule && booking.paymentStatus !== "paid";
+  // A paid booking must be refunded first; the refund is confirmed by Stripe's
+  // webhook, after which the booking can be cancelled.
+  const canRefund =
+    canManageSchedule &&
+    booking.paymentStatus === "paid" &&
+    !booking.payment?.transferredAt;
   const canReview = booking.status === "completed" && !booking.review;
   const canConfirmCompletion = booking.status === "completion_pending";
   const canPay =
@@ -522,6 +553,17 @@ export default function BookingDetailPage() {
                       {isCancelling
                         ? tDetail("cancelling")
                         : tDetail("cancelBooking")}
+                    </button>
+                  ) : null}
+                  {canRefund ? (
+                    <button
+                      onClick={handleRefund}
+                      disabled={isRefunding}
+                      className="rounded-lg border border-rose-200 px-4 py-3 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isRefunding
+                        ? tDetail("refunding")
+                        : tDetail("refundAction")}
                     </button>
                   ) : null}
                 </div>

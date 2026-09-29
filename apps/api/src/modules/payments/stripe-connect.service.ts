@@ -45,7 +45,11 @@ export class StripeConnectService {
     };
   }
 
-  private async persistSnapshot(providerId: string, snapshot: StripeAccountSnapshot) {
+  private async persistSnapshot(
+    providerId: string,
+    snapshot: StripeAccountSnapshot,
+    currentOnboardedAt: Date | null = null,
+  ) {
     return this.prisma.provider.update({
       where: { id: providerId },
       data: {
@@ -54,7 +58,11 @@ export class StripeConnectService {
         stripeTransfersEnabled: snapshot.transfersEnabled,
         stripePayoutsEnabled: snapshot.payoutsEnabled,
         stripeRequirementsDue: snapshot.requirementsDue as Prisma.InputJsonValue,
-        stripeOnboardedAt: snapshot.onboardedAt,
+        // Keep the first time the account became ready instead of restamping
+        // it on every status refresh.
+        stripeOnboardedAt: snapshot.onboardedAt
+          ? (currentOnboardedAt ?? snapshot.onboardedAt)
+          : null,
       },
     });
   }
@@ -94,6 +102,7 @@ export class StripeConnectService {
     const updated = await this.persistSnapshot(
       provider.id,
       this.stripeService.toAccountSnapshot(account),
+      provider.stripeOnboardedAt,
     );
     return this.response(updated);
   }

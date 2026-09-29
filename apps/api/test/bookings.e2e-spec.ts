@@ -13,6 +13,13 @@ import {
   prisma,
   resetAndSeedDatabase,
 } from "./e2e-utils";
+import { StripeService } from "../src/modules/payments/stripe.service";
+
+// Completion releases the provider share, so Stripe must never be reached.
+const stripeService = {
+  createTransfer: jest.fn(async () => ({ id: "tr_bookings_e2e" })),
+  retrievePaymentIntent: jest.fn(),
+};
 
 describe("Bookings (e2e)", () => {
   let app: INestApplication;
@@ -23,7 +30,9 @@ describe("Bookings (e2e)", () => {
   let providerToken: string;
 
   beforeAll(async () => {
-    app = await createTestApp();
+    app = await createTestApp((builder) =>
+      builder.overrideProvider(StripeService).useValue(stripeService),
+    );
   });
 
   beforeEach(async () => {
@@ -138,6 +147,37 @@ describe("Bookings (e2e)", () => {
 
       // Only the customer can confirm completion.
       await setStatus(providerToken, booking!.id, "completed").expect(403);
+
+      // Completion releases the provider share, so an unpaid booking cannot complete.
+      await setStatus(customerToken, booking!.id, "completed").expect(400);
+
+      await prisma.provider.update({
+        where: { id: providerId },
+        data: {
+          stripeAccountId: "acct_bookings_e2e",
+          stripeOnboardingStatus: "ready",
+          stripeTransfersEnabled: true,
+          stripePayoutsEnabled: true,
+        },
+      });
+      await prisma.payment.create({
+        data: {
+          bookingId: booking!.id,
+          providerId,
+          customerId,
+          grossAmount: 10000,
+          platformFeeAmount: 1500,
+          providerAmount: 8500,
+          status: "paid",
+          stripePaymentIntentId: "pi_bookings_e2e",
+          stripeChargeId: "ch_bookings_e2e",
+        },
+      });
+      await prisma.booking.update({
+        where: { id: booking!.id },
+        data: { paymentStatus: "paid" },
+      });
+
       const completed = await setStatus(
         customerToken,
         booking!.id,

@@ -32,6 +32,7 @@ describe("Stripe Connect payments (e2e)", () => {
     retrievePaymentIntent: jest.fn(),
     createTransfer: jest.fn(),
     reverseTransfer: jest.fn(),
+    createRefund: jest.fn(),
     createExpressDashboardLoginLink: jest.fn(),
     constructWebhookEvent: jest.fn(() => webhookEvent),
   };
@@ -261,5 +262,127 @@ describe("Stripe Connect payments (e2e)", () => {
     );
     expect(notifications).toHaveLength(2);
     expect(otherCustomer.id).not.toBe(customer.id);
+  });
+  it("lets the customer request a refund for a paid, unreleased booking only", async () => {
+    const { user: customer } = await createUserFixture({
+      email: "refund-customer@example.com",
+    });
+    await createUserFixture({ email: "refund-other@example.com" });
+    const { provider } = await createProviderFixture({
+      email: "refund-provider@example.com",
+    });
+    const category = await prisma.category.findFirstOrThrow();
+    const serviceRequest = await prisma.serviceRequest.create({
+      data: {
+        customerId: customer.id,
+        categoryId: category.id,
+        title: "Refund demo",
+        description: "Clean the apartment",
+        address: "Teststrasse 1",
+        city: "Berlin",
+        postalCode: "10115",
+        lat: 52.52,
+        lng: 13.405,
+        images: [],
+        status: "in_progress",
+      },
+    });
+    const quote = await prisma.quote.create({
+      data: {
+        requestId: serviceRequest.id,
+        providerId: provider.id,
+        customerId: customer.id,
+        price: 100,
+        message: "Test quote",
+        validUntil: new Date(Date.now() + 86400000),
+        status: "accepted",
+      },
+    });
+    const booking = await prisma.booking.create({
+      data: {
+        quoteId: quote.id,
+        customerId: customer.id,
+        providerId: provider.id,
+        scheduledDate: new Date(Date.now() + 172800000),
+        status: "confirmed",
+        paymentStatus: "paid",
+        totalPrice: 100,
+      },
+    });
+    await prisma.payment.create({
+      data: {
+        bookingId: booking.id,
+        providerId: provider.id,
+        customerId: customer.id,
+        grossAmount: 10000,
+        platformFeeAmount: 1500,
+        providerAmount: 8500,
+        status: "paid",
+        stripePaymentIntentId: "pi_refund_e2e",
+      },
+    });
+    const customerAuth = await loginAs(app, "refund-customer@example.com");
+    const otherAuth = await loginAs(app, "refund-other@example.com");
+    stripeService.createRefund.mockResolvedValue({ id: "re_e2e", status: "pending" });
+
+    await request(app.getHttpServer())
+      .post("/api/payments/refund")
+      .set("Authorization", `Bearer ${otherAuth.accessToken}`)
+      .send({ bookingId: booking.id })
+      .expect(403);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/payments/refund")
+      .set("Authorization", `Bearer ${customerAuth.accessToken}`)
+      .send({ bookingId: booking.id })
+      .expect(201);
+    expect(response.body).toEqual({ refundId: "re_e2e", status: "pending" });
+    expect(stripeService.createRefund).toHaveBeenCalledTimes(1);
+
+    // The signed refund webhook flips the payment, after which the booking can be cancelled.
+    const payment = await prisma.payment.findUniqueOrThrow({
+      where: { bookingId: booking.id },
+    });
+    webhookEvent = {
+      id: "evt_e2e_refund",
+      type: "charge.refunded",
+      data: {
+        object: {
+          id: "ch_refund_e2e",
+          amount: 10000,
+          amount_refunded: 10000,
+          currency: "eur",
+          payment_intent: "pi_refund_e2e",
+        },
+      },
+    };
+    await request(app.getHttpServer())
+      .post("/api/payments/webhook")
+      .set("stripe-signature", "test-signature")
+      .send({ event: webhookEvent.id })
+      .expect(200);
+    expect(
+      (await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }))
+        .status,
+    ).toBe("refunded");
+
+    await request(app.getHttpServer())
+      .patch(`/api/bookings/${booking.id}/status`)
+      .set("Authorization", `Bearer ${customerAuth.accessToken}`)
+      .send({ status: "cancelled" })
+      .expect(200);
+  });
+
+  it("acknowledges webhook events that carry no platform metadata", async () => {
+    webhookEvent = {
+      id: "evt_e2e_foreign",
+      type: "payment_intent.succeeded",
+      data: { object: { id: "pi_foreign", amount: 500, currency: "eur", metadata: {} } },
+    };
+    await request(app.getHttpServer())
+      .post("/api/payments/webhook")
+      .set("stripe-signature", "test-signature")
+      .send({ event: webhookEvent.id })
+      .expect(200);
   });
 });
