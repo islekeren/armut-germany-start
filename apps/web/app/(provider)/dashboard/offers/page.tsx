@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { PanelCard, ProviderSubpageShell } from "@/components";
 import { getStoredAccessToken, quotesApi, type Quote } from "@/lib/api";
+import { useApiErrorMessage } from "@/lib/api-errors";
+import { formatEuroAmount } from "@/lib/bookings";
 
 export default function ProviderPendingOffersPage() {
   const tDashboard = useTranslations("provider.dashboard");
+  const describeError = useApiErrorMessage();
   const tNavigation = useTranslations("provider.dashboard.navigation");
   const tOffers = useTranslations("provider.offers");
   const locale = useLocale();
@@ -25,14 +28,14 @@ export default function ProviderPendingOffersPage() {
         setOffers(data);
       } catch (err) {
         console.error("Failed to load pending offers:", err);
-        setError(err instanceof Error ? err.message : tOffers("loadError"));
+        setError(describeError(err, tOffers("loadError")));
       } finally {
         setLoading(false);
       }
     };
 
     loadOffers();
-  }, [tOffers]);
+  }, [tOffers, describeError]);
 
   const pendingOffers = useMemo(
     () =>
@@ -96,7 +99,7 @@ export default function ProviderPendingOffersPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
-                    <span className="font-medium text-secondary">€{offer.price}</span>
+                    <span className="font-medium text-secondary">{formatEuroAmount(offer.price, locale)}</span>
                     <span>{formatDate(offer.createdAt)}</span>
                     <span>
                       {tDashboard("pendingOfferValidUntil", {

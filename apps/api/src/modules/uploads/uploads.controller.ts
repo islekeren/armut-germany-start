@@ -12,6 +12,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
+import { PresignedUploadDto } from "./dto/presigned-upload.dto";
 import { UploadsService, UploadFolder } from "./uploads.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
@@ -102,12 +103,7 @@ export class UploadsController {
 
   @Post("presigned")
   async getPresignedUploadUrl(
-    @Body()
-    body: {
-      folder: UploadFolder;
-      filename: string;
-      contentType: string;
-    },
+    @Body() body: PresignedUploadDto,
     @Req() req: any
   ) {
     return this.uploadsService.getPresignedUploadUrl(

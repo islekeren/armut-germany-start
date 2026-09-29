@@ -30,6 +30,10 @@ export function Header() {
       : "/";
 
   const desktopMainLinks = useMemo<NavLink[]>(() => {
+    if (isAuthenticated && user?.userType === "admin") {
+      return [{ href: "/admin/providers", label: t("nav.adminProviders") }];
+    }
+
     if (isAuthenticated && user?.userType === "provider") {
       return [
         {
@@ -43,6 +47,9 @@ export function Header() {
       ];
     }
 
+    // Kept to three entries so the bar fits next to the notification and
+    // message buttons; "/requests" lists other people's requests and is
+    // meant for providers, so customers get their own list instead.
     if (isAuthenticated && user?.userType === "customer") {
       return [
         {
@@ -51,15 +58,11 @@ export function Header() {
         },
         {
           href: "/my-requests",
-          label: t("nav.requests"),
+          label: t("nav.myRequests"),
         },
         {
           href: "/create-request",
           label: t("nav.createRequest"),
-        },
-        {
-          href: "/how-it-works",
-          label: t("nav.howItWorks"),
         },
       ];
     }
@@ -77,6 +80,13 @@ export function Header() {
   }, [isAuthenticated, t, user?.userType]);
 
   const mobileLinks = useMemo<NavLink[]>(() => {
+    if (isAuthenticated && user?.userType === "admin") {
+      return [
+        { href: "/admin/providers", label: t("nav.adminProviders") },
+        { href: notificationsHref, label: t("nav.notifications") },
+      ];
+    }
+
     if (isAuthenticated && user?.userType === "provider") {
       return [
         { href: "/dashboard", label: t("nav.dashboard") },
@@ -92,7 +102,7 @@ export function Header() {
     if (isAuthenticated && user?.userType === "customer") {
       return [
         { href: "/find-providers", label: t("nav.findProvider") },
-        { href: "/my-requests", label: t("nav.requests") },
+        { href: "/requests", label: t("nav.requests") },
         { href: "/create-request", label: t("nav.createRequest") },
         { href: "/my-requests", label: t("nav.myRequests") },
         { href: "/bookings", label: t("nav.bookings") },
@@ -175,7 +185,7 @@ export function Header() {
     <header className="relative z-50 bg-primary text-white">
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex items-center justify-between gap-3">
-          <Link href={logoHref} className="flex min-w-0 items-center gap-2">
+          <Link href={logoHref} className="flex shrink-0 items-center gap-2">
             <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Elf</span>
           </Link>
 
@@ -184,7 +194,7 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="truncate text-white/90 hover:scale-105 hover:text-amber-300"
+                className="whitespace-nowrap text-white/90 hover:scale-105 hover:text-amber-300"
               >
                 {item.label}
               </Link>
@@ -261,7 +271,11 @@ export function Header() {
                           <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
                           <p className="truncate text-xs text-muted">{user.email}</p>
                         </div>
-                        {user.userType === "provider" ? (
+                        {user.userType === "admin" ? (
+                          <Link href="/admin/providers" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            {t("nav.adminProviders")}
+                          </Link>
+                        ) : user.userType === "provider" ? (
                           <>
                             <Link href="/dashboard/listings" className="block px-4 py-2 text-sm hover:bg-gray-100">
                               {t("nav.offers")}
@@ -284,7 +298,7 @@ export function Header() {
                             <Link href="/find-providers" className="block px-4 py-2 text-sm hover:bg-gray-100">
                               {t("nav.findProvider")}
                             </Link>
-                            <Link href="/my-requests" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link href="/requests" className="block px-4 py-2 text-sm hover:bg-gray-100">
                               {t("nav.requests")}
                             </Link>
                             <Link href="/create-request" className="block px-4 py-2 text-sm hover:bg-gray-100">
@@ -322,7 +336,7 @@ export function Header() {
                   onClick={() => setShowMobileMenu((prev) => !prev)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/30 text-white md:hidden"
                   aria-expanded={showMobileMenu}
-                  aria-label={showMobileMenu ? "Close menu" : "Open menu"}
+                  aria-label={showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")}
                 >
                   {showMobileMenu ? (
                     <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -360,7 +374,7 @@ export function Header() {
                   onClick={() => setShowMobileMenu((prev) => !prev)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/30 text-white md:hidden"
                   aria-expanded={showMobileMenu}
-                  aria-label={showMobileMenu ? "Close menu" : "Open menu"}
+                  aria-label={showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")}
                 >
                   {showMobileMenu ? (
                     <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -391,7 +405,7 @@ export function Header() {
           <button
             className="fixed inset-0 z-40 bg-black/35 md:hidden"
             onClick={() => setShowMobileMenu(false)}
-            aria-label="Close menu"
+            aria-label={t("nav.closeMenu")}
           />
           <div className="fixed inset-x-0 top-[68px] z-50 max-h-[calc(100dvh-68px)] overflow-y-auto border-t border-border bg-white text-foreground shadow-xl md:hidden">
             {isAuthenticated && user ? (

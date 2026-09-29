@@ -8,6 +8,11 @@ import {
   resetAndSeedDatabase,
 } from "./e2e-utils";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Quotes and bookings must be dated in the future, so derive dates from now.
+const daysFromNow = (days: number) =>
+  new Date(Date.now() + days * DAY_MS).toISOString();
+
 describe("Requests, bookings, and notifications (e2e)", () => {
   let app: any;
 
@@ -85,7 +90,7 @@ describe("Requests, bookings, and notifications (e2e)", () => {
         requestId: createdRequest.body.id,
         price: 150,
         message: "I can handle the handover cleaning this week.",
-        validUntil: "2026-05-01T12:00:00.000Z",
+        validUntil: daysFromNow(14),
       })
       .expect(201);
 
@@ -128,7 +133,7 @@ describe("Requests, bookings, and notifications (e2e)", () => {
       .set("Authorization", `Bearer ${customerAuth.accessToken}`)
       .send({
         quoteId: createdQuote.body.id,
-        scheduledDate: "2026-04-20T09:00:00.000Z",
+        scheduledDate: daysFromNow(7),
       })
       .expect(201);
 

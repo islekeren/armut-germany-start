@@ -44,7 +44,7 @@ describe("QuotesService", () => {
       requestId: "r1",
       price: 100,
       message: "Can do it",
-      validUntil: "2026-03-01T00:00:00.000Z",
+      validUntil: "2099-03-01T00:00:00.000Z",
     } as any;
 
     it("enforces provider and request checks", async () => {
@@ -180,7 +180,7 @@ describe("QuotesService", () => {
       await expect(
         service.update("q1", "u1", {
           price: 120,
-          validUntil: "2026-03-05T00:00:00.000Z",
+          validUntil: "2099-03-05T00:00:00.000Z",
         } as any)
       ).resolves.toEqual({ id: "q1", price: 120 });
     });
@@ -195,21 +195,24 @@ describe("QuotesService", () => {
           customerId: "other",
           status: "pending",
           requestId: "r1",
-          request: {},
+          validUntil: new Date("2099-01-01"),
+          request: { status: "open" },
         })
         .mockResolvedValueOnce({
           id: "q1",
           customerId: "customer-1",
           status: "accepted",
           requestId: "r1",
-          request: {},
+          validUntil: new Date("2099-01-01"),
+          request: { status: "open" },
         })
         .mockResolvedValueOnce({
           id: "q1",
           customerId: "customer-1",
           status: "pending",
           requestId: "r1",
-          request: {},
+          validUntil: new Date("2099-01-01"),
+          request: { status: "open" },
         });
       prisma.quote.update.mockReturnValue("update-op" as any);
       prisma.quote.updateMany.mockReturnValue("update-many-op" as any);
@@ -230,6 +233,47 @@ describe("QuotesService", () => {
         id: "q1",
         status: "accepted",
       });
+    });
+
+    it("refuses to accept an expired quote or one on a closed request", async () => {
+      prisma.quote.findUnique
+        .mockResolvedValueOnce({
+          id: "q3",
+          customerId: "customer-1",
+          status: "pending",
+          requestId: "r1",
+          validUntil: new Date("2020-01-01"),
+          request: { status: "open" },
+        })
+        .mockResolvedValueOnce({
+          id: "q3",
+          customerId: "customer-1",
+          status: "pending",
+          requestId: "r1",
+          validUntil: new Date("2099-01-01"),
+          request: { status: "in_progress" },
+        });
+
+      await expect(
+        service.respond("q3", "customer-1", "accepted"),
+      ).rejects.toThrow("Quote has expired");
+      await expect(
+        service.respond("q3", "customer-1", "accepted"),
+      ).rejects.toThrow("Request is no longer open");
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("rejects quotes whose validity date is already past", async () => {
+      prisma.provider.findUnique.mockResolvedValue({ id: "p1", isApproved: true });
+
+      await expect(
+        service.create("provider-user", {
+          requestId: "r1",
+          price: 100,
+          message: "Offer",
+          validUntil: "2020-01-01T00:00:00.000Z",
+        } as any),
+      ).rejects.toThrow("Quote validity date must be in the future");
     });
 
     it("handles rejected path", async () => {

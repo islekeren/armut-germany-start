@@ -1,7 +1,9 @@
 {
   "metadata": {
     "title": "Elf Germany - Find the Best Service Providers",
-    "description": "Elf Germany connects you with qualified professionals for cleaning, moving, renovation and more."
+    "description": "Elf Germany connects you with qualified professionals for cleaning, moving, renovation and more. Get free quotes from verified providers.",
+    "keywords": "service providers, tradespeople, cleaning, moving, renovation, Germany",
+    "ogDescription": "Connect with qualified professionals for all your service needs."
   },
   "common": {
     "login": "Log in",
@@ -28,7 +30,11 @@
     "myRequests": "My Requests",
     "bookings": "Bookings",
     "messages": "Messages",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "adminProviders": "Approve providers",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "backToConversations": "Back to conversations"
   },
   "notifications": {
     "title": "Notifications",
@@ -39,6 +45,44 @@
     "errors": {
       "noToken": "Please sign in to view notifications.",
       "loadFailed": "Failed to load notifications."
+    },
+    "types": {
+      "quote_received": {
+        "title": "New offer received",
+        "message": "You received a new offer for “{title}”."
+      },
+      "quote_accepted": {
+        "title": "Your offer was accepted",
+        "message": "Your offer for “{title}” has been accepted."
+      },
+      "booking_completion_pending": {
+        "title": "Please confirm completion",
+        "message": "The provider marked “{title}” as completed. Please confirm."
+      },
+      "request_cancelled_customer": {
+        "title": "Request cancelled",
+        "message": "Your request “{title}” has been cancelled."
+      },
+      "request_cancelled_provider": {
+        "title": "Request cancelled",
+        "message": "A customer cancelled the request “{title}”."
+      },
+      "booking_completed_customer": {
+        "title": "Job completed",
+        "message": "The booking “{title}” is marked as completed."
+      },
+      "booking_completed_provider": {
+        "title": "Job completed",
+        "message": "The customer confirmed “{title}” as completed."
+      },
+      "booking_cancelled_by_customer": {
+        "title": "Booking cancelled",
+        "message": "The booking “{title}” was cancelled by the customer."
+      },
+      "booking_cancelled_by_provider": {
+        "title": "Booking cancelled",
+        "message": "The booking “{title}” was cancelled by the provider."
+      }
     }
   },
   "categories": {
@@ -114,8 +158,11 @@
       "city": "City",
       "cityPlaceholder": "e.g. Berlin",
       "priceMin": "Min price (€)",
-      "priceMax": "Max price (€)"
-    }
+      "priceMax": "Max price (€)",
+      "postalCode": "Postcode",
+      "postalCodePlaceholder": "e.g. 10115"
+    },
+    "unknownPostalCode": "We don't recognise this postcode. Please check it."
   },
   "requestsPage": {
     "title": "Open Requests",
@@ -129,10 +176,11 @@
       "renovation": "Renovation",
       "garden": "Garden"
     },
-    "postedAt": "Posted {time} ago",
+    "postedAt": "Posted {time}",
     "flexible": "Flexible",
     "memberSince": "Member since {year}",
-    "budgetUpTo": "up to €{value}"
+    "budgetUpTo": "up to {value}",
+    "budgetFrom": "from {value}"
   },
   "homePage": {
     "categoryCardDescription": "Find trusted professionals for {name}.",
@@ -321,7 +369,10 @@
     "providerBlockedDescription": "Provider accounts cannot create service requests. Use your provider dashboard to discover and quote customer requests.",
     "providerBlockedAction": "Go to provider dashboard",
     "errorCreating": "Failed to create request. Please try again.",
-    "errorNoToken": "No authentication token found."
+    "errorNoToken": "No authentication token found.",
+    "draftRestored": "We restored your details. Please review them and submit your request.",
+    "draftPhotosLost": "Photos could not be saved – please add them again in the Details step.",
+    "unknownPostalCode": "We don't recognise this postcode. Please check it."
   },
   "hero": {
     "title": "Find the Perfect Service Provider",
@@ -582,7 +633,9 @@
       "noRequests": "No requests found",
       "noRequestsHint": "Create a new request to receive quotes",
       "createRequest": "Create Request",
-      "loading": "Loading your requests..."
+      "loading": "Loading your requests...",
+      "loadError": "Your requests could not be loaded.",
+      "loginRequired": "Please log in to view your requests."
     },
     "requestDetail": {
       "loadError": "Failed to load request details",
@@ -633,7 +686,12 @@
         "tip1": "Compare not only prices but also reviews",
         "tip2": "Ask follow-up questions if something is unclear",
         "tip3": "Pay attention to the provider's experience"
-      }
+      },
+      "flexible": "Flexible",
+      "budgetRange": "€{min}–{max}",
+      "budgetFrom": "from €{min}",
+      "budgetUpTo": "up to €{max}",
+      "acceptConfirm": "Accept the quote from {provider} for €{price}? All other quotes for this request will be declined."
     },
     "bookings": {
       "title": "My Bookings",
@@ -695,7 +753,7 @@
         "acceptedOnlyText": "Only accepted quotes can be turned into bookings.",
         "backToRequest": "Back to Request",
         "scheduleTitle": "Schedule your service",
-        "scheduleHint": "Pick when you want the provider to arrive. The provider can confirm or ask for a different time afterward.",
+        "scheduleHint": "Pick when you want the provider to arrive. The booking is confirmed right away – you can agree on details by message afterwards.",
         "scheduledDate": "Date and time",
         "scheduledDateHint": "Choose the preferred arrival time for the service.",
         "creating": "Creating booking...",
@@ -773,7 +831,9 @@
         "confirmCompletionHint": "Your provider says the job is done. Confirm to finalize and move this booking to completed.",
         "confirmCompletion": "Confirm job is completed",
         "confirmCompletionSuccess": "Booking marked as completed.",
-        "confirmCompletionError": "Could not confirm completion."
+        "confirmCompletionError": "Could not confirm completion.",
+        "reviewImageAlt": "Review photo",
+        "replyImageAlt": "Provider reply photo"
       }
     },
     "messages": {
@@ -797,7 +857,7 @@
   "provider": {
     "dashboard": {
       "title": "Overview",
-      "welcomeBack": "Welcome back, {name}! 👋",
+      "welcomeBack": "Welcome, {name}! 👋",
       "activityOverview": "Here is an overview of your current activities.",
       "noRequests": "No new listings.",
       "noAppointments": "No upcoming appointments.",
@@ -858,7 +918,11 @@
         "today": "Today",
         "yesterday": "Yesterday",
         "twoDaysAgo": "2 days ago"
-      }
+      },
+      "budgetRange": "€{min}–{max}",
+      "budgetFrom": "from €{min}",
+      "budgetUpTo": "up to €{max}",
+      "budgetOnRequest": "Budget open"
     },
     "requests": {
       "title": "Open Listings",
@@ -896,7 +960,9 @@
         "tip3": "Mention your relevant experience",
         "tip4": "Ask follow-up questions if needed"
       },
-      "acceptanceRate": "of your offers were accepted so far"
+      "acceptanceRate": "of your offers were accepted so far",
+      "offerPending": "Offer sent – awaiting reply",
+      "offerAlreadySent": "You already sent an offer for this request. Check Pending Offers for its status."
     },
     "placeholders": {
       "comingSoon": "This section will be available soon."
@@ -964,7 +1030,15 @@
       "cancel": "Cancel",
       "saveChanges": "Save Changes",
       "saving": "Saving...",
-      "required": "*"
+      "required": "*",
+      "fallbackName": "Provider",
+      "highlightsPlaceholder": "e.g. Verified provider, Fast response",
+      "languagesPlaceholder": "e.g. German, English",
+      "commaSeparated": "Separate multiple entries with commas",
+      "saveSuccess": "Profile updated successfully.",
+      "saveError": "Failed to update profile.",
+      "companyAddress": "Company address",
+      "website": "Website"
     },
     "calendar": {
       "title": "Calendar",
@@ -1012,7 +1086,8 @@
       "markCompleted": "Mark as Completed",
       "completing": "Sending...",
       "awaitingCustomer": "Completion request sent to customer. Waiting for approval.",
-      "completeError": "Failed to update order status."
+      "completeError": "Failed to update order status.",
+      "loadError": "Orders could not be loaded."
     },
     "reviews": {
       "title": "My Reviews",
@@ -1030,7 +1105,9 @@
       "ratingBreakdown": "Rating Breakdown",
       "reviewedJob": "Reviewed job",
       "customerComment": "Customer comment",
-      "noComment": "No written comment."
+      "noComment": "No written comment.",
+      "reviewImageAlt": "Review photo",
+      "replyImageAlt": "Provider reply photo"
     },
     "messages": {
       "title": "Messages",
@@ -1105,7 +1182,20 @@
       "createdAt": "Created on",
       "preferredDate": "Preferred date",
       "notSpecified": "Not specified",
-      "quotes": "Quotes"
+      "quotes": "Quotes",
+      "budgetFrom": "from {value}",
+      "budgetUpTo": "up to {value}",
+      "statusValues": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "approval": {
+      "pendingTitle": "Your provider profile is under review",
+      "pendingDescription": "You can already browse requests. You can send quotes as soon as our team approves your profile – usually within 1–2 business days.",
+      "quoteBlocked": "Your profile has not been approved yet. You can send quotes once the review is complete."
     }
   },
   "providerOnboarding": {
@@ -1146,7 +1236,8 @@
       "description": "Short Description",
       "password": "Password",
       "confirmPassword": "Confirm Password",
-      "agreeToTerms": "I agree to the <privacy>privacy policy</privacy> and <terms>terms</terms>."
+      "agreeToTerms": "I agree to the <privacy>privacy policy</privacy> and <terms>terms</terms>.",
+      "category": "Category"
     },
     "errors": {
       "selectCategory": "Please select at least one service category.",
@@ -1165,6 +1256,107 @@
       "continue": "Continue",
       "finish": "Finish onboarding",
       "submitting": "Creating account..."
+    },
+    "loadingCategories": "Loading categories..."
+  },
+  "admin": {
+    "providers": {
+      "title": "Approve providers",
+      "subtitle": "New providers can only send quotes after they are approved here.",
+      "loading": "Loading providers...",
+      "loadError": "Providers could not be loaded.",
+      "actionError": "Approval failed. Please try again.",
+      "forbidden": "This page is only available to administrators.",
+      "empty": "No providers are waiting for approval.",
+      "location": "Location",
+      "experience": "Experience",
+      "years": "{count, plural, one {# year} other {# years}}",
+      "categories": "Categories",
+      "registeredAt": "Registered on",
+      "approve": "Approve",
+      "approved": "{name} has been approved."
     }
+  },
+  "accountDeletion": {
+    "title": "Delete account",
+    "description": "Your account will be deleted and your personal data (name, email, phone, profile picture) removed. Open requests are closed. Completed bookings, reviews and messages remain for the other party under “Deleted user”. This cannot be undone.",
+    "confirmWord": "DELETE",
+    "confirmLabel": "Type “{word}” to confirm",
+    "confirmError": "Please type “{word}” to confirm.",
+    "loginAgain": "Please log in again.",
+    "activeBookings": "You still have active bookings. Complete or cancel them before deleting your account.",
+    "error": "Your account could not be deleted. Please try again.",
+    "deleting": "Deleting...",
+    "submit": "Delete account"
+  },
+  "apiErrors": {
+    "unavailable": "The service is temporarily unavailable. Please try again shortly.",
+    "tooManyRequests": "Too many requests in a short time. Please wait a moment.",
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "notAuthorized": "You are not allowed to do that.",
+    "notFound": "This item was not found or is no longer available.",
+    "invalidCredentials": "Email address or password is incorrect.",
+    "emailTaken": "This email address is already registered.",
+    "wrongPassword": "The current password is incorrect.",
+    "providerNotApproved": "Your profile has not been approved yet. You can send quotes once the review is complete.",
+    "alreadyQuoted": "You have already sent a quote for this request.",
+    "requestClosed": "This request no longer accepts quotes.",
+    "quoteExpired": "This quote has expired.",
+    "validityInPast": "The validity date must be in the future.",
+    "dateInPast": "Please choose a date in the future.",
+    "quoteNotPending": "This quote can no longer be changed.",
+    "quoteNotAccepted": "The quote must be accepted first.",
+    "bookingExists": "A booking already exists for this quote.",
+    "reviewExists": "You have already reviewed this booking.",
+    "reviewNotAllowed": "Only completed bookings can be reviewed.",
+    "rescheduleNotAllowed": "This booking cannot be rescheduled in its current status.",
+    "completionNotRequested": "The provider has not marked the job as done yet.",
+    "cancelNotAllowed": "Only open requests can be closed.",
+    "invalidStatusChange": "This status change is not possible.",
+    "roleNotAllowed": "This action is not available for your account.",
+    "unknownPostalCode": "We don't recognise this postcode. Please check it.",
+    "providerProfileExists": "This account already has a provider profile.",
+    "customersOnly": "Only customer accounts can create requests.",
+    "invalidCategory": "The selected category is not valid.",
+    "noFile": "Please choose a file.",
+    "activeBookings": "You still have active bookings. Complete or cancel them before deleting your account."
+  },
+  "accountSettings": {
+    "loading": "Loading account settings...",
+    "profileTitle": "Profile",
+    "profileDescriptionCustomer": "Update your customer account details.",
+    "profileDescriptionProvider": "Update your provider account details.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "emailHint": "Your email address is set during registration.",
+    "phone": "Phone",
+    "profileImage": "Profile image",
+    "profilePreview": "Profile image preview",
+    "saving": "Saving...",
+    "saveProfile": "Save profile",
+    "profileSaved": "Profile updated successfully.",
+    "profileError": "Could not update your profile.",
+    "loginAgain": "Please log in again.",
+    "notificationsTitle": "Notifications",
+    "notificationsDescription": "Choose which updates we send you.",
+    "emailNotifications": "Email notifications",
+    "pushNotifications": "Push notifications",
+    "smsNotifications": "SMS notifications",
+    "marketingEmails": "Marketing emails",
+    "savePreferences": "Save preferences",
+    "preferencesSaved": "Preferences saved.",
+    "preferencesError": "Could not save preferences.",
+    "securityTitle": "Security",
+    "securityDescription": "Change your password.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "updating": "Updating...",
+    "changePassword": "Change password",
+    "passwordTooShort": "The new password must be at least 8 characters long.",
+    "passwordMismatch": "The new passwords do not match.",
+    "passwordChanged": "Password changed successfully.",
+    "passwordError": "Could not change your password."
   }
 }

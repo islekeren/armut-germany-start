@@ -1,6 +1,6 @@
 # Armut Germany
 
-Audited against the repository on July 27, 2026.
+Audited against the current checkout on September 11, 2026.
 
 ## Overview
 
@@ -23,18 +23,18 @@ Dormant workspace state:
 
 ## Current Validation Snapshot
 
-Observed on July 27, 2026:
+Observed on September 11, 2026:
 
-- `npm run lint`: currently fails because `apps/web/scripts/prepare-e2e.mjs` has `process` no-undef warnings and web lint uses `--max-warnings 0`
+- `npm run lint`: passes; API lint reports 9 warnings and no errors
 - `npm run build`: passes
-- `npm run check-types`: passes in the current workspace
-- `cd apps/api && npm run check-types`: passes
-- `cd apps/api && npm run build`: passes
-- `cd apps/api && npm run test -- --watchman=false`: passes
-- `cd apps/api && npm run test:e2e -- --watchman=false`: passes outside the sandbox; in restricted environments it can fail with `EPERM` when Supertest tries to bind a local server
-- `cd apps/web && npm run lint`: currently fails because `apps/web/scripts/prepare-e2e.mjs` uses Node globals without an ESLint Node/global declaration
-- `cd apps/web && npm run build`: passes
-- `cd apps/web && npm run check-types`: passes in the current workspace after `.next/types` exists; on a fresh checkout it may fail until `cache-life.d.ts` has been generated
+- `npm run check-types`: passes
+- `npm run test`: passes 283 unit tests across the active workspaces and packages
+  - API: 262 tests in 30 suites
+  - web: 14 tests
+  - `packages/shared`: 4 tests
+  - `packages/ui`: 3 tests
+- API e2e was not rerun in this audit because the local Docker daemon was unavailable; the suite previously passed outside the restricted sandbox
+- the root Expo-based `tsconfig.json` still causes a configuration warning during unit-test runs even though all tests pass
 
 Use [TESTING.md](./docs/TESTING.md) for the detailed command matrix and caveats.
 
@@ -42,7 +42,7 @@ Use [TESTING.md](./docs/TESTING.md) for the detailed command matrix and caveats.
 
 ### Prerequisites
 
-- Node.js `>=18` is declared in the root `package.json`
+- Node.js `>=20.9.0` is declared in the root and active app `package.json` files
 - CI uses Node `20.x`, which is the safest local baseline
 - npm workspaces with `npm@10.9.2`
 - Docker if you want the provided local Postgres and Redis services
@@ -121,8 +121,38 @@ Observed in `apps/api/prisma/seed.ts`:
 - Customer
   - Email: `customer@test.com`
   - Password: `12345678`
+- Admin
+  - Email: `admin@test.com`
+  - Password: `12345678`
 
 The seed also creates request taxonomy categories, additional providers, quotes, bookings, reviews, conversations, and notifications-related data paths.
+
+## Provider Approval
+
+New providers start unapproved: they can browse requests but cannot send quotes, and their dashboard shows a "profile under review" notice. An admin approves them at `/admin/providers`.
+
+Admins cannot sign up through the app. Promote an existing, non-provider account against the target database with:
+
+```bash
+npm run admin:grant --workspace=api -- someone@example.com
+```
+
+## Location Matching
+
+Requests and providers are matched by distance. The API derives coordinates from German postcodes (client-sent coordinates are ignored when the postcode is known):
+
+- a request's location comes from its postcode; unknown postcodes are rejected
+- a provider's service-area centre comes from their business postcode, and their radius (`serviceAreaRadius`, default 25 km) limits the requests they see
+- `GET /api/providers?postalCode=12345` returns providers whose radius reaches that postcode
+- providers without a postcode are not filtered by distance
+
+Rows created before this existed are stored at 0,0. Fix them once per environment with:
+
+```bash
+npm run geo:backfill --workspace=api
+```
+
+Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); keep that attribution (e.g. on the imprint/privacy page). Regenerate the data with `apps/api/scripts/build-postcode-data.mjs`.
 
 ## Repository Map
 
@@ -134,13 +164,17 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 - `apps/api/prisma/seed.ts`: development seed data
 - `docker-compose.yml`: local Postgres and Redis only
 - `.github/workflows/ci.yml`: CI plus placeholder deploy jobs on `main` and `develop`
+- `railway.json`: API build and deploy commands for Railway
+- `render.yaml`: API service definition for Render
+- `Dockerfile`: incomplete Node build-image scaffold; it is not yet a runnable production image
 
 ## Current Product Notes
 
 - Quote acceptance does not auto-create a booking. The frontend redirects the customer to `/bookings/new` after accepting a quote.
 - Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
-- Provider `services` remains a placeholder; `finances` hosts Stripe Connect test-mode onboarding and Express Dashboard access.
-- Booking payments use separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
+- Provider `services` and `finances` are placeholders on `main`; the payment feature branch replaces `finances` with Stripe Connect test-mode onboarding and Express Dashboard access.
+- The payment feature branch uses separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
+- The Stripe payment work is synchronized with `origin/main` in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), but it is not released and remains blocked by payment-safety work.
 - `ServicesModule` and `ReviewsModule` are still empty backend shells.
 - Notifications are now a real API module and frontend page.
 
@@ -148,21 +182,34 @@ The seed also creates request taxonomy categories, additional providers, quotes,
 
 - [docs/README.md](./docs/README.md): documentation folder index
 - [ARCHITECTURE.md](./docs/ARCHITECTURE.md): system shape, core flows, and danger zones
-- [ENVIRONMENT.md](./docs/ENVIRONMENT.md): env vars, local services, and config mismatches
+- [ENVIRONMENT.md](./docs/ENVIRONMENT.md): env vars, local services, and configuration status
 - [STRIPE_SANDBOX.md](./docs/STRIPE_SANDBOX.md): local Connect onboarding, webhooks, and delayed-transfer testing
-- [TESTING.md](./docs/TESTING.md): validated command status as of July 27, 2026
+- [TESTING.md](./docs/TESTING.md): validated command status as of September 11, 2026
 - [DEPLOYMENT.md](./docs/DEPLOYMENT.md): what is and is not encoded in the repo for deployment
 - [CONTRIBUTING.md](./docs/CONTRIBUTING.md): repo-specific contribution guidance
 - [AGENTS.md](./AGENTS.md): operating instructions for coding agents
 - [WORKFLOW.md](./docs/WORKFLOW.md): suggested change workflow for this repo
 - [PROJECT_GAP_REPORT.md](./docs/PROJECT_GAP_REPORT.md): remaining product and platform gaps from this audit
+- [IMPLEMENTATION_ROADMAP.md](./docs/IMPLEMENTATION_ROADMAP.md): ordered Linear implementation sequence and release gates
 - [apps/web/README.md](./apps/web/README.md): frontend-specific guide
 - [apps/api/README.md](./apps/api/README.md): backend-specific guide
 
 ## Known Repository Quirks
 
 - The root `tsconfig.json` still extends Expo config even though there is no active mobile workspace.
-- Root lint currently fails on `apps/web/scripts/prepare-e2e.mjs` because Node globals are not declared for that script.
-- `apps/web` type generation can be order-sensitive on a fresh checkout.
-- Upload env names in `apps/api/.env.example` do not match the names used by `UploadsService`.
-- The repo does not contain a checked-in production deployment manifest such as `railway.json` or `vercel.json`.
+- API lint currently passes with 9 warnings rather than a warning-free baseline.
+- `apps/web` generates Next.js types before type-checking, but stale generated state can still make fresh-checkout failures worth investigating build-first.
+- The upload env names now match between `apps/api/.env.example` and `UploadsService`.
+- Railway and Render API configs are checked in, but the production hosting topology and externally configured deployment branch are not confirmed by the repository alone.
+- `railway.json` currently runs `db:seed` during every pre-deploy; remove that before using it for production deploys.
+- The checked-in `Dockerfile` has no final build, runtime command, or production stage and should not yet be treated as a deployable image.
+
+## Recommended Branch Policy
+
+- Use `main` as the canonical integration and release branch.
+- Develop work on short-lived branches and merge through reviewed pull requests after required checks pass.
+- Do not commit directly to `main` or keep long-running product work only on `deployment`.
+- Keep `codex/stripe-connect-payments` synchronized with `origin/main`; resolve the release blockers documented in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8) before merging it into `main`.
+- Keep `deployment` as a compatibility mirror of `main`; do not merge feature work into it directly, and synchronize it only after reviewed changes land on `main`.
+
+This is the recommended repository policy, not proof of the current settings in Railway, Render, Vercel, or another external hosting dashboard.

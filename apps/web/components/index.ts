@@ -11,6 +11,10 @@ export { ProviderRatingStars } from "./provider/ProviderRatingStars";
 export { ProviderOpeningHours } from "./provider/ProviderOpeningHours";
 export { ProviderReviewCard } from "./provider/ProviderReviewCard";
 export { RequestOfferModal } from "./provider/RequestOfferModal";
+export {
+  ProviderApprovalNotice,
+  useProviderApproval,
+} from "./provider/ProviderApprovalNotice";
 export { MessagesWorkspace } from "./messages/MessagesWorkspace";
 export { FormLabel } from "./forms/FormLabel";
 export { FormInput } from "./forms/FormInput";

@@ -18,6 +18,7 @@ describe("UsersService", () => {
   const prisma = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -32,40 +33,40 @@ describe("UsersService", () => {
   });
 
   it("finds by id", async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: "u1" });
+    prisma.user.findFirst.mockResolvedValue({ id: "u1" });
     await service.findById("u1");
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({
-      where: { id: "u1" },
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { id: "u1", deletedAt: null },
       select: safeUserSelect,
     });
   });
 
   it("finds by email", async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: "u1", email: "a@b.c" });
+    prisma.user.findFirst.mockResolvedValue({ id: "u1", email: "a@b.c" });
     await service.findByEmail("a@b.c");
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({
-      where: { email: "a@b.c" },
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { email: "a@b.c", deletedAt: null },
       select: safeUserSelect,
     });
   });
 
   it("finds by id with password when needed internally", async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: "u1", password: "hash" });
+    prisma.user.findFirst.mockResolvedValue({ id: "u1", password: "hash" });
     await service.findByIdWithPassword("u1");
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({
-      where: { id: "u1" },
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { id: "u1", deletedAt: null },
     });
   });
 
   it("finds by email with password when needed internally", async () => {
-    prisma.user.findUnique.mockResolvedValue({
+    prisma.user.findFirst.mockResolvedValue({
       id: "u1",
       email: "a@b.c",
       password: "hash",
     });
     await service.findByEmailWithPassword("a@b.c");
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({
-      where: { email: "a@b.c" },
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { email: "a@b.c", deletedAt: null },
     });
   });
 
@@ -96,11 +97,9 @@ describe("UsersService", () => {
     });
   });
 
-  it("deletes user", async () => {
-    await service.delete("u1");
-    expect(prisma.user.delete).toHaveBeenCalledWith({
-      where: { id: "u1" },
-      select: safeUserSelect,
-    });
+  it("never hard-deletes users", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+    await expect(service.delete("u1")).rejects.toThrow("User not found");
+    expect(prisma.user.delete).not.toHaveBeenCalled();
   });
 });

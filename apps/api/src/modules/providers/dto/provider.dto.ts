@@ -279,6 +279,11 @@ export class ProviderQueryDto {
   @IsNumber()
   radius?: number;
 
+  /** Customer postcode: only providers whose service area covers it. */
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
   @IsOptional()
   @IsString()
   categoryId?: string;
@@ -293,11 +298,13 @@ export class ProviderQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
   limit?: number;
 }
 
@@ -309,11 +316,13 @@ export class ProviderRequestsQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
   limit?: number;
 }
 
@@ -337,11 +346,13 @@ export class ProviderReviewsQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
   limit?: number;
 }
 

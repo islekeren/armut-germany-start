@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { Header } from "@/components";
 import { useAuth } from "@/contexts";
 import {
@@ -22,6 +23,7 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 
@@ -66,18 +68,24 @@ const transformRequest = (
   context: {
     bookingsByRequestId: Map<string, CustomerBooking>;
     acceptedQuotesByRequestId: Map<string, Quote>;
+    locale: string;
   },
 ): RequestCard => {
+  const isGerman = context.locale.startsWith("de");
+  const dateLocale = isGerman ? "de-DE" : "en-US";
   const booking = context.bookingsByRequestId.get(request.id);
   const acceptedQuote = context.acceptedQuotesByRequestId.get(request.id);
 
   return {
     id: request.id,
     title: request.title,
-    category: request.category?.nameEn || request.category?.slug || request.categoryId,
+    category:
+      (isGerman ? request.category?.nameDe : request.category?.nameEn) ||
+      request.category?.slug ||
+      request.categoryId,
     categorySlug: request.category?.slug,
     status: mapApiStatus(request.status),
-    createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
+    createdAt: new Date(request.createdAt).toLocaleDateString(dateLocale, {
       month: "long",
       day: "numeric",
       year: "numeric",
@@ -96,7 +104,7 @@ const transformRequest = (
     acceptedQuoteId: acceptedQuote?.id,
     hasReview: Boolean(booking?.review),
     completedAt: booking?.completedAt
-      ? new Date(booking.completedAt).toLocaleDateString("en-US", {
+      ? new Date(booking.completedAt).toLocaleDateString(dateLocale, {
           month: "long",
           day: "numeric",
           year: "numeric",
@@ -105,10 +113,39 @@ const transformRequest = (
   };
 };
 
+const REQUEST_TABS = ["active", "booked", "completed", "cancelled"] as const;
+type RequestTab = (typeof REQUEST_TABS)[number];
+
+// Open requests are where the customer has something to do (compare and
+// accept offers), and where a freshly created request lands, so they are the
+// default. Other tabs are addressable via ?tab=.
+function parseRequestTab(value: string | null): RequestTab {
+  return REQUEST_TABS.includes(value as RequestTab)
+    ? (value as RequestTab)
+    : "active";
+}
+
 export default function MyRequestsPage() {
   const t = useTranslations("customer.requests");
+  const describeError = useApiErrorMessage();
+  const locale = useLocale();
   const { isAuthenticated } = useAuth();
-  const [filter, setFilter] = useState("booked");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const filter = parseRequestTab(searchParams.get("tab"));
+  const setFilter = (tab: RequestTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "active") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  };
   const [requests, setRequests] = useState<RequestCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +155,7 @@ export default function MyRequestsPage() {
   const fetchRequests = useCallback(async () => {
     const token = getStoredAccessToken();
     if (!token) {
-      setError("Please log in to view your requests");
+      setError(t("loginRequired"));
       setIsLoading(false);
       return;
     }
@@ -151,16 +188,17 @@ export default function MyRequestsPage() {
         transformRequest(request, {
           bookingsByRequestId,
           acceptedQuotesByRequestId,
+          locale,
         }),
       );
       setRequests(transformedRequests);
     } catch (err) {
       console.error("Failed to fetch requests:", err);
-      setError(err instanceof Error ? err.message : "Failed to load requests");
+      setError(describeError(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [locale, describeError, t]);
 
   useEffect(() => {
     fetchRequests();
@@ -196,7 +234,7 @@ export default function MyRequestsPage() {
       setSuccessMessage(t("deleteSuccess"));
     } catch (err) {
       console.error("Failed to delete request:", err);
-      setError(err instanceof Error ? err.message : t("deleteError"));
+      setError(describeError(err, t("deleteError")));
     } finally {
       setDeletingRequestId(null);
     }
@@ -262,22 +300,17 @@ export default function MyRequestsPage() {
 
         {/* Filters */}
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
-          {[
-            { id: "active", label: t("filters.active") },
-            { id: "booked", label: t("filters.booked") },
-            { id: "completed", label: t("filters.completed") },
-            { id: "cancelled", label: t("filters.cancelled") },
-          ].map((f) => (
+          {REQUEST_TABS.map((tab) => (
             <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
+              key={tab}
+              onClick={() => setFilter(tab)}
               className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ${
-                filter === f.id
+                filter === tab
                   ? "bg-primary text-white"
                   : "bg-white text-muted hover:bg-background"
               }`}
             >
-              {f.label}
+              {t(`filters.${tab}`)}
             </button>
           ))}
         </div>
@@ -306,12 +339,12 @@ export default function MyRequestsPage() {
                         <>
                           {sector && (
                             <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
-                              {getSectorLabel(sector)}
+                              {getSectorLabel(sector, locale)}
                             </span>
                           )}
                           {branch && (
                             <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                              {getBranchLabel(branch)}
+                              {getBranchLabel(branch, locale)}
                             </span>
                           )}
                         </>

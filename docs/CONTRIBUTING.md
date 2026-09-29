@@ -1,6 +1,6 @@
 # Contributing
 
-Updated for the repository state audited on July 27, 2026.
+Updated for the repository state audited on September 11, 2026.
 
 ## Working Style
 
@@ -15,12 +15,12 @@ The codebase mixes production-facing flows, dormant scaffolding, and a few known
 
 ## Current Baseline To Know Before Editing
 
-- root `npm run lint` currently fails on `apps/web/scripts/prepare-e2e.mjs` warnings
+- root `npm run lint` passes; API lint reports 9 warnings
 - root `npm run build` passes
 - root `npm run check-types` passes
-- API unit and e2e suites pass
+- API unit tests pass; e2e was not rerun in this audit because Docker was unavailable
 - web build passes
-- web type-check can be order-sensitive on a fresh checkout until `.next/types` exists
+- web type-check generates Next.js route types before running TypeScript and passes in the audited checkout
 
 Use [TESTING.md](./TESTING.md) as the source of truth for current command behavior.
 
@@ -38,7 +38,7 @@ Then create:
 - `apps/api/.env` from `apps/api/.env.example`
 - `apps/web/.env.local` from `apps/web/.env.example`
 
-See [ENVIRONMENT.md](./ENVIRONMENT.md) for the full env contract and current mismatches.
+See [ENVIRONMENT.md](./ENVIRONMENT.md) for the full env contract and configuration status.
 
 ## Repo-Specific Conventions
 
@@ -81,8 +81,6 @@ npm run build
 npm run check-types
 ```
 
-If `check-types` fails because `.next/types/cache-life.d.ts` is missing, run the build first and retry.
-
 ### Backend-only changes
 
 ```bash
@@ -114,11 +112,11 @@ Then add the relevant app-level checks.
 
 - `apps/mobile` is not an active workspace, even though the folder exists
 - the root `tsconfig.json` still extends Expo config
-- `apps/web/scripts/prepare-e2e.mjs` currently needs a Node/global ESLint fix
+- API lint currently reports 9 warnings
 - provider `services` and `finances` pages are placeholder experiences
 - `ServicesModule` and `ReviewsModule` are empty backend shells
 - deploy jobs in `.github/workflows/ci.yml` are placeholders
-- upload env names in `.env.example` and `UploadsService` do not match
+- upload env names in `.env.example` and `UploadsService` now match
 
 Unless your task is explicitly a cleanup pass, do not try to fix all of these at once.
 

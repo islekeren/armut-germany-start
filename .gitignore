@@ -18,6 +18,9 @@ coverage
 # Turbo
 .turbo
 
+# Local Git worktrees
+.worktrees/
+
 # Vercel
 .vercel
 
@@ -37,3 +40,6 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# Playwright output
+playwright-report/
+test-results/

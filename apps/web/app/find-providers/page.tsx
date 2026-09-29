@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header } from "@/components";
-import { getCategories, providersApi, type Category, type PublicProvider } from "@/lib/api";
+import {
+  ApiError,
+  getCategories,
+  providersApi,
+  type Category,
+  type PublicProvider,
+} from "@/lib/api";
 import {
   PROVIDER_SERVICE_BRANCHES,
   getProviderServiceBranchLabel,
 } from "@/lib/provider-service-taxonomy";
+import { formatEuroAmount } from "@/lib/bookings";
 
 export default function FindProvidersPage() {
   const t = useTranslations("findProviders");
@@ -22,6 +29,11 @@ export default function FindProvidersPage() {
   const [branchId, setBranchId] = useState("");
   const [minRating, setMinRating] = useState("");
   const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  // Only complete 5-digit postcodes are sent; partial input keeps the list.
+  const postalCodeFilter = /^\d{5}$/.test(postalCode.trim())
+    ? postalCode.trim()
+    : undefined;
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
 
@@ -64,19 +76,25 @@ export default function FindProvidersPage() {
         const providersData = await providersApi.getAll({
           categoryId: selectedCategory?.id,
           minRating: minRating ? Number(minRating) : undefined,
+          postalCode: postalCodeFilter,
           limit: 100,
         });
         setProviders(providersData.data);
       } catch (err) {
         console.error("Failed to load providers", err);
-        setError(t("loadError"));
+        setProviders([]);
+        setError(
+          err instanceof ApiError && err.status === 400 && postalCodeFilter
+            ? t("unknownPostalCode")
+            : t("loadError"),
+        );
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [branchId, minRating, t]);
+  }, [branchId, minRating, postalCodeFilter, t]);
 
   const filteredProviders = useMemo(() => {
     const min = priceMin ? Number(priceMin) : null;
@@ -116,8 +134,8 @@ export default function FindProvidersPage() {
     const min = Math.min(...prices);
     const max = Math.max(...prices);
 
-    if (min === max) return `€${min}`;
-    return `€${min} - €${max}`;
+    if (min === max) return formatEuroAmount(min, locale);
+    return `${formatEuroAmount(min, locale)} – ${formatEuroAmount(max, locale)}`;
   };
 
   return (
@@ -137,7 +155,7 @@ export default function FindProvidersPage() {
 
           <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">{t("filters.title")}</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <div>
                 <label className="mb-1 block text-sm text-muted">{t("filters.category")}</label>
                 <select
@@ -165,6 +183,19 @@ export default function FindProvidersPage() {
                   <option value="4">4+</option>
                   <option value="4.5">4.5+</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-muted">{t("filters.postalCode")}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder={t("filters.postalCodePlaceholder")}
+                  className="w-full rounded-lg border border-border px-3 py-2 focus:border-primary focus:outline-none"
+                />
               </div>
 
               <div>

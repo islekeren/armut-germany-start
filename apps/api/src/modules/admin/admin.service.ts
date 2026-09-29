@@ -3,8 +3,10 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { anonymizeUserAccount } from "../users/account-deletion";
 import { sanitizeUserResponse } from "../../common/security";
 import { getRequestTaxonomyCategoryBySlug } from "../../common/request-taxonomy";
 
@@ -163,21 +165,27 @@ export class AdminService {
   }
 
   async updateUser(id: string, data: { isVerified?: boolean }) {
+    const existing = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("User not found");
+    }
+
+    // Copy known fields only so a loosely typed caller cannot write others.
     const user = await this.prisma.user.update({
       where: { id },
-      data,
+      data: { isVerified: data.isVerified },
     });
 
     return sanitizeUserResponse(user);
   }
 
   async deleteUser(id: string) {
-    // Soft delete or hard delete based on requirements
-    const user = await this.prisma.user.delete({
-      where: { id },
-    });
-
-    return sanitizeUserResponse(user);
+    // Same anonymisation as self-service deletion; see account-deletion.ts.
+    return anonymizeUserAccount(this.prisma, id);
   }
 
   // ==================== Provider Management ====================
@@ -201,6 +209,15 @@ export class AdminService {
               lastName: true,
               phone: true,
               createdAt: true,
+            },
+          },
+          profile: {
+            select: { city: true, postalCode: true },
+          },
+          services: {
+            select: {
+              id: true,
+              category: { select: { nameDe: true, nameEn: true } },
             },
           },
         },
@@ -353,6 +370,14 @@ export class AdminService {
       );
     }
 
+    const duplicates = await this.prisma.category.count({
+      where: { slug: data.slug },
+    });
+
+    if (duplicates > 0) {
+      throw new ConflictException("Category already exists");
+    }
+
     if (canonicalCategory.kind === "sector") {
       if (data.parentId) {
         throw new BadRequestException(
@@ -409,7 +434,7 @@ export class AdminService {
       nameEn?: string;
       icon?: string;
       isActive?: boolean;
-    }
+    },
   ) {
     const existingCategory = await this.prisma.category.findUnique({
       where: { id },
@@ -473,7 +498,7 @@ export class AdminService {
 
     if (category._count.services > 0 || category._count.serviceRequests > 0) {
       throw new ForbiddenException(
-        "Cannot delete category with existing services or requests"
+        "Cannot delete category with existing services or requests",
       );
     }
 
@@ -507,7 +532,7 @@ export class AdminService {
         acc[date] = (acc[date] || 0) + booking.totalPrice;
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
 
     return {

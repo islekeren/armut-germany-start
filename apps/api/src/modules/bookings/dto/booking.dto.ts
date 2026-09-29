@@ -26,6 +26,11 @@ export class CreateBookingDto {
   scheduledDate: string;
 }
 
+export class RescheduleBookingDto {
+  @IsDateString()
+  scheduledDate: string;
+}
+
 export class UpdateBookingDto {
   @IsOptional()
   @IsDateString()
@@ -69,9 +74,11 @@ export class BookingQueryDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
   limit?: number;
 }

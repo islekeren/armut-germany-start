@@ -22,9 +22,11 @@ import {
   getRequestTitle,
   toDateTimeLocalValue,
 } from "@/lib/bookings";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function NewBookingPage() {
   const t = useTranslations("customer.bookings.create");
+  const describeError = useApiErrorMessage();
   const tBookings = useTranslations("customer.bookings");
   const locale = useLocale();
   const router = useRouter();
@@ -75,14 +77,14 @@ export default function NewBookingPage() {
         }
       } catch (err) {
         console.error("Failed to load accepted quote:", err);
-        setError(err instanceof Error ? err.message : t("loadError"));
+        setError(describeError(err, t("loadError")));
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchQuote();
-  }, [quoteId, t, tBookings]);
+  }, [quoteId, t, tBookings, describeError]);
 
   const handleMessageProvider = async () => {
     const token = getStoredAccessToken();
@@ -100,7 +102,7 @@ export default function NewBookingPage() {
       router.push(`/messages?conversation=${conversation.id}`);
     } catch (err) {
       console.error("Failed to start booking conversation:", err);
-      setError(err instanceof Error ? err.message : tBookings("messageError"));
+      setError(describeError(err, tBookings("messageError")));
     }
   };
 
@@ -129,7 +131,7 @@ export default function NewBookingPage() {
       router.replace(`/bookings/${booking.id}`);
     } catch (err) {
       console.error("Failed to create booking:", err);
-      setError(err instanceof Error ? err.message : t("createError"));
+      setError(describeError(err, t("createError")));
     } finally {
       setIsSubmitting(false);
     }

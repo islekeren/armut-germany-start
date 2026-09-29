@@ -38,21 +38,37 @@ export default async function Home() {
           </p>
 
           <div className="mx-auto max-w-3xl">
-            <div className="flex flex-col gap-4 rounded-lg bg-white p-4 md:flex-row">
+            {/* Searching starts a request: the service text picks the matching
+                category and the postcode is carried into the form. */}
+            <form
+              action="/create-request"
+              method="get"
+              className="flex flex-col gap-4 rounded-lg bg-white p-4 md:flex-row"
+            >
               <input
                 type="text"
+                name="q"
+                aria-label={t("hero.searchPlaceholder")}
                 placeholder={t("hero.searchPlaceholder")}
                 className="h-14 flex-1 rounded-md border-2 border-transparent bg-gray-100 px-4 text-foreground focus:border-primary focus:bg-white focus:outline-none"
               />
               <input
                 type="text"
+                name="postalCode"
+                inputMode="numeric"
+                pattern="[0-9]{5}"
+                maxLength={5}
+                aria-label={t("hero.postalCode")}
                 placeholder={t("hero.postalCode")}
                 className="h-14 w-full rounded-md border-2 border-transparent bg-gray-100 px-4 text-foreground focus:border-primary focus:bg-white focus:outline-none md:w-36"
               />
-              <button className="h-14 rounded-md bg-secondary px-8 text-sm font-semibold uppercase tracking-wide text-white transition-all duration-200 hover:scale-105 hover:bg-emerald-600">
+              <button
+                type="submit"
+                className="h-14 rounded-md bg-secondary px-8 text-sm font-semibold uppercase tracking-wide text-white transition-all duration-200 hover:scale-105 hover:bg-emerald-600"
+              >
                 {t("common.search")}
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </section>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { ProviderApprovalNotice } from "@/components/provider/ProviderApprovalNotice";
 import { useEffect, useState } from "react";
 import {
   providerApi,
@@ -16,6 +17,7 @@ import {
   getBookingDisplayStatusClass,
   toBookingDisplayStatus,
 } from "@/lib/bookings";
+import { formatEuroAmount } from "@/lib/bookings";
 
 // Initial empty state
 const initialData: DashboardData = {
@@ -62,14 +64,26 @@ export default function ProviderDashboard() {
             quotesApi.getMyQuotes(token),
           ]);
           // Format dates for display
+          const isGerman = locale.startsWith("de");
+          const formatBudget = (min?: number | null, max?: number | null) =>
+            typeof min === "number" && typeof max === "number"
+              ? t("budgetRange", { min, max })
+              : typeof min === "number"
+                ? t("budgetFrom", { min })
+                : typeof max === "number"
+                  ? t("budgetUpTo", { max })
+                  : t("budgetOnRequest");
           const formattedData = {
             ...dashboardData,
             recentRequests: dashboardData.recentRequests.map(r => ({
               ...r,
+              category: (isGerman && r.categoryDe) || r.category,
+              budget: formatBudget(r.budgetMin, r.budgetMax),
               date: new Date(r.date).toLocaleDateString(locale),
             })),
             activeBookings: dashboardData.activeBookings.map(b => ({
               ...b,
+              service: (isGerman && b.serviceDe) || b.service,
               date: new Date(b.date).toLocaleDateString(locale),
               time: new Date(b.date).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
             }))
@@ -279,12 +293,14 @@ export default function ProviderDashboard() {
             {/* Welcome */}
             <div className="mb-8">
               <h1 className="text-xl font-bold sm:text-2xl">
-                {t("welcomeBack", { name: user?.firstName || "Provider" })}
+                {t("welcomeBack", { name: user?.firstName ?? "" })}
               </h1>
               <p className="text-sm text-muted sm:text-base">
                 {t("activityOverview")}
               </p>
             </div>
+
+            <ProviderApprovalNotice className="mb-8" />
 
             {/* Stats */}
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -435,7 +451,7 @@ export default function ProviderDashboard() {
                           </span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm">
-                          <span className="font-medium text-secondary">€{offer.price}</span>
+                          <span className="font-medium text-secondary">{formatEuroAmount(offer.price, locale)}</span>
                           <span className="text-muted">{offer.createdAt}</span>
                         </div>
                         <p className="mt-2 text-xs text-muted">

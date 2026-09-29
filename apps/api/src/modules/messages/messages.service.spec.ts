@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { MessagesService } from "./messages.service";
 
 describe("MessagesService", () => {
@@ -16,6 +20,12 @@ describe("MessagesService", () => {
       create: jest.fn(),
       updateMany: jest.fn(),
     },
+    user: {
+      findFirst: jest.fn(),
+    },
+    serviceRequest: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(),
   };
 
@@ -23,14 +33,38 @@ describe("MessagesService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.user.findFirst.mockResolvedValue({ id: "u2" });
+    prisma.serviceRequest.findUnique.mockResolvedValue({ id: "r1" });
     service = new MessagesService(prisma as any);
+  });
+
+  it("rejects conversations with yourself", async () => {
+    await expect(
+      service.createConversation("u1", { participantId: "u1" } as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects unknown participants and requests", async () => {
+    prisma.user.findFirst.mockResolvedValueOnce(null);
+    await expect(
+      service.createConversation("u1", { participantId: "ghost" } as any),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    prisma.serviceRequest.findUnique.mockResolvedValueOnce(null);
+    await expect(
+      service.createConversation("u1", {
+        participantId: "u2",
+        requestId: "nope",
+      } as any),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.conversation.create).not.toHaveBeenCalled();
   });
 
   it("returns existing conversation when already present", async () => {
     prisma.conversation.findFirst.mockResolvedValue({ id: "c1" });
 
     await expect(
-      service.createConversation("u1", { participantId: "u2" } as any)
+      service.createConversation("u1", { participantId: "u2" } as any),
     ).resolves.toEqual({ id: "c1" });
     expect(prisma.conversation.create).not.toHaveBeenCalled();
   });
@@ -40,7 +74,10 @@ describe("MessagesService", () => {
     prisma.conversation.create.mockResolvedValue({ id: "c2" });
 
     await expect(
-      service.createConversation("u1", { participantId: "u2", requestId: "r1" } as any)
+      service.createConversation("u1", {
+        participantId: "u2",
+        requestId: "r1",
+      } as any),
     ).resolves.toEqual({ id: "c2" });
     expect(prisma.conversation.create).toHaveBeenCalledTimes(1);
   });
@@ -82,16 +119,16 @@ describe("MessagesService", () => {
       });
 
     await expect(service.getConversation("missing", "u1")).rejects.toThrow(
-      NotFoundException
+      NotFoundException,
     );
     await expect(service.getConversation("c1", "u1")).rejects.toThrow(
-      ForbiddenException
+      ForbiddenException,
     );
     await expect(service.getConversation("c1", "u1")).resolves.toEqual(
       expect.objectContaining({
         id: "c1",
         otherParticipant: { id: "u2" },
-      })
+      }),
     );
   });
 
@@ -126,8 +163,12 @@ describe("MessagesService", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: "c1", participants: [{ userId: "u2" }] });
 
-    await expect(service.getMessages("c1", "u1")).rejects.toThrow(NotFoundException);
-    await expect(service.getMessages("c1", "u1")).rejects.toThrow(ForbiddenException);
+    await expect(service.getMessages("c1", "u1")).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(service.getMessages("c1", "u1")).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it("sends a message through transaction", async () => {
@@ -140,7 +181,7 @@ describe("MessagesService", () => {
     prisma.$transaction.mockResolvedValue([{ id: "m1", content: "hi" }]);
 
     await expect(
-      service.sendMessage("u1", { conversationId: "c1", content: "hi" } as any)
+      service.sendMessage("u1", { conversationId: "c1", content: "hi" } as any),
     ).resolves.toEqual({ id: "m1", content: "hi" });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
@@ -152,8 +193,12 @@ describe("MessagesService", () => {
       .mockResolvedValueOnce({ id: "c1", participants: [{ userId: "u1" }] });
     prisma.message.updateMany.mockResolvedValue({ count: 3 });
 
-    await expect(service.markAsRead("c1", "u1")).rejects.toThrow(NotFoundException);
-    await expect(service.markAsRead("c1", "u1")).rejects.toThrow(ForbiddenException);
+    await expect(service.markAsRead("c1", "u1")).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(service.markAsRead("c1", "u1")).rejects.toThrow(
+      ForbiddenException,
+    );
     await expect(service.markAsRead("c1", "u1")).resolves.toEqual({
       success: true,
     });
@@ -161,6 +206,8 @@ describe("MessagesService", () => {
 
   it("returns unread count", async () => {
     prisma.message.count.mockResolvedValue(7);
-    await expect(service.getUnreadCount("u1")).resolves.toEqual({ unreadCount: 7 });
+    await expect(service.getUnreadCount("u1")).resolves.toEqual({
+      unreadCount: 7,
+    });
   });
 });

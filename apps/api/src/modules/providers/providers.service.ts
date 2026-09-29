@@ -14,6 +14,15 @@ import {
   ProviderOpeningHourDto,
   ProviderQueryDto,
 } from "./dto/provider.dto";
+import {
+  boundingBox,
+  distanceKm,
+  hasCoordinates,
+  lookupPostcode,
+} from "../../common/geo/postcode-geo";
+
+// Matches the @Max on serviceAreaRadius in the provider DTOs.
+const MAX_SERVICE_RADIUS_KM = 100;
 
 @Injectable()
 export class ProvidersService {
@@ -202,10 +211,20 @@ export class ProvidersService {
       user.email;
     const profileSlug = await this.generateUniqueProfileSlug(slugLabel);
 
+    // The web client has no geocoder and sends 0,0; derive the service-area
+    // centre from the business postcode so request matching by radius works.
+    const serviceAreaCenter = lookupPostcode(postalCode);
+
     return this.prisma.provider.create({
       data: {
         userId,
         ...providerData,
+        ...(serviceAreaCenter
+          ? {
+              serviceAreaLat: serviceAreaCenter.lat,
+              serviceAreaLng: serviceAreaCenter.lng,
+            }
+          : {}),
         profile: {
           create: {
             slug: profileSlug,
@@ -249,6 +268,7 @@ export class ProvidersService {
       lat,
       lng,
       radius,
+      postalCode,
       categoryId,
       minRating,
       page = 1,
@@ -298,6 +318,46 @@ export class ProvidersService {
         },
       },
     };
+
+    if (postalCode) {
+      // Customer-centric search: keep providers whose own service radius
+      // reaches the customer's postcode.
+      const customerPoint = lookupPostcode(postalCode);
+      if (!customerPoint) {
+        throw new BadRequestException("Unknown postal code");
+      }
+
+      const box = boundingBox(customerPoint, MAX_SERVICE_RADIUS_KM);
+      const providers = await this.prisma.provider.findMany({
+        where: {
+          ...where,
+          serviceAreaLat: { gte: box.minLat, lte: box.maxLat },
+          serviceAreaLng: { gte: box.minLng, lte: box.maxLng },
+        },
+        orderBy: { ratingAvg: "desc" },
+        include: providerInclude,
+      });
+
+      const servingProviders = providers.filter(
+        (provider) =>
+          hasCoordinates(provider.serviceAreaLat, provider.serviceAreaLng) &&
+          distanceKm(customerPoint, {
+            lat: provider.serviceAreaLat,
+            lng: provider.serviceAreaLng,
+          }) <= provider.serviceAreaRadius,
+      );
+      const total = servingProviders.length;
+
+      return {
+        data: servingProviders.slice(skip, skip + limit),
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }
 
     if (hasDistanceFilter) {
       const boundingBox = this.getBoundingBox(lat, lng, radius);
@@ -377,17 +437,17 @@ export class ProvidersService {
     };
   }
 
+  // Public endpoint: only approved (and therefore not deleted) providers,
+  // and no private contact details.
   async findOne(id: string) {
-    const provider = await this.prisma.provider.findUnique({
-      where: { id },
+    const provider = await this.prisma.provider.findFirst({
+      where: { id, isApproved: true },
       include: {
         user: {
           select: {
             id: true,
-            email: true,
             firstName: true,
             lastName: true,
-            phone: true,
             profileImage: true,
           },
         },
@@ -625,6 +685,18 @@ export class ProvidersService {
     }
     if (normalizedPhone !== undefined) {
       userUpdateData.phone = normalizedPhone;
+    }
+
+    // Keep the service-area centre in sync with the business postcode.
+    if (normalizedPostalCode !== undefined) {
+      const serviceAreaCenter = lookupPostcode(normalizedPostalCode);
+      if (serviceAreaCenter) {
+        providerData.serviceAreaLat = serviceAreaCenter.lat;
+        providerData.serviceAreaLng = serviceAreaCenter.lng;
+      } else if (normalizedPostalCode === null) {
+        providerData.serviceAreaLat = 0;
+        providerData.serviceAreaLng = 0;
+      }
     }
 
     const servicePriceData: any = {};
@@ -930,6 +1002,62 @@ export class ProvidersService {
     };
   }
 
+  /**
+   * Ids of open requests matching `where` that lie inside the provider's
+   * service radius, newest first. Returns null when the provider has no
+   * location yet, meaning "do not filter by distance".
+   */
+  private async findRequestIdsInServiceArea(
+    provider: {
+      serviceAreaLat: number;
+      serviceAreaLng: number;
+      serviceAreaRadius: number;
+    },
+    where: Record<string, unknown>,
+  ): Promise<string[] | null> {
+    if (!hasCoordinates(provider.serviceAreaLat, provider.serviceAreaLng)) {
+      return null;
+    }
+
+    const center = { lat: provider.serviceAreaLat, lng: provider.serviceAreaLng };
+    const radius = provider.serviceAreaRadius;
+    const box = boundingBox(center, radius);
+
+    const candidates = await this.prisma.serviceRequest.findMany({
+      where: {
+        ...where,
+        lat: { gte: box.minLat, lte: box.maxLat },
+        lng: { gte: box.minLng, lte: box.maxLng },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, lat: true, lng: true },
+    });
+
+    return candidates
+      .filter((candidate) => distanceKm(center, candidate) <= radius)
+      .map((candidate) => candidate.id);
+  }
+
+  private isInServiceArea(
+    provider: {
+      serviceAreaLat: number;
+      serviceAreaLng: number;
+      serviceAreaRadius: number;
+    },
+    request: { lat: number; lng: number },
+  ) {
+    if (!hasCoordinates(provider.serviceAreaLat, provider.serviceAreaLng)) {
+      return true;
+    }
+    if (!hasCoordinates(request.lat, request.lng)) return false;
+    return (
+      distanceKm(
+        { lat: provider.serviceAreaLat, lng: provider.serviceAreaLng },
+        request,
+      ) <= provider.serviceAreaRadius
+    );
+  }
+
   async getDashboard(userId: string) {
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
@@ -946,6 +1074,19 @@ export class ProvidersService {
     }
 
     const categoryIds = provider.services.map((s) => s.categoryId);
+    const openInCategories = {
+      status: "open" as const,
+      categoryId: { in: categoryIds },
+    };
+    const areaRequestIds = await this.findRequestIdsInServiceArea(
+      provider,
+      openInCategories,
+    );
+    // Same scope as the request feed: provider categories and, once the
+    // provider has a location, their service radius.
+    const requestScope = areaRequestIds
+      ? { id: { in: areaRequestIds } }
+      : openInCategories;
 
     const [
       newRequestsCount,
@@ -954,12 +1095,9 @@ export class ProvidersService {
       recentRequests,
       activeBookings,
     ] = await Promise.all([
-      // New Requests (Open requests in provider's categories)
+      // New Requests (Open requests in provider's categories and area)
       this.prisma.serviceRequest.count({
-        where: {
-          status: "open",
-          categoryId: { in: categoryIds },
-        },
+        where: requestScope,
       }),
       // Active Orders
       this.prisma.booking.count({
@@ -979,10 +1117,7 @@ export class ProvidersService {
       }),
       // Recent Requests List
       this.prisma.serviceRequest.findMany({
-        where: {
-          status: "open",
-          categoryId: { in: categoryIds },
-        },
+        where: requestScope,
         orderBy: { createdAt: "desc" },
         take: 3,
         include: {
@@ -1017,13 +1152,18 @@ export class ProvidersService {
     const openRecentRequests = recentRequests.map((req) => ({
       id: req.id,
       title: req.title,
-      category: req.category.nameEn, // Or nameDe based on locale, but using EN for now
+      // `category`/`budget` are kept for existing clients; the web app
+      // localizes from categoryDe and the raw budget values.
+      category: req.category.nameEn,
+      categoryDe: req.category.nameDe,
       location: `${req.postalCode} ${req.city}`,
       date: req.createdAt,
       budget:
         req.budgetMin && req.budgetMax
           ? `${req.budgetMin}-${req.budgetMax}€`
           : "Custom",
+      budgetMin: req.budgetMin,
+      budgetMax: req.budgetMax,
       sortDate: req.createdAt,
     }));
 
@@ -1036,6 +1176,7 @@ export class ProvidersService {
       id: booking.id,
       customer: `${booking.customer.firstName} ${booking.customer.lastName}`,
       service: booking.quote.request.category.nameEn,
+      serviceDe: booking.quote.request.category.nameDe,
       date: booking.scheduledDate,
       time: booking.scheduledDate, // Frontend will format this
       status: booking.status,
@@ -1143,11 +1284,21 @@ export class ProvidersService {
       }
     }
 
+    // Only requests inside the provider's service radius. The distance check
+    // runs in memory on a bounding-box prefilter, so paging happens on ids.
+    const areaRequestIds = await this.findRequestIdsInServiceArea(
+      provider,
+      where,
+    );
+    const pageWhere = areaRequestIds
+      ? { id: { in: areaRequestIds.slice(skip, skip + limit) } }
+      : where;
+
     const [requests, total] = await Promise.all([
       this.prisma.serviceRequest.findMany({
-        where,
-        skip,
-        take: limit,
+        where: pageWhere,
+        skip: areaRequestIds ? undefined : skip,
+        take: areaRequestIds ? undefined : limit,
         orderBy: { createdAt: "desc" },
         include: {
           category: true,
@@ -1170,7 +1321,9 @@ export class ProvidersService {
           },
         },
       }),
-      this.prisma.serviceRequest.count({ where }),
+      areaRequestIds
+        ? Promise.resolve(areaRequestIds.length)
+        : this.prisma.serviceRequest.count({ where }),
     ]);
 
     return {
@@ -1262,7 +1415,7 @@ export class ProvidersService {
       },
     });
 
-    if (!request) {
+    if (!request || !this.isInServiceArea(provider, request)) {
       throw new NotFoundException("Request not found");
     }
 

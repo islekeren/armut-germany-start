@@ -1,9 +1,10 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import request from "supertest";
-import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/common/prisma/prisma.service";
+import { createTestApp } from "./e2e-utils";
 
+// Smoke tests for routing, validation, and guards. Prisma is mocked so this
+// suite needs no database; the other e2e specs cover real persistence.
 describe("AppController (e2e)", () => {
   let app: INestApplication;
 
@@ -25,23 +26,9 @@ describe("AppController (e2e)", () => {
       $disconnect: jest.fn(),
     };
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PrismaService)
-      .useValue(prisma)
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      })
+    app = await createTestApp((builder) =>
+      builder.overrideProvider(PrismaService).useValue(prisma),
     );
-    app.setGlobalPrefix("api");
-    await app.init();
   });
 
   afterEach(async () => {

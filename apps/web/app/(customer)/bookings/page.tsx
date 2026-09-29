@@ -13,6 +13,7 @@ import {
   getProviderDisplayName,
   toBookingDisplayStatus,
 } from "@/lib/bookings";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 type BookingFilter = "all" | "upcoming" | "completed" | "cancelled";
 
@@ -24,6 +25,7 @@ function canLeaveReview(booking: CustomerBooking) {
 
 export default function CustomerBookingsPage() {
   const t = useTranslations("customer.bookings");
+  const describeError = useApiErrorMessage();
   const locale = useLocale();
   const [bookings, setBookings] = useState<CustomerBooking[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<CustomerBooking[]>([]);
@@ -52,14 +54,14 @@ export default function CustomerBookingsPage() {
         setUpcomingBookings(upcoming);
       } catch (err) {
         console.error("Failed to load customer bookings:", err);
-        setError(err instanceof Error ? err.message : t("loadError"));
+        setError(describeError(err, t("loadError")));
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchBookings();
-  }, [t]);
+  }, [t, describeError]);
 
   const filteredBookings = useMemo(() => {
     if (filter === "all") {

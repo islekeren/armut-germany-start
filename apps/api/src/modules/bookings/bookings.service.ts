@@ -67,8 +67,10 @@ export class BookingsService {
         data: {
           conversationId: conversation.id,
           senderId: providerUserId,
+          // The recipient's language is unknown here, so the automated
+          // message carries both languages.
           content:
-            "I have completed this job. Please review and confirm completion.",
+            "Ich habe den Auftrag erledigt. Bitte prüfen und bestätigen Sie den Abschluss.\n\nI have completed this job. Please review and confirm completion.",
           attachments: [],
         },
       }),
@@ -106,6 +108,10 @@ export class BookingsService {
 
     if (existingBooking) {
       throw new BadRequestException("Booking already exists for this quote");
+    }
+
+    if (new Date(createBookingDto.scheduledDate).getTime() <= Date.now()) {
+      throw new BadRequestException("Scheduled date must be in the future");
     }
 
     return this.prisma.booking.create({
@@ -482,6 +488,21 @@ export class BookingsService {
       });
     }
 
+    if (status === "cancelled") {
+      // Give the customer a way forward: reopen the request so new quotes can
+      // arrive, and retire the booked quote so it can't be accepted again.
+      await this.prisma.$transaction([
+        this.prisma.quote.update({
+          where: { id: booking.quoteId },
+          data: { status: "rejected" },
+        }),
+        this.prisma.serviceRequest.updateMany({
+          where: { id: booking.quote.requestId, status: "in_progress" },
+          data: { status: "open" },
+        }),
+      ]);
+    }
+
     const updatedBooking = await this.prisma.booking.update({
       where: { id },
       data: updateData,
@@ -531,6 +552,7 @@ export class BookingsService {
           metadata: {
             bookingId: updatedBooking.id,
             requestId,
+            requestTitle,
           },
         });
       }
@@ -554,6 +576,8 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
+              audience: "customer",
             },
           }),
         );
@@ -567,6 +591,8 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
+              audience: "provider",
             },
           }),
         );
@@ -594,7 +620,9 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
               previousStatus,
+              cancelledBy: actorLabel,
             },
           }),
         );
@@ -608,7 +636,9 @@ export class BookingsService {
             metadata: {
               bookingId: updatedBooking.id,
               requestId,
+              requestTitle,
               previousStatus,
+              cancelledBy: actorLabel,
             },
           }),
         );
@@ -634,6 +664,10 @@ export class BookingsService {
 
     if (!["pending", "confirmed"].includes(booking.status)) {
       throw new BadRequestException("Cannot reschedule booking at this stage");
+    }
+
+    if (new Date(scheduledDate).getTime() <= Date.now()) {
+      throw new BadRequestException("Scheduled date must be in the future");
     }
 
     return this.prisma.booking.update({

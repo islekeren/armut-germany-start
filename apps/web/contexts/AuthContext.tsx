@@ -10,7 +10,7 @@ import {
 } from "react";
 import {
   authApi,
-  isApiUnavailableError,
+  isTransientApiError,
   type User,
   type LoginData,
   type RegisterData,
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(USER_KEY, JSON.stringify(userData));
           setUser(userData);
         } catch (error) {
-          if (isApiUnavailableError(error)) {
+          if (isTransientApiError(error)) {
             return;
           }
 
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const response = await authApi.refreshToken(refreshToken);
               storeAuthData(response.accessToken, response.refreshToken, response.user);
             } catch (refreshError) {
-              if (isApiUnavailableError(refreshError)) {
+              if (isTransientApiError(refreshError)) {
                 return;
               }
 

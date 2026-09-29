@@ -28,8 +28,8 @@ describe("bookings helpers", () => {
   });
 
   it("falls back gracefully when request details are missing", () => {
-    expect(getRequestTitle(null)).toBe("Service request");
-    expect(getRequestLocation(null)).toBe("Location not provided");
+    expect(getRequestTitle(null)).toBe("–");
+    expect(getRequestLocation(null)).toBe("–");
 
     expect(
       getRequestLocation(

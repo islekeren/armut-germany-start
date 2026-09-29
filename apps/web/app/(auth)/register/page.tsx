@@ -2,14 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { FormInput, FormLabel, SimpleHeader } from "@/components";
 import { useAuth } from "@/contexts";
+import { getSafeRedirect } from "@/lib/safe-redirect";
+import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function RegisterPage() {
   const t = useTranslations();
+  const describeError = useApiErrorMessage();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo = getSafeRedirect(redirectParam);
+  const loginHref = redirectParam
+    ? `/login?redirect=${encodeURIComponent(redirectTo)}`
+    : "/login";
   const { register, isAuthenticated, isLoading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
@@ -26,9 +35,9 @@ export default function RegisterPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push("/");
+      router.push(redirectTo);
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, redirectTo, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,9 +74,9 @@ export default function RegisterPage() {
         gdprConsent: formData.gdprConsent,
       };
       await register(registerData);
-      router.push("/");
+      router.push(redirectTo);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("auth.register.errorDefault"));
+      setError(describeError(err, t("auth.register.errorDefault")));
     } finally {
       setIsLoading(false);
     }
@@ -241,7 +250,7 @@ export default function RegisterPage() {
 
           <div className="mt-6 text-center text-sm text-muted">
             {t("auth.register.hasAccount")}{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link href={loginHref} className="text-primary hover:underline">
               {t("auth.register.loginNow")}
             </Link>
           </div>

@@ -1,6 +1,8 @@
 # Stripe sandbox setup
 
-This project uses Stripe Connect Accounts v2, hosted Checkout, and separate charges and transfers in test mode. The platform collects a booking payment, retains a 15% gross commission, and releases the provider's 85% share only after the customer confirms completion.
+This project uses Stripe Connect Accounts v2, hosted Checkout, and separate charges and transfers in test mode. The platform collects a booking payment, retains the configured commission (15% by default), and releases the remaining provider share only after the customer confirms completion.
+
+The implementation currently lives on `codex/stripe-connect-payments` and is not released from `main`. Use this guide only while reviewing and validating that feature branch.
 
 ## 1. Configure a test-mode API key
 
@@ -61,7 +63,7 @@ Expected lifecycle:
 2. No provider transfer exists yet.
 3. The provider requests completion.
 4. The customer confirms completion.
-5. One idempotent transfer sends 85% to the provider account.
+5. One idempotent transfer sends the configured provider share (85% by default) to the provider account.
 6. A later full refund or dispute reverses that transfer once.
 
 ## 5. Inspect the sandbox

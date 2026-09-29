@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Header } from "@/components";
 import {
   bookingsApi,
@@ -22,6 +22,8 @@ import {
   getSectorById,
   getSectorLabel,
 } from "@/lib/request-taxonomy";
+import { useApiErrorMessage } from "@/lib/api-errors";
+import { formatEuroAmount } from "@/lib/bookings";
 
 type DisplayRequestStatus = "active" | "booked" | "completed" | "cancelled";
 type SortOption = "priceAsc" | "priceDesc" | "bestRating" | "newest";
@@ -56,41 +58,64 @@ const mapApiStatus = (status: string): DisplayRequestStatus => {
   }
 };
 
-const transformRequest = (request: ServiceRequest): RequestViewModel => ({
-  id: request.id,
-  title: request.title,
-  category: request.category?.nameEn || request.category?.slug || request.categoryId,
-  categorySlug: request.category?.slug,
-  requestSector: request.requestSector,
-  requestBranch: request.requestBranch,
-  status: mapApiStatus(request.status),
-  createdAt: new Date(request.createdAt).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }),
-  location: `${request.postalCode} ${request.city}`,
-  description: request.description,
-  preferredDate: request.preferredDate
-    ? new Date(request.preferredDate).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "Flexible",
-  budget:
-    request.budgetMin !== undefined && request.budgetMax !== undefined
-      ? `€${request.budgetMin}-${request.budgetMax}`
-      : request.budgetMin !== undefined
-        ? `€${request.budgetMin}+`
-        : request.budgetMax !== undefined
-          ? `Up to €${request.budgetMax}`
-          : "Flexible",
-});
+type RequestLabels = {
+  flexible: string;
+  budgetRange: (min: number, max: number) => string;
+  budgetFrom: (min: number) => string;
+  budgetUpTo: (max: number) => string;
+};
+
+const isAmount = (value: number | null | undefined): value is number =>
+  typeof value === "number";
+
+const transformRequest = (
+  request: ServiceRequest,
+  locale: string,
+  labels: RequestLabels,
+): RequestViewModel => {
+  const dateLocale = locale.startsWith("de") ? "de-DE" : "en-US";
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString(dateLocale, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  const categoryName = locale.startsWith("de")
+    ? request.category?.nameDe
+    : request.category?.nameEn;
+
+  return {
+    id: request.id,
+    title: request.title,
+    category: categoryName || request.category?.slug || request.categoryId,
+    categorySlug: request.category?.slug,
+    requestSector: request.requestSector,
+    requestBranch: request.requestBranch,
+    status: mapApiStatus(request.status),
+    createdAt: formatDate(request.createdAt),
+    location: `${request.postalCode} ${request.city}`,
+    description: request.description,
+    preferredDate: request.preferredDate
+      ? formatDate(request.preferredDate)
+      : labels.flexible,
+    // The API sends null for a missing budget, so check for numbers rather
+    // than `undefined` (which rendered "€null-null").
+    budget:
+      isAmount(request.budgetMin) && isAmount(request.budgetMax)
+        ? labels.budgetRange(request.budgetMin, request.budgetMax)
+        : isAmount(request.budgetMin)
+          ? labels.budgetFrom(request.budgetMin)
+          : isAmount(request.budgetMax)
+            ? labels.budgetUpTo(request.budgetMax)
+            : labels.flexible,
+  };
+};
 
 export default function RequestDetailPage() {
   const t = useTranslations("customer.requestDetail");
+  const describeError = useApiErrorMessage();
   const tRequests = useTranslations("customer.requests");
+  const locale = useLocale();
   const params = useParams();
   const router = useRouter();
 
@@ -115,30 +140,36 @@ export default function RequestDetailPage() {
     }
 
     try {
-      const apiRequest = await requestsApi.getById(requestId);
-      setRequest(transformRequest(apiRequest));
-
       const token = getStoredAccessToken();
-      if (token) {
-        const [quoteData, bookingData] = await Promise.all([
-          quotesApi.getByRequest(token, requestId),
-          bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
-        ]);
-        setQuotes(quoteData);
-        setRequestBooking(
-          bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
-        );
-      } else {
-        setQuotes([]);
-        setRequestBooking(null);
+      if (!token) {
+        setError(t("loadError"));
+        return;
       }
+
+      const [apiRequest, quoteData, bookingData] = await Promise.all([
+        requestsApi.getById(requestId, token),
+        quotesApi.getByRequest(token, requestId),
+        bookingsApi.getCustomerBookings(token, { page: 1, limit: 100 }),
+      ]);
+      setRequest(
+        transformRequest(apiRequest, locale, {
+          flexible: t("flexible"),
+          budgetRange: (min, max) => t("budgetRange", { min, max }),
+          budgetFrom: (min) => t("budgetFrom", { min }),
+          budgetUpTo: (max) => t("budgetUpTo", { max }),
+        }),
+      );
+      setQuotes(quoteData);
+      setRequestBooking(
+        bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
+      );
     } catch (err) {
       console.error("Failed to load request details:", err);
-      setError(err instanceof Error ? err.message : t("loadError"));
+      setError(describeError(err, t("loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [requestId, t]);
+  }, [locale, requestId, t, describeError]);
 
   useEffect(() => {
     loadData();
@@ -161,10 +192,20 @@ export default function RequestDetailPage() {
     return result;
   }, [quotes, sortBy]);
 
-  const handleAcceptQuote = async (quoteId: string) => {
+  const handleAcceptQuote = async (quote: Quote, providerName: string) => {
+    const quoteId = quote.id;
     const token = getStoredAccessToken();
     if (!token) {
       setError(t("loginRequired"));
+      return;
+    }
+
+    // Accepting rejects every other quote on this request and cannot be undone.
+    if (
+      !window.confirm(
+        t("acceptConfirm", { provider: providerName, price: quote.price }),
+      )
+    ) {
       return;
     }
 
@@ -177,7 +218,7 @@ export default function RequestDetailPage() {
       router.push(`/bookings/new?quote=${quoteId}&accepted=1`);
     } catch (err) {
       console.error("Failed to accept quote:", err);
-      setError(err instanceof Error ? err.message : t("acceptError"));
+      setError(describeError(err, t("acceptError")));
     } finally {
       setIsAcceptingQuoteId(null);
     }
@@ -213,7 +254,7 @@ export default function RequestDetailPage() {
       router.push(`/messages?conversation=${conversation.id}`);
     } catch (err) {
       console.error("Failed to open conversation:", err);
-      setError(err instanceof Error ? err.message : t("messageError"));
+      setError(describeError(err, t("messageError")));
     }
   };
 
@@ -233,7 +274,7 @@ export default function RequestDetailPage() {
       router.push("/my-requests");
     } catch (err) {
       console.error("Failed to close request:", err);
-      setError(err instanceof Error ? err.message : t("closeError"));
+      setError(describeError(err, t("closeError")));
       setShowCloseConfirm(false);
     } finally {
       setIsClosing(false);
@@ -326,12 +367,12 @@ export default function RequestDetailPage() {
                       <>
                         {sector && (
                           <span className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
-                            {getSectorLabel(sector)}
+                            {getSectorLabel(sector, locale)}
                           </span>
                         )}
                         {branch && (
                           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                            {getBranchLabel(branch)}
+                            {getBranchLabel(branch, locale)}
                           </span>
                         )}
                       </>
@@ -439,13 +480,25 @@ export default function RequestDetailPage() {
                   `${quote.provider?.user.firstName || ""} ${
                     quote.provider?.user.lastName || ""
                   }`.trim() ||
-                  "Provider";
+                  "–";
                 const providerContact = `${quote.provider?.user.firstName || ""} ${
                   quote.provider?.user.lastName || ""
                 }`.trim();
-                const createdAt = new Date(quote.createdAt).toLocaleString();
-                const validUntil = new Date(quote.validUntil).toLocaleDateString();
-                const canAccept = quote.status === "pending";
+                const dateLocale = locale.startsWith("de") ? "de-DE" : "en-US";
+                const createdAt = new Date(quote.createdAt).toLocaleString(dateLocale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                });
+                const validUntil = new Date(quote.validUntil).toLocaleDateString(dateLocale);
+                const isExpired =
+                  quote.status === "expired" ||
+                  (quote.status === "pending" &&
+                    new Date(quote.validUntil).getTime() < Date.now());
+                const displayStatus = isExpired ? "expired" : quote.status;
+                const canAccept = quote.status === "pending" && !isExpired;
+                const memberSinceYear = quote.provider?.createdAt
+                  ? new Date(quote.provider.createdAt).getFullYear()
+                  : null;
                 const canBook = quote.status === "accepted";
 
                 return (
@@ -473,14 +526,16 @@ export default function RequestDetailPage() {
                               ({quote.provider?.totalReviews || 0} {t("reviews")})
                             </span>
                           </div>
-                          <p className="mt-1 text-xs text-muted">
-                            {t("memberSince")} -
-                          </p>
+                          {memberSinceYear && (
+                            <p className="mt-1 text-xs text-muted">
+                              {t("memberSince")} {memberSinceYear}
+                            </p>
+                          )}
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">{quote.price}€</div>
+                        <div className="text-2xl font-bold text-primary">{formatEuroAmount(quote.price, locale)}</div>
                         <div className="text-sm text-muted">{t("fixedPrice")}</div>
                       </div>
                     </div>
@@ -503,7 +558,7 @@ export default function RequestDetailPage() {
                         <button
                           onClick={() =>
                             canAccept
-                              ? handleAcceptQuote(quote.id)
+                              ? handleAcceptQuote(quote, providerName)
                               : canBook
                                 ? handleBookingAction(quote.id)
                                 : undefined
@@ -521,7 +576,7 @@ export default function RequestDetailPage() {
                                 ? requestBooking
                                   ? t("viewBooking")
                                   : t("completeBooking")
-                                : t(`quoteStatus.${quote.status}`)}
+                                : t(`quoteStatus.${displayStatus}`)}
                         </button>
                       </div>
                     </div>

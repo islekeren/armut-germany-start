@@ -1,6 +1,6 @@
 # API App
 
-Updated for the repository state audited on July 27, 2026.
+Updated for the repository state audited on September 11, 2026.
 
 ## Purpose
 
@@ -63,7 +63,7 @@ npm run db:seed
 
 ## Validation
 
-Observed on July 27, 2026:
+Observed on September 11, 2026, except for the historical e2e result noted below:
 
 - `npm run lint`: passes with 9 warnings
 - `npm run check-types`: passes
@@ -88,7 +88,7 @@ Environment caveat:
 - `ServicesModule` is still an empty shell
 - `ReviewsModule` is still an empty shell
 - a `Payment` model exists in Prisma, but no payments module was found
-- upload env names in `.env.example` do not match the names expected by `UploadsService`
+- upload env names in `.env.example` match the names expected by `UploadsService`
 
 ## Safe Change Notes
 

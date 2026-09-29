@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header, MessagesWorkspace } from "@/components";
 import { useAuth } from "@/contexts";
 import {
@@ -11,9 +11,14 @@ import {
   type ConversationItem,
   type MessageItem,
 } from "@/lib/api";
+import { useApiErrorMessage } from "@/lib/api-errors";
+
+const MESSAGE_POLL_INTERVAL_MS = 10_000;
 
 export default function MessagesPage() {
   const t = useTranslations("customer.messages");
+  const describeError = useApiErrorMessage();
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
@@ -34,13 +39,13 @@ export default function MessagesPage() {
   );
 
   const formatTime = (dateString: string) =>
-    new Date(dateString).toLocaleTimeString([], {
+    new Date(dateString).toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
     });
 
   const formatListTime = (dateString: string) =>
-    new Date(dateString).toLocaleString([], {
+    new Date(dateString).toLocaleString(locale, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -48,8 +53,12 @@ export default function MessagesPage() {
     });
 
   const getConversationLabel = (conversation: ConversationItem) => {
-    if (conversation.request?.category?.nameEn) {
-      return conversation.request.category.nameEn;
+    const category = conversation.request?.category;
+    const categoryName = locale.startsWith("de")
+      ? category?.nameDe
+      : category?.nameEn;
+    if (categoryName) {
+      return categoryName;
     }
     return t("conversationFallback");
   };
@@ -95,13 +104,13 @@ export default function MessagesPage() {
       });
     } catch (err) {
       console.error("Failed to load conversations:", err);
-      setError(err instanceof Error ? err.message : t("loadError"));
+      setError(describeError(err, t("loadError")));
     } finally {
       setIsLoadingConversations(false);
     }
-  }, [searchParams, t]);
+  }, [searchParams, t, describeError]);
 
-  const fetchMessages = useCallback(async (conversationId: string) => {
+  const fetchMessages = useCallback(async (conversationId: string, options?: { silent?: boolean }) => {
     const token = getStoredAccessToken();
     if (!token) {
       setError(t("loginRequired"));
@@ -109,7 +118,7 @@ export default function MessagesPage() {
     }
 
     try {
-      setIsLoadingMessages(true);
+      if (!options?.silent) setIsLoadingMessages(true);
       const result = await messagesApi.getMessages(token, conversationId, 1, 100);
       setMessages(result.data);
       await messagesApi.markAsRead(token, conversationId);
@@ -120,11 +129,13 @@ export default function MessagesPage() {
       );
     } catch (err) {
       console.error("Failed to load messages:", err);
-      setError(err instanceof Error ? err.message : t("loadMessagesError"));
+      if (!options?.silent) {
+        setError(describeError(err, t("loadMessagesError")));
+      }
     } finally {
       setIsLoadingMessages(false);
     }
-  }, [t]);
+  }, [t, describeError]);
 
   useEffect(() => {
     fetchConversations();
@@ -138,6 +149,20 @@ export default function MessagesPage() {
 
     fetchMessages(selectedConversationId);
   }, [selectedConversationId, fetchMessages]);
+
+  // No realtime client yet: poll while the tab is visible so new messages
+  // show up without a page reload.
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      fetchConversations();
+      if (selectedConversationId) {
+        fetchMessages(selectedConversationId, { silent: true });
+      }
+    }, MESSAGE_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [fetchConversations, fetchMessages, selectedConversationId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +187,7 @@ export default function MessagesPage() {
       await fetchConversations();
     } catch (err) {
       console.error("Failed to send message:", err);
-      setError(err instanceof Error ? err.message : t("sendError"));
+      setError(describeError(err, t("sendError")));
     } finally {
       setIsSending(false);
     }

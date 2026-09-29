@@ -31,6 +31,7 @@ describe("AuthService", () => {
     profileImage: null,
     isVerified: true,
     gdprConsent: true,
+    deletedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

@@ -8,6 +8,7 @@ import {
   getBookingDisplayStatusClass,
   toBookingDisplayStatus,
 } from "@/lib/bookings";
+import { formatEuroAmount } from "@/lib/bookings";
 
 export default function CalendarPage() {
   const t = useTranslations("provider.calendar");
@@ -105,7 +106,7 @@ export default function CalendarPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        {t("loading") || "Loading..."}
+        {t("loading")}
       </div>
     );
   }
@@ -247,7 +248,7 @@ export default function CalendarPage() {
                         <div className="mt-3 space-y-1 text-sm text-muted">
                           <div>🕐 {event.time} {t("oclock")}</div>
                           <div>📍 {event.address}</div>
-                          <div>💰 {event.totalPrice}€</div>
+                          <div>💰 {formatEuroAmount(event.totalPrice, locale)}</div>
                         </div>
                         <div className="mt-3 flex gap-2">
                           <button className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-background">

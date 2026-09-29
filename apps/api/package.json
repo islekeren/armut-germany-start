@@ -21,7 +21,9 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "npx ts-node prisma/seed.ts"
+    "db:seed": "npx ts-node prisma/seed.ts",
+    "admin:grant": "npx ts-node scripts/grant-admin.ts",
+    "geo:backfill": "npx ts-node scripts/backfill-geo.ts"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -80,6 +82,7 @@
     "node-emoji": "^1.11.0",
     "ora": "^9.0.0",
     "prisma": "^6.0.0",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.6",
     "typescript": "5.9.2"
