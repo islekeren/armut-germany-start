@@ -62,6 +62,8 @@ cp apps/api/.env.example apps/api/.env
 
 Authentication configuration is validated before the API starts. Both JWT secrets are required in every environment and must have no surrounding whitespace. Unless `NODE_ENV` is explicitly `development` or `test`, the secrets must differ and each must be at least 32 characters; common placeholder prefixes and repeated-character values are rejected. Generate independent random secrets and store them in the hosting secret manager. There are no built-in fallback secrets.
 
+For rotation, generate new independent values, update every API instance together, and restart them so HTTP and sockets use the same keys. This implementation has no overlapping key grace period: rotating the access key invalidates existing access tokens; rotating the refresh key invalidates existing refresh tokens. Clients whose tokens are invalidated must sign in again. Use coordinated rotation of both keys when invalidating all existing JWT sessions.
+
 See [STRIPE_SANDBOX.md](./STRIPE_SANDBOX.md) for the local Connect onboarding, webhook, payment, and delayed-transfer test flow.
 
 These payment variables describe the current `codex/stripe-connect-payments` checkout. The payment implementation has not yet been merged into `origin/main`, so production configuration should follow only after that branch is synchronized, reviewed, validated, and merged.
