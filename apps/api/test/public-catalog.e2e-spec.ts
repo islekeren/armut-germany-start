@@ -1,12 +1,16 @@
 import { type INestApplication } from "@nestjs/common";
 import request from "supertest";
 import {
+  bearer,
   closeTestApp,
+  createCompletedReviewFixture,
   createProviderFixture,
   createRequestFixture,
   createTestApp,
   createUserFixture,
   getCategoryBySlug,
+  loginAs,
+  prisma,
   resetAndSeedDatabase,
 } from "./e2e-utils";
 
@@ -120,6 +124,135 @@ describe("Public catalog (e2e)", () => {
       expect(munich.body.data).toHaveLength(0);
 
       await api().get("/api/providers?postalCode=00000").expect(400);
+    });
+
+    it("keeps populated verification and completed-booking data private on every public provider route", async () => {
+      const { provider, user } = await createProviderFixture({
+        email: "private-provider@example.com",
+        companyName: "Public Cleaning Co",
+      });
+      const taxId = "PRIVATE-TAX-987654321";
+      const document = "https://private.example.com/verification-secret.pdf";
+      await prisma.provider.update({
+        where: { id: provider.id },
+        data: { taxId, documents: [document] },
+      });
+      await prisma.providerProfile.update({
+        where: { providerId: provider.id },
+        data: { phoneVisible: false },
+      });
+      const { user: customer } = await createUserFixture({
+        email: "private-customer@example.com",
+      });
+      const { booking, quote, review } = await createCompletedReviewFixture({
+        customerId: customer.id,
+        providerId: provider.id,
+        providerUserId: user.id,
+      });
+
+      const assertPrivateDataAbsent = (payload: unknown) => {
+        const serialized = JSON.stringify(payload);
+        for (const secret of [
+          taxId,
+          document,
+          customer.id,
+          customer.email,
+          booking.id,
+          quote.id,
+          user.email,
+          user.phone!,
+        ]) {
+          expect(serialized).not.toContain(secret);
+        }
+        // Check keys recursively so a nested relation cannot silently reintroduce
+        // customer identity, transaction details, or verification records.
+        const visit = (value: unknown) => {
+          if (!value || typeof value !== "object") return;
+          for (const [key, child] of Object.entries(value)) {
+            expect([
+              "taxId",
+              "documents",
+              "bookings",
+              "customerId",
+              "reviewerId",
+              "revieweeId",
+              "bookingId",
+              "quoteId",
+              "scheduledDate",
+              "completedAt",
+              "totalPrice",
+              "paymentStatus",
+              "email",
+              "password",
+            ]).not.toContain(key);
+            visit(child);
+          }
+        };
+        visit(payload);
+      };
+
+      const category = await getCategoryBySlug("home-cleaning");
+      for (const query of [
+        "",
+        "?postalCode=10115",
+        "?lat=52.52&lng=13.405&radius=50",
+        `?categoryId=${category.id}&minRating=4`,
+      ]) {
+        const response = await api().get(`/api/providers${query}`).expect(200);
+        expect(response.body.meta.total).toBe(1);
+        const listed = response.body.data[0];
+        expect(listed).toMatchObject({
+          id: provider.id,
+          companyName: "Public Cleaning Co",
+          ratingAvg: 5,
+          serviceAreaRadius: 25,
+          profile: { city: "Berlin" },
+          services: [
+            {
+              categoryId: category.id,
+              priceMin: 40,
+              category: { slug: "home-cleaning" },
+            },
+          ],
+        });
+        assertPrivateDataAbsent(response.body);
+      }
+
+      const detail = await api()
+        .get(`/api/providers/${provider.id}`)
+        .expect(200);
+      expect(detail.body.id).toBe(provider.id);
+      assertPrivateDataAbsent(detail.body);
+
+      const profile = await api()
+        .get(`/api/providers/${provider.id}/profile`)
+        .expect(200);
+      assertPrivateDataAbsent(profile.body);
+      expect(profile.body.user.phone).toBeNull();
+      expect(profile.body.completedJobs).toBe(1);
+      expect(profile.body.reviews.items[0]).toMatchObject({
+        id: review.id,
+        rating: 5,
+        comment: "Excellent work and clear communication.",
+        service: { category: { slug: "home-cleaning" } },
+      });
+
+      // Redaction is specific to public routes; the owner keeps their records.
+      const { accessToken } = await loginAs(app, user.email);
+      const own = await api()
+        .get("/api/providers/me")
+        .set(bearer(accessToken))
+        .expect(200);
+      expect(own.body).toMatchObject({ taxId, documents: [document] });
+
+      await prisma.providerProfile.update({
+        where: { providerId: provider.id },
+        data: { phoneVisible: true },
+      });
+      const visible = await api()
+        .get(`/api/providers/${provider.id}/profile`)
+        .expect(200);
+      expect(visible.body.user.phone).toBe(user.phone);
     });
 
     it("serves provider details and the public profile", async () => {

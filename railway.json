@@ -14,7 +14,7 @@
   },
   "deploy": {
     "startCommand": "npm run start:prod --workspace=api",
-    "preDeployCommand": "npm run db:migrate:deploy --workspace=api && npm run db:seed --workspace=api",
+    "preDeployCommand": "npm run db:migrate:deploy --workspace=api",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",

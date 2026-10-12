@@ -11,15 +11,19 @@ import { UsersService } from "../users/users.service";
 import { RegisterDto, LoginDto, ChangePasswordDto } from "./dto/auth.dto";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { sanitizeUserResponse } from "../../common/security";
+import { getAuthSecrets, type AuthSecrets } from "../../common/security/auth-config";
 
 @Injectable()
 export class AuthService {
+  private readonly authSecrets: AuthSecrets;
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private prisma: PrismaService
-  ) {}
+  ) {
+    this.authSecrets = getAuthSecrets(configService);
+  }
 
   async register(registerDto: RegisterDto) {
     const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -67,7 +71,8 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get("JWT_REFRESH_SECRET") || "refresh-secret",
+        secret: this.authSecrets.refreshSecret,
+        algorithms: ["HS256"],
       });
 
       const user = await this.usersService.findById(payload.sub);
@@ -130,14 +135,14 @@ export class AuthService {
         { sub: userId },
         {
           expiresIn: "15m",
-          secret: this.configService.get("JWT_SECRET") || "secret",
+          secret: this.authSecrets.accessSecret,
         }
       ),
       this.jwtService.signAsync(
         { sub: userId },
         {
           expiresIn: "7d",
-          secret: this.configService.get("JWT_REFRESH_SECRET") || "refresh-secret",
+          secret: this.authSecrets.refreshSecret,
         }
       ),
     ]);

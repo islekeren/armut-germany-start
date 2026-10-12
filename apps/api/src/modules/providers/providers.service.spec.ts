@@ -25,7 +25,7 @@ describe("ProvidersService", () => {
     ratingAvg: 4.5,
     totalReviews: 10,
     isApproved: true,
-    documents: [],
+    documents: ["https://private.example.com/provider-verification.pdf"],
     createdAt: new Date(),
     updatedAt: new Date(),
     profile: {
@@ -336,6 +336,48 @@ describe("ProvidersService", () => {
     });
   });
 
+  describe("public provider query boundaries", () => {
+    it.each([
+      {},
+      { postalCode: "10115" },
+      { lat: 52.52, lng: 13.405, radius: 50 },
+    ])("allowlists discovery fields for search %j", async (query) => {
+      prisma.provider.findMany.mockResolvedValue([mockProvider]);
+      prisma.provider.count.mockResolvedValue(1);
+
+      await service.findAll(query);
+
+      const selection = prisma.provider.findMany.mock.calls[0][0].select;
+      expect(selection).toBeDefined();
+      expect(selection).not.toHaveProperty("taxId");
+      expect(selection).not.toHaveProperty("documents");
+      expect(selection).not.toHaveProperty("bookings");
+      expect(selection.user.select).not.toHaveProperty("email");
+      expect(selection.user.select).not.toHaveProperty("phone");
+      expect(selection.services.select.category.select).toMatchObject({
+        id: true,
+        slug: true,
+        nameEn: true,
+        nameDe: true,
+        icon: true,
+      });
+    });
+
+    it("never fetches verification or booking records for public detail", async () => {
+      prisma.provider.findFirst.mockResolvedValue(mockProvider);
+
+      await service.findOne("provider-1");
+
+      const selection = prisma.provider.findFirst.mock.calls[0][0].select;
+      expect(selection).toBeDefined();
+      expect(selection).not.toHaveProperty("taxId");
+      expect(selection).not.toHaveProperty("documents");
+      expect(selection).not.toHaveProperty("bookings");
+      expect(selection.user.select).not.toHaveProperty("email");
+      expect(selection.user.select).not.toHaveProperty("phone");
+    });
+  });
+
   describe("findOne", () => {
     it("should return an approved provider by id without contact details", async () => {
       prisma.provider.findFirst.mockResolvedValue(mockProvider);
@@ -345,8 +387,8 @@ describe("ProvidersService", () => {
       expect(result).toEqual(mockProvider);
       const query = prisma.provider.findFirst.mock.calls[0][0];
       expect(query.where).toEqual({ id: "provider-1", isApproved: true });
-      expect(query.include.user.select).not.toHaveProperty("email");
-      expect(query.include.user.select).not.toHaveProperty("phone");
+      expect(query.select.user.select).not.toHaveProperty("email");
+      expect(query.select.user.select).not.toHaveProperty("phone");
     });
 
     it("should throw NotFoundException if provider not found", async () => {
@@ -503,16 +545,33 @@ describe("ProvidersService", () => {
     it("keeps only providers whose service radius reaches the postcode", async () => {
       prisma.provider.findMany.mockResolvedValue([
         // Berlin, 25 km radius: covers 10115 (Berlin-Mitte).
-        { id: "berlin", serviceAreaLat: 52.52, serviceAreaLng: 13.405, serviceAreaRadius: 25 },
+        {
+          id: "berlin",
+          serviceAreaLat: 52.52,
+          serviceAreaLng: 13.405,
+          serviceAreaRadius: 25,
+        },
         // Potsdam, 10 km radius: ~27 km away, does not reach Mitte.
-        { id: "potsdam", serviceAreaLat: 52.39, serviceAreaLng: 13.064, serviceAreaRadius: 10 },
+        {
+          id: "potsdam",
+          serviceAreaLat: 52.39,
+          serviceAreaLng: 13.064,
+          serviceAreaRadius: 10,
+        },
         // No location yet.
-        { id: "unknown", serviceAreaLat: 0, serviceAreaLng: 0, serviceAreaRadius: 100 },
+        {
+          id: "unknown",
+          serviceAreaLat: 0,
+          serviceAreaLng: 0,
+          serviceAreaRadius: 100,
+        },
       ]);
 
       const result = await service.findAll({ postalCode: "10115" } as any);
 
-      expect(result.data.map((provider: any) => provider.id)).toEqual(["berlin"]);
+      expect(result.data.map((provider: any) => provider.id)).toEqual([
+        "berlin",
+      ]);
       expect(result.meta.total).toBe(1);
     });
 
@@ -557,7 +616,10 @@ describe("ProvidersService", () => {
         ])
         .mockResolvedValueOnce([]);
 
-      const result = await service.getRequests("user-1", { page: 1, limit: 10 });
+      const result = await service.getRequests("user-1", {
+        page: 1,
+        limit: 10,
+      });
 
       expect(prisma.serviceRequest.findMany).toHaveBeenNthCalledWith(
         1,
@@ -670,9 +732,9 @@ describe("ProvidersService", () => {
       });
       prisma.serviceRequest.findFirst.mockResolvedValue(null);
 
-      await expect(service.getRequestById("user-1", "request-2")).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getRequestById("user-1", "request-2"),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -819,6 +881,15 @@ describe("ProvidersService", () => {
       expect(result.id).toBe("provider-1");
       expect(result.reviews.items).toHaveLength(1);
       expect(result.completedJobs).toBe(12);
+      expect(result).not.toHaveProperty("taxId");
+      expect(result).not.toHaveProperty("documents");
+      expect(result).not.toHaveProperty("bookings");
+      expect(result.user).not.toHaveProperty("email");
+      expect(result.reviews.items[0]).not.toHaveProperty("booking");
+      const selection = prisma.provider.findFirst.mock.calls[0][0].select;
+      expect(selection).not.toHaveProperty("taxId");
+      expect(selection).not.toHaveProperty("documents");
+      expect(selection).not.toHaveProperty("bookings");
     });
 
     it("throws when provider is not found", async () => {

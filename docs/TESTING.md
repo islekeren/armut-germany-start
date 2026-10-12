@@ -1,6 +1,6 @@
 # Testing
 
-Audited against the current checkout on September 11, 2026. E2E sections updated September 24, 2026.
+Security validation updated October 12, 2026.
 
 ## Current Command Matrix
 
@@ -9,7 +9,7 @@ Audited against the current checkout on September 11, 2026. E2E sections updated
 | `npm run lint`                                        | whole repo            | Pass with warnings       | all lint tasks exit successfully; API lint emits 9 warnings and 0 errors                                    |
 | `npm run build`                                       | whole repo            | Pass                     | builds both `web` and `api` successfully                                                                    |
 | `npm run check-types`                                 | whole repo            | Pass                     | active apps and packages pass                                                                               |
-| `npm run test`                                        | whole repo            | Pass with config warning | 283 tests pass on `main`: API 262, web 14, shared 4, UI 3; the root Expo `tsconfig.json` produces a warning |
+| `npm run test`                                        | whole repo            | Pass with config warning | 362 tests pass: API 327, web 28, shared 4, UI 3; the root Expo `tsconfig.json` produces a warning |
 | `cd apps/web && npm run lint`                         | web                   | Pass                     | `prepare-e2e.mjs` now declares its Node global                                                              |
 | `cd apps/web && npm run build`                        | web                   | Pass                     | Next.js production build succeeds                                                                           |
 | `cd apps/web && npm run check-types`                  | web                   | Pass                     | the script runs `next typegen` before `tsc --noEmit`                                                        |
@@ -17,9 +17,9 @@ Audited against the current checkout on September 11, 2026. E2E sections updated
 | `cd apps/api && npm run lint`                         | api                   | Pass with warnings       | 9 warnings, 0 errors                                                                                        |
 | `cd apps/api && npm run check-types`                  | api                   | Pass                     | no current TypeScript failures                                                                              |
 | `cd apps/api && npm run build`                        | api                   | Pass                     | Nest build succeeds                                                                                         |
-| `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 32 suites, 287 tests on September 24, 2026                                                                  |
-| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 15 suites, 289 tests on September 24, 2026 against `docker-compose.test.yml`                                |
-| `cd apps/web && npm run test:e2e`                     | web Playwright e2e    | Pass                     | 52 tests (6 tagged `@smoke`) on September 24, 2026 against production builds                                |
+| `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 35 suites, 327 tests on October 12, 2026                                                                  |
+| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 15 suites, 299 tests on October 12, 2026 against `docker-compose.test.yml`                                |
+| `cd apps/web && npm run test:e2e`                     | web Playwright e2e    | Pass                     | 52 tests (6 tagged `@smoke`) on October 12, 2026 against production builds                                |
 | `cd packages/shared && npm run test`                  | shared unit tests     | Pass                     | 4 tests passed                                                                                              |
 | `cd packages/ui && npm run test`                      | UI package unit tests | Pass                     | 3 tests passed                                                                                              |
 
@@ -84,7 +84,9 @@ Notes:
 | `uploads.e2e-spec.ts`                         | direct uploads per folder against the S3 mock, type/size/count limits, presigned uploads, owner-only deletion    |
 | `users.e2e-spec.ts`                           | profile read/update whitelist, account anonymisation for customers and providers, active-booking guard           |
 
-Known gaps: payments (not on `main`), and socket behaviour for deleted accounts and non-participant typing, which are open issues rather than covered behaviour.
+Security regressions cover deleted-account reconnects and existing sockets, idle JWT expiry, inactive recipients, outsider typing, shared event limits, browser Origin checks, and public-provider private-field exclusions. Unit tests also cover required JWT configuration and refusal to demo-seed production before constructing Prisma.
+
+Known gaps: payment work is not on `main`; logout and password changes do not yet revoke previously issued JWT sessions.
 
 ### E2E harness conventions (web)
 

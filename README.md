@@ -74,7 +74,7 @@ Use [TESTING.md](./docs/TESTING.md) for the detailed command matrix and caveats.
    cd apps/api
    npm run db:generate
    npm run db:migrate
-   npm run db:seed
+   NODE_ENV=development npm run db:seed
    ```
 
 5. Start the active apps from the repo root:
@@ -125,7 +125,7 @@ Observed in `apps/api/prisma/seed.ts`:
   - Email: `admin@test.com`
   - Password: `12345678`
 
-The seed also creates request taxonomy categories, additional providers, quotes, bookings, reviews, conversations, and notifications-related data paths.
+The demo seed requires explicit `NODE_ENV=development` or `test`; production, staging, and unset runtimes are rejected before database access. It also creates request taxonomy categories, additional providers, quotes, bookings, reviews, conversations, and notifications-related data paths.
 
 ## Provider Approval
 
@@ -201,7 +201,7 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - `apps/web` generates Next.js types before type-checking, but stale generated state can still make fresh-checkout failures worth investigating build-first.
 - The upload env names now match between `apps/api/.env.example` and `UploadsService`.
 - Railway and Render API configs are checked in, but the production hosting topology and externally configured deployment branch are not confirmed by the repository alone.
-- `railway.json` currently runs `db:seed` during every pre-deploy; remove that before using it for production deploys.
+- Railway pre-deploy runs migrations only. Demo seeding is blocked outside explicit development/test runtimes; existing hosted databases still require a check for previously seeded accounts.
 - The checked-in `Dockerfile` has no final build, runtime command, or production stage and should not yet be treated as a deployable image.
 
 ## Recommended Branch Policy

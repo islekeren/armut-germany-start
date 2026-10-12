@@ -41,8 +41,8 @@ cp apps/api/.env.example apps/api/.env
 | `JWT_SECRET`                  | Required                                    | access token signing                                                                      |
 | `JWT_REFRESH_SECRET`          | Required                                    | refresh token signing                                                                     |
 | `PORT`                        | Optional                                    | defaults to `4000`                                                                        |
-| `NODE_ENV`                    | Optional                                    | runtime mode                                                                              |
-| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist read in `apps/api/src/app.setup.ts`                             |
+| `NODE_ENV`                    | Explicit for development/test               | other values use strict authentication validation                                                                              |
+| `CORS_ORIGINS`                | Optional                                    | comma-separated allowlist shared by HTTP and messaging sockets                             |
 | `RATE_LIMIT_DEFAULT`          | Optional                                    | only throttler setting currently wired                                                    |
 | `THROTTLE_DISABLED`           | Test only                                   | `true` skips rate limiting, but only when `NODE_ENV=test`; set by the Playwright config   |
 | `S3_ENDPOINT`                 | Required for uploads                        | S3 or R2 endpoint                                                                         |
@@ -59,6 +59,10 @@ cp apps/api/.env.example apps/api/.env
 | `STRIPE_CHECKOUT_SUCCESS_URL` | Required for payments in the feature branch | must contain `{bookingId}`                                                                |
 | `STRIPE_CHECKOUT_CANCEL_URL`  | Required for payments in the feature branch | must contain `{bookingId}`                                                                |
 | `PLATFORM_COMMISSION_RATE`    | Optional for payments in the feature branch | defaults to `0.15`; must be between 0 and 1                                               |
+
+Authentication configuration is validated before the API starts. Both JWT secrets are required in every environment and must have no surrounding whitespace. Unless `NODE_ENV` is explicitly `development` or `test`, the secrets must differ and each must be at least 32 characters; common placeholder prefixes and repeated-character values are rejected. Generate independent random secrets and store them in the hosting secret manager. There are no built-in fallback secrets.
+
+For rotation, generate new independent values, update every API instance together, and restart them so HTTP and sockets use the same keys. This implementation has no overlapping key grace period: rotating the access key invalidates existing access tokens; rotating the refresh key invalidates existing refresh tokens. Clients whose tokens are invalidated must sign in again. Use coordinated rotation of both keys when invalidating all existing JWT sessions.
 
 See [STRIPE_SANDBOX.md](./STRIPE_SANDBOX.md) for the local Connect onboarding, webhook, payment, and delayed-transfer test flow.
 
@@ -151,8 +155,10 @@ From `apps/api`:
 ```bash
 npm run db:generate
 npm run db:migrate
-npm run db:seed
+NODE_ENV=development npm run db:seed
 ```
+
+The demo seed refuses production, staging, unset, or unknown runtimes before database access. The Playwright preparation script explicitly uses `NODE_ENV=test` for its isolated demo seed. Production category data is supplied by existing taxonomy migrations.
 
 The seed script creates:
 
@@ -170,6 +176,8 @@ Observed in `apps/api/src/app.setup.ts`:
 
 - `CORS_ORIGINS` is split by commas when provided
 - default fallback allows `http://localhost:3000` and `http://localhost:8081`
+- exact origins and wildcard patterns are anchored; both HTTP CORS and WebSocket handshakes use the same policy
+- clients without an Origin header still require valid authentication
 
 Repo-specific note:
 

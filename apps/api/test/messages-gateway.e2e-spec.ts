@@ -1,5 +1,7 @@
 import { type INestApplication } from "@nestjs/common";
 import { io, type Socket } from "socket.io-client";
+import { JwtService } from "@nestjs/jwt";
+import request from "supertest";
 import {
   closeTestApp,
   createConversationFixture,
@@ -111,6 +113,59 @@ describe("Messages gateway (e2e)", () => {
   }
 
   describe("connection auth", () => {
+    it("rejects browser handshakes from an origin outside the HTTP allowlist", async () => {
+      const socket = io(`${baseUrl}/messages`, {
+        auth: { token: aliceToken }, transports: ["websocket"],
+        forceNew: true, reconnection: false,
+        extraHeaders: { Origin: "https://untrusted.invalid" },
+      });
+      sockets.push(socket);
+      expect(await waitFor<Error>(socket, "connect_error")).toBeInstanceOf(Error);
+    });
+
+    it("handles authorized socket events when the HTTP throttle bypass is off", async () => {
+      const previous = process.env.THROTTLE_DISABLED;
+      process.env.THROTTLE_DISABLED = "false";
+      try {
+        const socket = await connectAs(aliceToken);
+        expect(await socket.timeout(EVENT_TIMEOUT_MS).emitWithAck("markAsRead", conversationId))
+          .toEqual({ success: true });
+      } finally {
+        process.env.THROTTLE_DISABLED = previous;
+      }
+    });
+    it("rejects an unexpired JWT after account deletion", async () => {
+      await request(app.getHttpServer()).delete("/api/users/profile")
+        .set("Authorization", `Bearer ${aliceToken}`).expect(200);
+      const socket = connect({ token: aliceToken });
+      expect(await waitFor<string>(socket, "disconnect")).toBe("io server disconnect");
+    });
+
+    it("evicts existing room membership immediately on account deletion", async () => {
+      const alice = await connectAs(aliceToken);
+      await join(alice);
+      const disconnected = waitFor<string>(alice, "disconnect");
+      await request(app.getHttpServer()).delete("/api/users/profile")
+        .set("Authorization", `Bearer ${aliceToken}`).expect(200);
+      expect(await disconnected).toBe("io server disconnect");
+    });
+
+    it("disconnects an idle socket when its access token expires", async () => {
+      const jwt = new JwtService({ secret: process.env.JWT_SECRET });
+      const token = jwt.sign({ sub: aliceId }, { expiresIn: 2 });
+      const socket = await connectAs(token);
+      expect(await waitFor<string>(socket, "disconnect")).toBe("io server disconnect");
+    });
+
+    it("rechecks account state before a socket mutation", async () => {
+      const alice = await connectAs(aliceToken);
+      await join(alice);
+      await prisma.user.update({ where: { id: aliceId }, data: { deletedAt: new Date() } });
+      const disconnected = waitFor<string>(alice, "disconnect");
+      alice.emit("sendMessage", { conversationId, content: "revoked sender" });
+      expect(await disconnected).toBe("io server disconnect");
+      expect(await prisma.message.count()).toBe(0);
+    });
     it("disconnects clients without a token or with an invalid one", async () => {
       for (const auth of [{}, { token: "not.a.jwt" }]) {
         const socket = connect(auth);
@@ -134,6 +189,28 @@ describe("Messages gateway (e2e)", () => {
   });
 
   describe("conversation rooms", () => {
+    it("does not deliver to an account revoked outside this gateway process", async () => {
+      const alice = await connectAs(aliceToken);
+      const bob = await connectAs(bobToken);
+      await join(alice);
+      await join(bob);
+      await prisma.user.update({ where: { id: aliceId }, data: { deletedAt: new Date() } });
+      const delivered = receivesWithin(alice, "newMessage");
+      const ack = await bob.emitWithAck("sendMessage", { conversationId, content: "active recipient only" });
+      expect(ack.success).toBe(true);
+      expect(await delivered).toBe(false);
+    });
+
+    it("limits socket events per account across connections", async () => {
+      const alice = await connectAs(aliceToken);
+      for (let i = 0; i < 100; i += 1) {
+        expect(await alice.emitWithAck("markAsRead", conversationId)).toEqual({ success: true });
+      }
+      const otherTab = await connectAs(aliceToken);
+      expect(await otherTab.emitWithAck("markAsRead", conversationId)).toEqual({
+        success: false, error: "Too many socket events. Try again later.",
+      });
+    });
     it("only lets participants join", async () => {
       const alice = await connectAs(aliceToken);
       const mallory = await connectAs(malloryToken);
@@ -234,6 +311,14 @@ describe("Messages gateway (e2e)", () => {
   });
 
   describe("read receipts and typing", () => {
+    it("does not let an outsider inject typing into a conversation", async () => {
+      const bob = await connectAs(bobToken);
+      await join(bob);
+      const mallory = await connectAs(malloryToken);
+      const delivered = receivesWithin(bob, "userTyping");
+      mallory.emit("typing", { conversationId, isTyping: true });
+      expect(await delivered).toBe(false);
+    });
     it("marks messages read and tells the room", async () => {
       await prisma.message.create({
         data: {

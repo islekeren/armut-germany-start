@@ -3,7 +3,11 @@ import { JwtStrategy } from "./jwt.strategy";
 
 describe("JwtStrategy", () => {
   const configService = {
-    get: jest.fn().mockReturnValue("jwt-secret"),
+    get: jest.fn((key: string) => ({
+      NODE_ENV: "test",
+      JWT_SECRET: "jwt-secret",
+      JWT_REFRESH_SECRET: "refresh-jwt-secret",
+    })[key]),
   };
 
   const usersService = {
@@ -35,5 +39,21 @@ describe("JwtStrategy", () => {
     await expect(strategy.validate({ sub: "missing" })).rejects.toThrow(
       UnauthorizedException
     );
+  });
+
+  it("refuses to construct HTTP authentication without explicit secrets", () => {
+    const missingConfig = { get: () => undefined };
+    expect(() => new JwtStrategy(missingConfig as any, usersService as any))
+      .toThrow(/JWT_SECRET/);
+  });
+
+  it("refuses predictable production secrets without exposing them", () => {
+    const values = {
+      NODE_ENV: "production",
+      JWT_SECRET: "secret",
+      JWT_REFRESH_SECRET: "refresh-secret",
+    };
+    expect(() => new JwtStrategy({ get: (key: string) => values[key] } as any, usersService as any))
+      .toThrow(/JWT_SECRET/);
   });
 });

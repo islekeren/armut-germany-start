@@ -17,11 +17,13 @@ import { QuotesModule } from "./modules/quotes/quotes.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
 import { HealthModule } from "./modules/health/health.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { validateAuthConfiguration } from "./common/security/auth-config";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateAuthConfiguration,
     }),
     PrismaModule,
     CacheModule,

@@ -5,6 +5,7 @@ import {
   ConflictException,
   BadRequestException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { resolveRequestTaxonomy } from "../../common/request-taxonomy";
 import {
@@ -23,6 +24,70 @@ import {
 
 // Matches the @Max on serviceAreaRadius in the provider DTOs.
 const MAX_SERVICE_RADIUS_KM = 100;
+
+// Public queries are allowlists: future provider fields must never become public
+// merely because they were added to the Prisma model.
+const PUBLIC_CATEGORY_SELECT = {
+  id: true,
+  slug: true,
+  nameEn: true,
+  nameDe: true,
+  icon: true,
+} satisfies Prisma.CategorySelect;
+
+const PUBLIC_USER_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  profileImage: true,
+} satisfies Prisma.UserSelect;
+
+const PUBLIC_PROFILE_SELECT = {
+  slug: true,
+  headline: true,
+  bio: true,
+  addressLine1: true,
+  city: true,
+  postalCode: true,
+  website: true,
+  coverImage: true,
+  phoneVisible: true,
+  galleryImages: true,
+  highlights: true,
+  languages: true,
+  openingHours: true,
+} satisfies Prisma.ProviderProfileSelect;
+
+const PUBLIC_PROVIDER_SELECT = {
+  id: true,
+  userId: true,
+  companyName: true,
+  description: true,
+  experienceYears: true,
+  serviceAreaRadius: true,
+  serviceAreaLat: true,
+  serviceAreaLng: true,
+  ratingAvg: true,
+  totalReviews: true,
+  isApproved: true,
+  createdAt: true,
+  user: { select: PUBLIC_USER_SELECT },
+  profile: { select: PUBLIC_PROFILE_SELECT },
+  services: {
+    where: { isActive: true },
+    select: {
+      id: true,
+      categoryId: true,
+      title: true,
+      description: true,
+      priceType: true,
+      priceMin: true,
+      priceMax: true,
+      images: true,
+      category: { select: PUBLIC_CATEGORY_SELECT },
+    },
+  },
+} satisfies Prisma.ProviderSelect;
 
 @Injectable()
 export class ProvidersService {
@@ -295,29 +360,10 @@ export class ProvidersService {
       };
     }
 
-    const providerInclude = {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          profileImage: true,
-        },
-      },
-      profile: {
-        select: {
-          slug: true,
-          headline: true,
-          city: true,
-        },
-      },
-      services: {
-        where: { isActive: true },
-        include: {
-          category: true,
-        },
-      },
-    };
+    const providerSelect = {
+      ...PUBLIC_PROVIDER_SELECT,
+      profile: { select: { slug: true, headline: true, city: true } },
+    } satisfies Prisma.ProviderSelect;
 
     if (postalCode) {
       // Customer-centric search: keep providers whose own service radius
@@ -335,7 +381,7 @@ export class ProvidersService {
           serviceAreaLng: { gte: box.minLng, lte: box.maxLng },
         },
         orderBy: { ratingAvg: "desc" },
-        include: providerInclude,
+        select: providerSelect,
       });
 
       const servingProviders = providers.filter(
@@ -375,7 +421,7 @@ export class ProvidersService {
           },
         },
         orderBy: { ratingAvg: "desc" },
-        include: providerInclude,
+        select: providerSelect,
       });
 
       const filteredProviders = providers.filter((provider) => {
@@ -408,7 +454,7 @@ export class ProvidersService {
         skip,
         take: limit,
         orderBy: { ratingAvg: "desc" },
-        include: providerInclude,
+        select: providerSelect,
       }),
       this.prisma.provider.count({ where }),
     ]);
@@ -442,31 +488,7 @@ export class ProvidersService {
   async findOne(id: string) {
     const provider = await this.prisma.provider.findFirst({
       where: { id, isApproved: true },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profileImage: true,
-          },
-        },
-        profile: true,
-        services: {
-          where: { isActive: true },
-          include: {
-            category: true,
-          },
-        },
-        bookings: {
-          where: { status: "completed" },
-          include: {
-            review: true,
-          },
-          take: 10,
-          orderBy: { completedAt: "desc" },
-        },
-      },
+      select: PUBLIC_PROVIDER_SELECT,
     });
 
     if (!provider) {
@@ -786,23 +808,9 @@ export class ProvidersService {
         id: providerId,
         isApproved: true,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            profileImage: true,
-          },
-        },
-        profile: true,
-        services: {
-          where: { isActive: true },
-          include: {
-            category: true,
-          },
-        },
+      select: {
+        ...PUBLIC_PROVIDER_SELECT,
+        user: { select: { ...PUBLIC_USER_SELECT, phone: true } },
       },
     });
 
@@ -822,22 +830,25 @@ export class ProvidersService {
         where,
         take: 12,
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          providerReply: true,
+          images: true,
+          providerReplyImages: true,
+          createdAt: true,
           reviewer: {
-            select: {
-              firstName: true,
-              lastName: true,
-              profileImage: true,
-            },
+            select: { firstName: true, lastName: true, profileImage: true },
           },
           booking: {
-            include: {
+            select: {
               quote: {
-                include: {
+                select: {
                   request: {
                     select: {
                       title: true,
-                      category: true,
+                      category: { select: PUBLIC_CATEGORY_SELECT },
                     },
                   },
                 },
@@ -1019,7 +1030,10 @@ export class ProvidersService {
       return null;
     }
 
-    const center = { lat: provider.serviceAreaLat, lng: provider.serviceAreaLng };
+    const center = {
+      lat: provider.serviceAreaLat,
+      lng: provider.serviceAreaLng,
+    };
     const radius = provider.serviceAreaRadius;
     const box = boundingBox(center, radius);
 

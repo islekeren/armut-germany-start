@@ -1,9 +1,6 @@
 import { type INestApplication, ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
-
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { isAllowedOrigin } from "./common/security/cors-origin";
 
 /**
  * HTTP-level configuration shared by `main.ts` and the e2e test harness, so
@@ -17,27 +14,9 @@ export function configureApp(app: INestApplication) {
   app.use(helmet());
 
   // Enable CORS
-  const allowedOriginPatterns = (
-    process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS.split(",")
-      : ["http://localhost:3000", "http://localhost:8081"]
-  )
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-    .map(
-      (origin) => new RegExp(`^${escapeRegex(origin).replace(/\\\*/g, ".*")}$`),
-    );
-
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, etc.)
-      if (!origin) return callback(null, true);
-
-      const isAllowed = allowedOriginPatterns.some((pattern) =>
-        pattern.test(origin),
-      );
-
-      if (isAllowed) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
