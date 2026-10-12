@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ProviderSubpageShell, PanelCard } from "@/components";
 import {
@@ -23,8 +24,11 @@ export default function ProviderOrdersPage() {
   const describeError = useApiErrorMessage();
   const tOrders = useTranslations("provider.orders");
   const locale = useLocale();
+  const bookingId = useSearchParams().get("booking");
   const [orders, setOrders] = useState<ProviderBooking[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<ProviderBooking | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ProviderBooking | null>(
+    null,
+  );
   const [tab, setTab] = useState<OrdersTab>("active");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -37,10 +41,10 @@ export default function ProviderOrdersPage() {
       if (!token) return;
       const data = await providerApi.getBookings(token);
       setOrders(data);
-      if (selectedOrder) {
-        const refreshedSelected = data.find((item) => item.id === selectedOrder.id) || null;
-        setSelectedOrder(refreshedSelected);
-      }
+      setSelectedOrder(
+        (current) =>
+          data.find((item) => item.id === (current?.id || bookingId)) || null,
+      );
     } catch (err) {
       console.error("Failed to load provider orders:", err);
       setError(describeError(err, tOrders("loadError")));
@@ -67,7 +71,7 @@ export default function ProviderOrdersPage() {
       window.removeEventListener("focus", handleFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [bookingId]);
 
   const visibleOrders = useMemo(() => {
     if (tab === "completed") {
@@ -87,20 +91,28 @@ export default function ProviderOrdersPage() {
     }).format(new Date(value));
 
   const canRequestCompletion =
-    selectedOrder && ["confirmed", "in_progress"].includes(selectedOrder.status);
+    selectedOrder &&
+    ["confirmed", "in_progress"].includes(selectedOrder.status);
 
-  const handleRequestCompletion = async () => {
+  const handleStatusUpdate = async (
+    status: "confirmed" | "completion_pending",
+  ) => {
     const token = getStoredAccessToken();
     if (!token || !selectedOrder) return;
 
     try {
       setSubmitting(true);
       setError(null);
-      await bookingsApi.updateStatus(token, selectedOrder.id, "completion_pending");
+      await bookingsApi.updateStatus(token, selectedOrder.id, status);
       await loadOrders();
     } catch (err) {
       console.error("Failed to request completion:", err);
-      setError(describeError(err, tOrders("completeError")));
+      setError(
+        describeError(
+          err,
+          tOrders(status === "confirmed" ? "confirmError" : "completeError"),
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +132,9 @@ export default function ProviderOrdersPage() {
         <button
           onClick={() => setTab("completed")}
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === "completed" ? "bg-primary text-white" : "bg-white text-muted"
+            tab === "completed"
+              ? "bg-primary text-white"
+              : "bg-white text-muted"
           }`}
         >
           {tOrders("tabs.completed")}
@@ -148,7 +162,9 @@ export default function ProviderOrdersPage() {
                     key={order.id}
                     onClick={() => setSelectedOrder(order)}
                     className={`w-full rounded-lg border p-4 text-left transition ${
-                      selectedOrder?.id === order.id ? "border-primary" : "border-border"
+                      selectedOrder?.id === order.id
+                        ? "border-primary"
+                        : "border-border"
                     }`}
                   >
                     <div className="mb-2 flex items-center justify-between">
@@ -160,7 +176,9 @@ export default function ProviderOrdersPage() {
                       </span>
                     </div>
                     <p className="text-sm text-muted">{order.customer}</p>
-                    <p className="mt-1 text-sm text-muted">{formatDate(order.scheduledDate)}</p>
+                    <p className="mt-1 text-sm text-muted">
+                      {formatDate(order.scheduledDate)}
+                    </p>
                   </button>
                 );
               })}
@@ -174,20 +192,41 @@ export default function ProviderOrdersPage() {
           ) : (
             <div>
               <h3 className="text-lg font-semibold">{selectedOrder.title}</h3>
-              <p className="mt-1 text-sm text-muted">{selectedOrder.customer}</p>
+              <p className="mt-1 text-sm text-muted">
+                {selectedOrder.customer}
+              </p>
               <div className="mt-4 space-y-2 text-sm text-muted">
                 <p>{formatDate(selectedOrder.scheduledDate)}</p>
                 <p>{selectedOrder.address}</p>
                 <p>{formatEuroAmount(selectedOrder.totalPrice, locale)}</p>
               </div>
 
+              {selectedOrder.status === "pending" && (
+                <div className="mt-5">
+                  <p className="text-sm text-muted">
+                    {tOrders("awaitingProvider")}
+                  </p>
+                  <button
+                    onClick={() => handleStatusUpdate("confirmed")}
+                    disabled={submitting}
+                    className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
+                  >
+                    {submitting
+                      ? tOrders("completing")
+                      : tOrders("confirmBooking")}
+                  </button>
+                </div>
+              )}
+
               {canRequestCompletion && (
                 <button
-                  onClick={handleRequestCompletion}
+                  onClick={() => handleStatusUpdate("completion_pending")}
                   disabled={submitting}
                   className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
                 >
-                  {submitting ? tOrders("completing") : tOrders("markCompleted")}
+                  {submitting
+                    ? tOrders("completing")
+                    : tOrders("markCompleted")}
                 </button>
               )}
 

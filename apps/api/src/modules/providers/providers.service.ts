@@ -5,6 +5,7 @@ import {
   ConflictException,
   BadRequestException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { resolveRequestTaxonomy } from "../../common/request-taxonomy";
 import {
@@ -141,23 +142,17 @@ export class ProvidersService {
   }
 
   async create(userId: string, createProviderDto: CreateProviderDto) {
-    // Check if user already has a provider profile
-    const existingProvider = await this.prisma.provider.findUnique({
-      where: { userId },
-    });
-
-    if (existingProvider) {
-      throw new ConflictException("User already has a provider profile");
-    }
-
-    // Check if user is a provider type
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.userType !== "provider") {
       throw new ForbiddenException("User must be registered as a provider");
     }
+
+    // An account can retry onboarding after a lost response. Never overwrite
+    // an existing provider or create its services again on that retry.
+    const existingProvider = await this.prisma.provider.findUnique({
+      where: { userId },
+    });
+    if (existingProvider) return this.findByUserId(userId);
 
     const {
       categories,
@@ -215,52 +210,67 @@ export class ProvidersService {
     // centre from the business postcode so request matching by radius works.
     const serviceAreaCenter = lookupPostcode(postalCode);
 
-    return this.prisma.provider.create({
-      data: {
-        userId,
-        ...providerData,
-        ...(serviceAreaCenter
-          ? {
-              serviceAreaLat: serviceAreaCenter.lat,
-              serviceAreaLng: serviceAreaCenter.lng,
-            }
-          : {}),
-        profile: {
-          create: {
-            slug: profileSlug,
-            headline: headline || null,
-            bio: bio || providerData.description,
-            addressLine1: addressLine1 || null,
-            city: city || null,
-            postalCode: postalCode || null,
-            website: website || null,
-            galleryImages: this.sanitizeStringArray(galleryImages),
-            highlights: this.sanitizeStringArray(highlights),
-            languages: this.sanitizeStringArray(languages),
-            openingHours: this.normalizeOpeningHours(openingHours),
+    try {
+      return await this.prisma.provider.create({
+        data: {
+          userId,
+          ...providerData,
+          ...(serviceAreaCenter
+            ? {
+                serviceAreaLat: serviceAreaCenter.lat,
+                serviceAreaLng: serviceAreaCenter.lng,
+              }
+            : {}),
+          profile: {
+            create: {
+              slug: profileSlug,
+              headline: headline || null,
+              bio: bio || providerData.description,
+              addressLine1: addressLine1 || null,
+              city: city || null,
+              postalCode: postalCode || null,
+              website: website || null,
+              galleryImages: this.sanitizeStringArray(galleryImages),
+              highlights: this.sanitizeStringArray(highlights),
+              languages: this.sanitizeStringArray(languages),
+              openingHours: this.normalizeOpeningHours(openingHours),
+            },
+          },
+          services: servicesData.length ? { create: servicesData } : undefined,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              profileImage: true,
+            },
+          },
+          profile: true,
+          services: {
+            include: {
+              category: true,
+            },
           },
         },
-        services: servicesData.length ? { create: servicesData } : undefined,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            profileImage: true,
-          },
-        },
-        profile: true,
-        services: {
-          include: {
-            category: true,
-          },
-        },
-      },
-    });
+      });
+    } catch (error) {
+      // The nested create is atomic and userId is unique. A concurrent retry
+      // may lose that race; only recover if this user's provider now exists.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const createdProvider = await this.prisma.provider.findUnique({
+          where: { userId },
+        });
+        if (createdProvider) return this.findByUserId(userId);
+      }
+      throw error;
+    }
   }
 
   async findAll(query: ProviderQueryDto) {
@@ -1019,7 +1029,10 @@ export class ProvidersService {
       return null;
     }
 
-    const center = { lat: provider.serviceAreaLat, lng: provider.serviceAreaLng };
+    const center = {
+      lat: provider.serviceAreaLat,
+      lng: provider.serviceAreaLng,
+    };
     const radius = provider.serviceAreaRadius;
     const box = boundingBox(center, radius);
 

@@ -51,7 +51,7 @@ test.describe("provider workspace", () => {
 
     await page.goto("/dashboard/offers");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Pending Offers" }),
+      page.getByRole("heading", { level: 1, name: "Offers" }),
     ).toBeVisible();
     await expect(page.getByText(serviceRequest.title).first()).toBeVisible();
   });

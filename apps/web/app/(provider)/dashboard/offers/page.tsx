@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { PanelCard, ProviderSubpageShell } from "@/components";
@@ -7,7 +8,7 @@ import { getStoredAccessToken, quotesApi, type Quote } from "@/lib/api";
 import { useApiErrorMessage } from "@/lib/api-errors";
 import { formatEuroAmount } from "@/lib/bookings";
 
-export default function ProviderPendingOffersPage() {
+export default function ProviderOffersPage() {
   const tDashboard = useTranslations("provider.dashboard");
   const describeError = useApiErrorMessage();
   const tNavigation = useTranslations("provider.dashboard.navigation");
@@ -27,7 +28,7 @@ export default function ProviderPendingOffersPage() {
         const data = await quotesApi.getMyQuotes(token);
         setOffers(data);
       } catch (err) {
-        console.error("Failed to load pending offers:", err);
+        console.error("Failed to load offers:", err);
         setError(describeError(err, tOffers("loadError")));
       } finally {
         setLoading(false);
@@ -35,12 +36,20 @@ export default function ProviderPendingOffersPage() {
     };
 
     loadOffers();
+    const interval = window.setInterval(loadOffers, 15000);
+    window.addEventListener("focus", loadOffers);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", loadOffers);
+    };
   }, [tOffers, describeError]);
 
-  const pendingOffers = useMemo(
+  const visibleOffers = useMemo(
     () =>
       offers
-        .filter((offer) => offer.status === "pending")
+        .filter(
+          (offer) => offer.status === "pending" || offer.status === "accepted",
+        )
         .sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -67,11 +76,11 @@ export default function ProviderPendingOffersPage() {
       <PanelCard>
         {loading ? (
           <p className="text-sm text-muted">{tDashboard("loading")}</p>
-        ) : pendingOffers.length === 0 ? (
-          <p className="text-sm text-muted">{tDashboard("noPendingOffers")}</p>
+        ) : visibleOffers.length === 0 ? (
+          <p className="text-sm text-muted">{tOffers("empty")}</p>
         ) : (
           <div className="space-y-4">
-            {pendingOffers.map((offer) => {
+            {visibleOffers.map((offer) => {
               const customerName = offer.request?.customer
                 ? `${offer.request.customer.firstName} ${offer.request.customer.lastName}`
                 : tDashboard("pendingOffersUnknownCustomer");
@@ -91,15 +100,23 @@ export default function ProviderPendingOffersPage() {
                     <div>
                       <h3 className="font-semibold">{requestTitle}</h3>
                       <p className="text-sm text-muted">{customerName}</p>
-                      {location && <p className="text-sm text-muted">{location}</p>}
+                      {location && (
+                        <p className="text-sm text-muted">{location}</p>
+                      )}
                     </div>
                     <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
-                      {tDashboard("status.pending")}
+                      {offer.status === "pending"
+                        ? tDashboard("status.pending")
+                        : offer.booking
+                          ? tOffers("bookingCreated")
+                          : tOffers("awaitingBooking")}
                     </span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
-                    <span className="font-medium text-secondary">{formatEuroAmount(offer.price, locale)}</span>
+                    <span className="font-medium text-secondary">
+                      {formatEuroAmount(offer.price, locale)}
+                    </span>
                     <span>{formatDate(offer.createdAt)}</span>
                     <span>
                       {tDashboard("pendingOfferValidUntil", {
@@ -107,6 +124,14 @@ export default function ProviderPendingOffersPage() {
                       })}
                     </span>
                   </div>
+                  {offer.booking && (
+                    <Link
+                      href={`/dashboard/orders?booking=${offer.booking.id}`}
+                      className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+                    >
+                      {tOffers("viewOrder")}
+                    </Link>
+                  )}
                 </div>
               );
             })}

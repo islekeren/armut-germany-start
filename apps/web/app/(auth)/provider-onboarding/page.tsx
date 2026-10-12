@@ -16,6 +16,8 @@ import { useTranslations, useLocale } from "next-intl";
 import {
   getCategories,
   isApiUnavailableError,
+  isApiNotFoundError,
+  getStoredAccessToken,
   providerApi,
   type Category,
 } from "@/lib/api";
@@ -57,10 +59,13 @@ export default function ProviderOnboardingPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { register, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [profileCheckFailed, setProfileCheckFailed] = useState(false);
+  const [profileCheckRetry, setProfileCheckRetry] = useState(0);
 
   const [formData, setFormData] = useState<ProviderOnboardingData>({
     categories: [],
@@ -86,7 +91,9 @@ export default function ProviderOnboardingPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [categoriesError, setCategoriesError] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
-  const [selectedSectorId, setSelectedSectorId] = useState<ServiceSector["id"] | null>(null);
+  const [selectedSectorId, setSelectedSectorId] = useState<
+    ServiceSector["id"] | null
+  >(null);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
 
   const steps = [
@@ -117,10 +124,55 @@ export default function ProviderOnboardingPage() {
   }, [t]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && !isSubmitting) {
-      router.push("/dashboard");
+    if (authLoading || isSubmitting) return;
+    if (!isAuthenticated) {
+      setCheckingProfile(false);
+      return;
     }
-  }, [authLoading, isAuthenticated, isSubmitting, router]);
+    if (user?.userType !== "provider") {
+      router.replace("/");
+      return;
+    }
+    let cancelled = false;
+    setCheckingProfile(true);
+    setProfileCheckFailed(false);
+    const token = getStoredAccessToken();
+    if (!token) return;
+    providerApi
+      .getProfile(token)
+      .then(() => {
+        if (!cancelled) router.replace("/dashboard");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (!isApiNotFoundError(err)) {
+          setProfileCheckFailed(true);
+          return;
+        }
+        setFormData((current) => ({
+          ...current,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone || current.phone,
+          password: "",
+          confirmPassword: "",
+        }));
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingProfile(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    authLoading,
+    isAuthenticated,
+    isSubmitting,
+    user,
+    router,
+    profileCheckRetry,
+  ]);
 
   useEffect(() => {
     const firstName = searchParams.get("firstName");
@@ -183,10 +235,7 @@ export default function ProviderOnboardingPage() {
       setError(t("errors.enterAddress"));
       return false;
     }
-    if (
-      currentStep === 3 &&
-      (!formData.phone || !formData.email)
-    ) {
+    if (currentStep === 3 && (!formData.phone || !formData.email)) {
       setError(t("errors.enterContact"));
       return false;
     }
@@ -195,15 +244,15 @@ export default function ProviderOnboardingPage() {
         setError(t("errors.enterProfile"));
         return false;
       }
-      if (formData.password.length < 8) {
+      if (!isAuthenticated && formData.password.length < 8) {
         setError(t("errors.passwordLength"));
         return false;
       }
-      if (formData.password !== formData.confirmPassword) {
+      if (!isAuthenticated && formData.password !== formData.confirmPassword) {
         setError(t("errors.passwordMatch"));
         return false;
       }
-      if (!formData.gdprConsent) {
+      if (!isAuthenticated && !formData.gdprConsent) {
         setError(t("errors.acceptTerms"));
         return false;
       }
@@ -223,7 +272,7 @@ export default function ProviderOnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep()) return;
+    if (checkingProfile || profileCheckFailed || !validateStep()) return;
     setIsSubmitting(true);
     try {
       const selectedBranchLabels = selectedBranchIds
@@ -237,17 +286,18 @@ export default function ProviderOnboardingPage() {
         ? `${formData.description}\n\nSpecialties: ${selectedBranchLabels.join(", ")}`
         : formData.description;
 
-      await register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone || undefined,
-        userType: "provider",
-        gdprConsent: formData.gdprConsent,
-      });
+      if (!isAuthenticated)
+        await register({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone || undefined,
+          userType: "provider",
+          gdprConsent: formData.gdprConsent,
+        });
 
-      const token = localStorage.getItem("armut_access_token");
+      const token = getStoredAccessToken();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -296,14 +346,19 @@ export default function ProviderOnboardingPage() {
       const mappedCategorySlugs = Array.from(
         new Set(
           next
-            .map((selectedId) =>
-              SERVICE_BRANCHES.find((branch) => branch.id === selectedId)?.categorySlug,
+            .map(
+              (selectedId) =>
+                SERVICE_BRANCHES.find((branch) => branch.id === selectedId)
+                  ?.categorySlug,
             )
             .filter((value): value is string => Boolean(value)),
         ),
       );
 
-      setFormData((current) => ({ ...current, categories: mappedCategorySlugs }));
+      setFormData((current) => ({
+        ...current,
+        categories: mappedCategorySlugs,
+      }));
       return next;
     });
   };
@@ -314,6 +369,26 @@ export default function ProviderOnboardingPage() {
 
   function getBranchLabel(branch: ServiceBranch) {
     return locale === "de" ? branch.labelDe : branch.labelEn;
+  }
+
+  if (authLoading || checkingProfile || profileCheckFailed) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
+        <SimpleHeader />
+        <p role="status">
+          {t(profileCheckFailed ? "errors.profileCheck" : "checkingProfile")}
+        </p>
+        {profileCheckFailed && (
+          <button
+            type="button"
+            onClick={() => setProfileCheckRetry((value) => value + 1)}
+            className="rounded-lg bg-secondary px-6 py-3 text-white"
+          >
+            {t("buttons.retry")}
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -328,9 +403,7 @@ export default function ProviderOnboardingPage() {
             <h1 className="mt-4 text-2xl font-bold text-foreground">
               {t("title")}
             </h1>
-            <p className="mt-2 text-muted">
-              {t("subtitle")}
-            </p>
+            <p className="mt-2 text-muted">{t("subtitle")}</p>
           </div>
 
           <div className="mb-6">
@@ -369,18 +442,26 @@ export default function ProviderOnboardingPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {isAuthenticated && <AlertBanner>{t("resumeNotice")}</AlertBanner>}
+
             {currentStep === 0 && (
               <div className="space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold text-foreground">
                     {t("serviceSelection.title")}
                   </h2>
-                  <p className="mt-2 text-muted">{t("serviceSelection.subtitle")}</p>
+                  <p className="mt-2 text-muted">
+                    {t("serviceSelection.subtitle")}
+                  </p>
                 </div>
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.category")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.category")}
+                  </FormLabel>
                   {loadingCategories ? (
-                    <div className="text-sm text-muted">{t("loadingCategories")}</div>
+                    <div className="text-sm text-muted">
+                      {t("loadingCategories")}
+                    </div>
                   ) : categoriesError ? (
                     <AlertBanner>{categoriesError}</AlertBanner>
                   ) : (
@@ -388,19 +469,21 @@ export default function ProviderOnboardingPage() {
                       {SERVICE_SECTORS.map((sector) => {
                         const isSelected = selectedSectorId === sector.id;
                         return (
-                        <button
-                          key={sector.id}
-                          type="button"
-                          onClick={() => handleSectorSelect(sector.id)}
-                          className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                            isSelected
-                              ? "border-secondary bg-secondary/10 text-foreground"
-                              : "border-border hover:border-secondary"
-                          }`}
-                        >
-                          <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${sector.colorClass}`} />
-                          {getSectorLabel(sector)}
-                        </button>
+                          <button
+                            key={sector.id}
+                            type="button"
+                            onClick={() => handleSectorSelect(sector.id)}
+                            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                              isSelected
+                                ? "border-secondary bg-secondary/10 text-foreground"
+                                : "border-border hover:border-secondary"
+                            }`}
+                          >
+                            <span
+                              className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${sector.colorClass}`}
+                            />
+                            {getSectorLabel(sector)}
+                          </button>
                         );
                       })}
                     </div>
@@ -425,7 +508,9 @@ export default function ProviderOnboardingPage() {
                     <FormLabel className="text-foreground">
                       {t("serviceSelection.additionalServices")}
                     </FormLabel>
-                    <p className="mb-3 text-sm text-muted">{t("serviceSelection.additionalServicesHint")}</p>
+                    <p className="mb-3 text-sm text-muted">
+                      {t("serviceSelection.additionalServicesHint")}
+                    </p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {filteredBranches.map((branch) => {
                         const isChecked = selectedBranchIds.includes(branch.id);
@@ -446,7 +531,9 @@ export default function ProviderOnboardingPage() {
                       })}
                     </div>
                     {filteredBranches.length === 0 && (
-                      <p className="mt-2 text-sm text-muted">{t("serviceSelection.noMatch")}</p>
+                      <p className="mt-2 text-sm text-muted">
+                        {t("serviceSelection.noMatch")}
+                      </p>
                     )}
                   </div>
                 )}
@@ -456,7 +543,9 @@ export default function ProviderOnboardingPage() {
             {currentStep === 1 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.firstName")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.firstName")}
+                  </FormLabel>
                   <FormInput
                     type="text"
                     value={formData.firstName}
@@ -468,7 +557,9 @@ export default function ProviderOnboardingPage() {
                   />
                 </div>
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.lastName")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.lastName")}
+                  </FormLabel>
                   <FormInput
                     type="text"
                     value={formData.lastName}
@@ -485,12 +576,17 @@ export default function ProviderOnboardingPage() {
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.streetAddress")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.streetAddress")}
+                  </FormLabel>
                   <FormInput
                     type="text"
                     value={formData.streetAddress}
                     onChange={(e) =>
-                      setFormData({ ...formData, streetAddress: e.target.value })
+                      setFormData({
+                        ...formData,
+                        streetAddress: e.target.value,
+                      })
                     }
                     accent="secondary"
                     required
@@ -498,19 +594,26 @@ export default function ProviderOnboardingPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.postalCode")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.postalCode")}
+                    </FormLabel>
                     <FormInput
                       type="text"
                       value={formData.postalCode}
                       onChange={(e) =>
-                        setFormData({ ...formData, postalCode: e.target.value })
+                        setFormData({
+                          ...formData,
+                          postalCode: e.target.value,
+                        })
                       }
                       accent="secondary"
                       required
                     />
                   </div>
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.city")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.city")}
+                    </FormLabel>
                     <FormInput
                       type="text"
                       value={formData.city}
@@ -522,11 +625,16 @@ export default function ProviderOnboardingPage() {
                     />
                   </div>
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.serviceRadius")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.serviceRadius")}
+                    </FormLabel>
                     <FormSelect
                       value={formData.serviceRadius}
                       onChange={(e) =>
-                        setFormData({ ...formData, serviceRadius: e.target.value })
+                        setFormData({
+                          ...formData,
+                          serviceRadius: e.target.value,
+                        })
                       }
                       accent="secondary"
                     >
@@ -543,7 +651,9 @@ export default function ProviderOnboardingPage() {
             {currentStep === 3 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.phone")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.phone")}
+                  </FormLabel>
                   <FormInput
                     type="tel"
                     value={formData.phone}
@@ -555,9 +665,12 @@ export default function ProviderOnboardingPage() {
                   />
                 </div>
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.email")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.email")}
+                  </FormLabel>
                   <FormInput
                     type="email"
+                    readOnly={isAuthenticated}
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
@@ -573,19 +686,26 @@ export default function ProviderOnboardingPage() {
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.companyName")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.companyName")}
+                    </FormLabel>
                     <FormInput
                       type="text"
                       value={formData.companyName}
                       onChange={(e) =>
-                        setFormData({ ...formData, companyName: e.target.value })
+                        setFormData({
+                          ...formData,
+                          companyName: e.target.value,
+                        })
                       }
                       accent="secondary"
                       required
                     />
                   </div>
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.website")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.website")}
+                    </FormLabel>
                     <FormInput
                       type="text"
                       value={formData.website}
@@ -597,11 +717,16 @@ export default function ProviderOnboardingPage() {
                   </div>
                 </div>
                 <div>
-                  <FormLabel className="text-foreground">{t("labels.description")}</FormLabel>
+                  <FormLabel className="text-foreground">
+                    {t("labels.description")}
+                  </FormLabel>
                   <FormTextarea
                     value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
+                      setFormData({
+                        ...formData,
+                        description: e.target.value,
+                      })
                     }
                     rows={4}
                     accent="secondary"
@@ -610,18 +735,25 @@ export default function ProviderOnboardingPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.experience")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.experience")}
+                    </FormLabel>
                     <FormInput
                       type="number"
                       value={formData.experienceYears}
                       onChange={(e) =>
-                        setFormData({ ...formData, experienceYears: e.target.value })
+                        setFormData({
+                          ...formData,
+                          experienceYears: e.target.value,
+                        })
                       }
                       accent="secondary"
                     />
                   </div>
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.priceMin")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.priceMin")}
+                    </FormLabel>
                     <FormInput
                       type="number"
                       value={formData.priceMin}
@@ -632,7 +764,9 @@ export default function ProviderOnboardingPage() {
                     />
                   </div>
                   <div>
-                    <FormLabel className="text-foreground">{t("labels.priceMax")}</FormLabel>
+                    <FormLabel className="text-foreground">
+                      {t("labels.priceMax")}
+                    </FormLabel>
                     <FormInput
                       type="number"
                       value={formData.priceMax}
@@ -643,50 +777,81 @@ export default function ProviderOnboardingPage() {
                     />
                   </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <FormLabel className="text-foreground">{t("labels.password")}</FormLabel>
-                    <FormInput
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      accent="secondary"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <FormLabel className="text-foreground">{t("labels.confirmPassword")}</FormLabel>
-                    <FormInput
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        setFormData({ ...formData, confirmPassword: e.target.value })
-                      }
-                      accent="secondary"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                </div>
-                <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.gdprConsent}
-                    onChange={(e) =>
-                      setFormData({ ...formData, gdprConsent: e.target.checked })
-                    }
-                    className="mt-1 rounded border-border"
-                  />
-                  <span className="text-sm text-muted">
-                    {t.rich("labels.agreeToTerms", {
-                        privacy: (children) => <Link href="/privacy" className="text-secondary hover:underline">{children}</Link>,
-                        terms: (children) => <Link href="/terms" className="text-secondary hover:underline">{children}</Link>
-                    })}
-                  </span>
-                </label>
+                {!isAuthenticated && (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <FormLabel className="text-foreground">
+                          {t("labels.password")}
+                        </FormLabel>
+                        <FormInput
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              password: e.target.value,
+                            })
+                          }
+                          accent="secondary"
+                          minLength={8}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <FormLabel className="text-foreground">
+                          {t("labels.confirmPassword")}
+                        </FormLabel>
+                        <FormInput
+                          type="password"
+                          value={formData.confirmPassword}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              confirmPassword: e.target.value,
+                            })
+                          }
+                          accent="secondary"
+                          minLength={8}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.gdprConsent}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            gdprConsent: e.target.checked,
+                          })
+                        }
+                        className="mt-1 rounded border-border"
+                      />
+                      <span className="text-sm text-muted">
+                        {t.rich("labels.agreeToTerms", {
+                          privacy: (children) => (
+                            <Link
+                              href="/privacy"
+                              className="text-secondary hover:underline"
+                            >
+                              {children}
+                            </Link>
+                          ),
+                          terms: (children) => (
+                            <Link
+                              href="/terms"
+                              className="text-secondary hover:underline"
+                            >
+                              {children}
+                            </Link>
+                          ),
+                        })}
+                      </span>
+                    </label>
+                  </>
+                )}
               </div>
             )}
 

@@ -891,7 +891,7 @@
         "overview": "Overview",
         "requests": "Listings",
         "offers": "Requests",
-        "pendingOffers": "Pending Offers",
+        "pendingOffers": "Offers",
         "orders": "Orders",
         "calendar": "Calendar",
         "messages": "Messages",
@@ -954,7 +954,18 @@
       },
       "acceptanceRate": "of your offers were accepted so far",
       "offerPending": "Offer sent – awaiting reply",
-      "offerAlreadySent": "You already sent an offer for this request. Check Pending Offers for its status."
+      "offerAlreadySent": "You already sent an offer for this request. Check Offers for its status.",
+      "empty": {
+        "noServicesTitle": "No active services",
+        "noServicesBody": "Listings require an active service in the exact request category. Check the services shown on your profile. Service activation and category editing are not available in the dashboard yet.",
+        "noEligibleTitle": "No matching requests right now",
+        "noEligibleBody": "Only open requests in your active service categories and within your configured service radius appear here. Check your profile location and radius, or refresh later.",
+        "filteredTitle": "No listings match your filters",
+        "filteredBody": "Clear your filters to see the available matching requests.",
+        "clearFilters": "Clear Filters",
+        "viewProfile": "View Profile",
+        "refresh": "Refresh Listings"
+      }
     },
     "placeholders": {
       "comingSoon": "This section will be available soon."
@@ -1043,7 +1054,10 @@
       "completing": "Sending...",
       "awaitingCustomer": "Completion request sent to customer. Waiting for approval.",
       "completeError": "Failed to update order status.",
-      "loadError": "Orders could not be loaded."
+      "loadError": "Orders could not be loaded.",
+      "confirmBooking": "Confirm Booking",
+      "confirmError": "Failed to confirm booking.",
+      "awaitingProvider": "Confirm the requested date before starting or completing this booking."
     },
     "reviews": {
       "title": "My Reviews",
@@ -1121,7 +1135,11 @@
         "accepted": "Accepted",
         "rejected": "Rejected",
         "expired": "Expired"
-      }
+      },
+      "awaitingBooking": "Waiting for the customer to create a booking",
+      "bookingCreated": "Booking created",
+      "viewOrder": "View Order",
+      "empty": "No pending or accepted offers yet."
     },
     "requestDetail": {
       "title": "Request Details",
@@ -1205,15 +1223,19 @@
       "passwordLength": "Password must be at least 8 characters.",
       "passwordMatch": "Passwords do not match.",
       "acceptTerms": "Please accept the privacy policy and terms.",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "profileCheck": "Your provider profile could not be checked. Please try again."
     },
     "buttons": {
       "back": "Back",
       "continue": "Continue",
       "finish": "Finish onboarding",
-      "submitting": "Creating account..."
+      "submitting": "Saving profile...",
+      "retry": "Try again"
     },
-    "loadingCategories": "Loading categories..."
+    "loadingCategories": "Loading categories...",
+    "checkingProfile": "Checking your provider profile...",
+    "resumeNotice": "Your account is ready. Complete your provider profile to continue; you do not need to create another account."
   },
   "admin": {
     "providers": {

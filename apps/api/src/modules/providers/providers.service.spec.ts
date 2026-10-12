@@ -123,6 +123,12 @@ describe("ProvidersService", () => {
       prisma.provider.create.mockResolvedValue({ id: "provider-1" });
     });
 
+    it("returns the existing provider on a creation retry", async () => {
+      prisma.provider.findUnique.mockResolvedValue(mockProvider);
+      await expect(service.create("user-1", { description: "Retry" } as any))
+        .resolves.toEqual(mockProvider);
+    });
+
     it("creates services for valid leaf categories", async () => {
       prisma.category.findMany.mockResolvedValue([
         {

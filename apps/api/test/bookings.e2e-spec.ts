@@ -249,6 +249,10 @@ describe("Bookings (e2e)", () => {
       expect(response.body.status).toBe("pending");
       expect(new Date(response.body.scheduledDate).toISOString()).toBe(newDate);
 
+      // Pending cannot complete or be confirmed by the customer.
+      await setStatus(providerToken, booking!.id, "completion_pending").expect(400);
+      await setStatus(customerToken, booking!.id, "completed").expect(400);
+      await setStatus(customerToken, booking!.id, "confirmed").expect(403);
       // Provider re-confirms.
       await setStatus(providerToken, booking!.id, "confirmed").expect(200);
     });
