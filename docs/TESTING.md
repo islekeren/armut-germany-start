@@ -54,7 +54,7 @@ Notes:
 - Playwright starts the API with `NODE_ENV=test` and `THROTTLE_DISABLED=true` so the per-IP auth rate limits do not trip when many test users log in
 - if your Playwright version has no matching bundled browser, point it at a local Chromium with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`
 - with `E2E_DEV_SERVERS=true`, `nest start --watch` can leave an orphaned `apps/api/dist/main` process on port 4000 after Playwright exits; kill it if the next run reports the URL is already in use
-- behind a TLS-intercepting proxy, `next build` may fail to download Google Fonts; trust the proxy CA with `NODE_EXTRA_CA_CERTS` and set `NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1`
+- Outfit and Geist are bundled locally through `next/font/local`; production builds do not download Google Fonts. Outfit's source and license are documented in `apps/web/app/fonts/README.md`.
 
 ### E2E harness conventions (API)
 
