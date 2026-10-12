@@ -8,6 +8,7 @@ import {
   PanelCard,
   ProviderSubpageShell,
   useProviderApproval,
+  useProviderOnboardingCheck,
 } from "@/components";
 import {
   getStoredAccessToken,
@@ -44,12 +45,16 @@ export default function ListingsPage() {
   const tFilters = useTranslations("provider.offers.filters");
   const tApproval = useTranslations("provider.approval");
   const isApproved = useProviderApproval();
+  // The dashboard layout already confirmed this provider's profile exists;
+  // reuse its cached fetch instead of requesting it again here.
+  const profileCheck = useProviderOnboardingCheck(true);
+  const hasActiveServices =
+    profileCheck.status === "exists" && profileCheck.profile
+      ? profileCheck.profile.services.some((service) => service.isActive)
+      : null;
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [allRequests, setAllRequests] = useState<ProviderRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasActiveServices, setHasActiveServices] = useState<boolean | null>(
-    null,
-  );
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [offerPrice, setOfferPrice] = useState("");
@@ -75,14 +80,11 @@ export default function ListingsPage() {
         return;
       }
 
-      const [response, profile] = await Promise.all([
-        providerApi.getRequests(token, { page: 1, limit: 100 }),
-        providerApi.getProfile(token),
-      ]);
+      const response = await providerApi.getRequests(token, {
+        page: 1,
+        limit: 100,
+      });
       setAllRequests(response.data);
-      setHasActiveServices(
-        profile.services.some((service) => service.isActive),
-      );
     } catch (fetchError) {
       console.error("Failed to fetch requests", fetchError);
       setError(describeError(fetchError, t("loadError")));

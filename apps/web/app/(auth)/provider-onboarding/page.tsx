@@ -10,13 +10,13 @@ import {
   FormSelect,
   FormTextarea,
   SimpleHeader,
+  useProviderOnboardingCheck,
 } from "@/components";
 import { useAuth } from "@/contexts";
 import { useTranslations, useLocale } from "next-intl";
 import {
   getCategories,
   isApiUnavailableError,
-  isApiNotFoundError,
   getStoredAccessToken,
   providerApi,
   type Category,
@@ -63,9 +63,6 @@ export default function ProviderOnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [checkingProfile, setCheckingProfile] = useState(true);
-  const [profileCheckFailed, setProfileCheckFailed] = useState(false);
-  const [profileCheckRetry, setProfileCheckRetry] = useState(0);
 
   const [formData, setFormData] = useState<ProviderOnboardingData>({
     categories: [],
@@ -123,56 +120,37 @@ export default function ProviderOnboardingPage() {
     fetchCategories();
   }, [t]);
 
+  const isProvider =
+    !authLoading && isAuthenticated && user?.userType === "provider";
+  const profileCheck = useProviderOnboardingCheck(isProvider && !isSubmitting);
+
+  const checkingProfile = isProvider && profileCheck.status === "checking";
+  const profileCheckFailed = isProvider && profileCheck.status === "error";
+
   useEffect(() => {
-    if (authLoading || isSubmitting) return;
-    if (!isAuthenticated) {
-      setCheckingProfile(false);
-      return;
-    }
+    if (authLoading || !isAuthenticated) return;
     if (user?.userType !== "provider") {
       router.replace("/");
+    }
+  }, [authLoading, isAuthenticated, user?.userType, router]);
+
+  useEffect(() => {
+    if (profileCheck.status === "exists") {
+      router.replace("/dashboard");
       return;
     }
-    let cancelled = false;
-    setCheckingProfile(true);
-    setProfileCheckFailed(false);
-    const token = getStoredAccessToken();
-    if (!token) return;
-    providerApi
-      .getProfile(token)
-      .then(() => {
-        if (!cancelled) router.replace("/dashboard");
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        if (!isApiNotFoundError(err)) {
-          setProfileCheckFailed(true);
-          return;
-        }
-        setFormData((current) => ({
-          ...current,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone || current.phone,
-          password: "",
-          confirmPassword: "",
-        }));
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingProfile(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    authLoading,
-    isAuthenticated,
-    isSubmitting,
-    user,
-    router,
-    profileCheckRetry,
-  ]);
+    if (profileCheck.status === "missing" && user) {
+      setFormData((current) => ({
+        ...current,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone || current.phone,
+        password: "",
+        confirmPassword: "",
+      }));
+    }
+  }, [profileCheck.status, user, router]);
 
   useEffect(() => {
     const firstName = searchParams.get("firstName");
@@ -381,7 +359,7 @@ export default function ProviderOnboardingPage() {
         {profileCheckFailed && (
           <button
             type="button"
-            onClick={() => setProfileCheckRetry((value) => value + 1)}
+            onClick={profileCheck.retry}
             className="rounded-lg bg-secondary px-6 py-3 text-white"
           >
             {t("buttons.retry")}

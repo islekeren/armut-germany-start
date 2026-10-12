@@ -147,12 +147,20 @@ export class ProvidersService {
       throw new ForbiddenException("User must be registered as a provider");
     }
 
-    // An account can retry onboarding after a lost response. Never overwrite
-    // an existing provider or create its services again on that retry.
+    // An account can retry onboarding after a lost response, possibly having
+    // edited the form first. Never create a second provider or duplicate its
+    // services on that retry, but still apply the resubmitted fields instead
+    // of silently discarding them.
     const existingProvider = await this.prisma.provider.findUnique({
       where: { userId },
     });
-    if (existingProvider) return this.findByUserId(userId);
+    if (existingProvider) {
+      return this.applyOnboardingResubmission(
+        existingProvider.id,
+        user,
+        createProviderDto,
+      );
+    }
 
     const {
       categories,
@@ -267,10 +275,106 @@ export class ProvidersService {
         const createdProvider = await this.prisma.provider.findUnique({
           where: { userId },
         });
-        if (createdProvider) return this.findByUserId(userId);
+        if (createdProvider) {
+          return this.applyOnboardingResubmission(
+            createdProvider.id,
+            user,
+            createProviderDto,
+          );
+        }
       }
       throw error;
     }
+  }
+
+  /**
+   * Applies a resubmitted onboarding form to a provider that already exists
+   * (a retry after a lost response, possibly edited first). Updates the
+   * provider and profile fields and, when the form included a price range,
+   * the active services' pricing. Categories/services are never recreated
+   * or removed here to keep the no-duplication guarantee for plain retries.
+   */
+  private async applyOnboardingResubmission(
+    providerId: string,
+    user: { id: string; firstName: string; lastName: string; email: string },
+    createProviderDto: CreateProviderDto,
+  ) {
+    const {
+      categories: _categories,
+      priceMin,
+      priceMax,
+      headline,
+      bio,
+      addressLine1,
+      city,
+      postalCode,
+      website,
+      galleryImages,
+      highlights,
+      languages,
+      openingHours,
+      serviceAreaLat: _serviceAreaLat,
+      serviceAreaLng: _serviceAreaLng,
+      ...providerData
+    } = createProviderDto;
+
+    const serviceAreaCenter = postalCode ? lookupPostcode(postalCode) : null;
+    const slugLabel =
+      providerData.companyName ||
+      `${user.firstName} ${user.lastName}`.trim() ||
+      user.email;
+    const slug = await this.generateUniqueProfileSlug(slugLabel, providerId);
+
+    const servicePriceData: { priceMin?: number; priceMax?: number } = {};
+    if (priceMin !== undefined) servicePriceData.priceMin = priceMin;
+    if (priceMax !== undefined) servicePriceData.priceMax = priceMax;
+
+    await this.prisma.provider.update({
+      where: { id: providerId },
+      data: {
+        ...providerData,
+        ...(serviceAreaCenter
+          ? {
+              serviceAreaLat: serviceAreaCenter.lat,
+              serviceAreaLng: serviceAreaCenter.lng,
+            }
+          : {}),
+        profile: {
+          upsert: {
+            create: {
+              slug,
+              headline: headline || null,
+              bio: bio || providerData.description,
+              addressLine1: addressLine1 || null,
+              city: city || null,
+              postalCode: postalCode || null,
+              website: website || null,
+              galleryImages: this.sanitizeStringArray(galleryImages),
+              highlights: this.sanitizeStringArray(highlights),
+              languages: this.sanitizeStringArray(languages),
+              openingHours: this.normalizeOpeningHours(openingHours),
+            },
+            update: {
+              headline: headline || null,
+              bio: bio || providerData.description,
+              addressLine1: addressLine1 || null,
+              city: city || null,
+              postalCode: postalCode || null,
+              website: website || null,
+              galleryImages: this.sanitizeStringArray(galleryImages),
+              highlights: this.sanitizeStringArray(highlights),
+              languages: this.sanitizeStringArray(languages),
+              openingHours: this.normalizeOpeningHours(openingHours),
+            },
+          },
+        },
+        services: Object.keys(servicePriceData).length
+          ? { updateMany: { where: { isActive: true }, data: servicePriceData } }
+          : undefined,
+      },
+    });
+
+    return this.findByUserId(user.id);
   }
 
   async findAll(query: ProviderQueryDto) {

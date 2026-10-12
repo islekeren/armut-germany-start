@@ -48,7 +48,10 @@ export default function ProviderOffersPage() {
     () =>
       offers
         .filter(
-          (offer) => offer.status === "pending" || offer.status === "accepted",
+          (offer) =>
+            (offer.status === "pending" || offer.status === "accepted") &&
+            offer.booking?.status !== "completed" &&
+            offer.booking?.status !== "cancelled",
         )
         .sort(
           (a, b) =>
