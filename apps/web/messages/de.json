@@ -811,6 +811,20 @@
         "yourReview": "Ihre Bewertung",
         "noReviewComment": "Kein schriftliches Feedback hinterlegt.",
         "providerReply": "Antwort des Dienstleisters",
+        "paymentTitle": "Sichere Zahlung",
+        "paymentHint": "Bezahlen Sie mit Stripe, um den finanziellen Schritt dieser bestätigten Buchung abzuschließen.",
+        "paymentFailedHint": "Die vorherige Zahlung wurde nicht abgeschlossen. Sie können es sicher erneut versuchen.",
+        "paymentAction": "Bezahlen und Buchung bestätigen",
+        "paymentOpening": "Sicherer Checkout wird geöffnet...",
+        "paymentError": "Stripe Checkout konnte nicht gestartet werden",
+        "paymentReturnSuccess": "Zahlung gesendet. Wir warten auf die sichere Bestätigung von Stripe.",
+        "paymentConfirmed": "Zahlung bestätigt. Vielen Dank!",
+        "paymentReturnCancel": "Der Checkout wurde abgebrochen. Der Zahlungsstatus wurde nicht geändert.",
+        "refundAction": "Volle Rückerstattung anfordern",
+        "refunding": "Rückerstattung wird angefordert...",
+        "refundConfirm": "Diese Zahlung erstatten? Sobald Stripe dies bestätigt, können Sie die Buchung stornieren.",
+        "refundRequested": "Rückerstattung angefordert. Stripe bestätigt sie in Kürze; danach können Sie die Buchung stornieren.",
+        "refundError": "Die Rückerstattung konnte nicht angefordert werden",
         "statusHelp": {
           "pending": "Wartet auf die Bestätigung des Dienstleisters.",
           "confirmed": "Ihre Buchung ist bestätigt.",
@@ -958,6 +972,42 @@
     },
     "placeholders": {
       "comingSoon": "Dieser Bereich wird bald verfügbar sein."
+    },
+    "finances": {
+      "title": "Stripe-Zahlungskonto",
+      "loading": "Status Ihres Stripe-Kontos wird geprüft...",
+      "loginRequired": "Bitte melden Sie sich an, um Ihr Zahlungskonto zu verwalten.",
+      "loadError": "Der Status Ihres Stripe-Kontos konnte nicht geladen werden.",
+      "actionError": "Das Stripe-Onboarding konnte nicht geöffnet werden.",
+      "dashboardError": "Das Stripe-Dashboard konnte nicht geöffnet werden.",
+      "returned": "Sie sind von Stripe zurückgekehrt. Der verifizierte Kontostatus wird unten angezeigt.",
+      "demoTitle": "Testmodus-Demo",
+      "demoHint": "Diese Verbindung nutzt den Stripe-Testmodus. Es werden weder echtes Geld noch Live-Auszahlungen verwendet.",
+      "status": {
+        "not_started": {
+          "label": "Nicht verbunden",
+          "description": "Verbinden Sie ein Stripe-Testkonto, bevor Kunden Ihre Buchungen bezahlen können."
+        },
+        "pending": {
+          "label": "Prüfung läuft",
+          "description": "Setzen Sie das Stripe-Onboarding fort oder warten Sie auf die Prüfung Ihrer Angaben."
+        },
+        "restricted": {
+          "label": "Aktion erforderlich",
+          "description": "Stripe benötigt weitere Angaben, bevor dieses Konto Überweisungen empfangen kann."
+        },
+        "ready": {
+          "label": "Bereit",
+          "description": "Ihr Stripe-Testkonto kann Buchungszahlungen empfangen."
+        }
+      },
+      "actions": {
+        "connect": "Stripe-Konto verbinden",
+        "continue": "Onboarding fortsetzen",
+        "opening": "Stripe wird geöffnet...",
+        "openDashboard": "Stripe-Dashboard öffnen",
+        "refresh": "Status aktualisieren"
+      }
     },
     "profile": {
       "title": "Profil bearbeiten",
@@ -1255,6 +1305,13 @@
     "emailTaken": "Diese E-Mail-Adresse ist bereits registriert.",
     "wrongPassword": "Das aktuelle Passwort ist nicht korrekt.",
     "providerNotApproved": "Ihr Profil ist noch nicht freigegeben. Sie können Angebote senden, sobald die Prüfung abgeschlossen ist.",
+    "providerNotReadyForPayments": "Dieser Anbieter hat die Zahlungseinrichtung noch nicht abgeschlossen, daher kann das Angebot derzeit nicht angenommen werden.",
+    "refundBeforeCancel": "Diese Buchung wurde bezahlt. Fordern Sie zuerst eine Rückerstattung an; nach der Bestätigung können Sie stornieren.",
+    "paymentFinalized": "Diese Buchung wurde bereits bezahlt oder erstattet.",
+    "paymentAlreadyRefunded": "Diese Zahlung wurde bereits erstattet.",
+    "refundNotAllowed": "Diese Zahlung wurde bereits an den Anbieter ausgezahlt. Bitte wenden Sie sich für eine Rückerstattung an den Support.",
+    "paymentRequiredForCompletion": "Diese Buchung muss bezahlt sein, bevor sie abgeschlossen werden kann.",
+    "paymentDisputed": "Die Zahlung wird geprüft, daher kann der Auftrag noch nicht abgeschlossen werden. Bitte wenden Sie sich an den Support.",
     "alreadyQuoted": "Sie haben für diese Anfrage bereits ein Angebot gesendet.",
     "requestClosed": "Diese Anfrage nimmt keine Angebote mehr an.",
     "quoteExpired": "Dieses Angebot ist abgelaufen.",

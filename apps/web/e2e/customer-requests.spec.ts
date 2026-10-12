@@ -182,6 +182,36 @@ test.describe("customer requests", () => {
     expect(booking.status).toBe("confirmed");
   });
 
+  test("an offer from a provider without Stripe onboarding cannot be accepted", async ({
+    page,
+    loginAs,
+  }) => {
+    const { customer, serviceRequest, quote, provider } = await createDeal({
+      label: "no-stripe",
+      title: `Unready provider ${Date.now()}`,
+      providerStripeReady: false,
+    });
+    await loginAs(customer);
+    page.on("dialog", (dialog) => dialog.accept());
+
+    await page.goto(`/my-requests/${serviceRequest.id}`);
+    await page
+      .locator("div", {
+        has: page.getByRole("heading", { name: provider.companyName! }),
+      })
+      .getByRole("button", { name: "Accept Quote" })
+      .last()
+      .click();
+
+    await expect(
+      page.getByText(/has not finished setting up payments/),
+    ).toBeVisible();
+    await expect(page).not.toHaveURL(/\/bookings\/new/);
+    expect(
+      (await db().quote.findUniqueOrThrow({ where: { id: quote.id } })).status,
+    ).toBe("pending");
+  });
+
   test("a pending quote cannot be booked directly", async ({
     page,
     loginAs,

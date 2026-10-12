@@ -1,4 +1,4 @@
-import { createDeal, db, disconnectDb } from "./support/data";
+import { createDeal, db, disconnectDb, markBookingPaid } from "./support/data";
 import { expect, test } from "./support/test";
 
 test.afterAll(disconnectDb);
@@ -92,6 +92,7 @@ test.describe("customer bookings", () => {
     const { customer, booking, provider } = await createDeal({
       label: "bk-review",
       bookingStatus: "completion_pending",
+      paid: true,
     });
     await loginAs(customer);
 
@@ -122,5 +123,46 @@ test.describe("customer bookings", () => {
       (await db().provider.findUniqueOrThrow({ where: { id: provider.id } }))
         .totalReviews,
     ).toBe(1);
+  });
+  test("asks for payment on an unpaid booking", async ({ page, loginAs }) => {
+    const { customer, booking } = await createDeal({
+      label: "bk-unpaid",
+      bookingStatus: "confirmed",
+    });
+    await loginAs(customer);
+
+    await page.goto(`/bookings/${booking!.id}`);
+    await expect(
+      page.getByRole("button", { name: "Pay and confirm booking" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Cancel Booking" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Request a full refund" }),
+    ).toHaveCount(0);
+  });
+
+  test("offers a refund instead of cancelling once the booking is paid", async ({
+    page,
+    loginAs,
+  }) => {
+    const { customer, booking } = await createDeal({
+      label: "bk-paid",
+      bookingStatus: "confirmed",
+    });
+    await markBookingPaid(booking!.id, { released: false });
+    await loginAs(customer);
+
+    await page.goto(`/bookings/${booking!.id}`);
+    await expect(
+      page.getByRole("button", { name: "Request a full refund" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Pay and confirm booking" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Cancel Booking" }),
+    ).toHaveCount(0);
   });
 });

@@ -4,7 +4,8 @@ import { AppModule } from "./app.module";
 import { configureApp } from "./app.setup";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody is required to verify Stripe webhook signatures.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const port = Number(process.env.PORT || 4000);
   const host = "0.0.0.0";
 

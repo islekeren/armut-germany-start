@@ -5,6 +5,14 @@ import {
 } from "@nestjs/common";
 import { QuotesService } from "./quotes.service";
 
+const readyProvider = {
+  userId: "provider-user-1",
+  stripeAccountId: "acct_test",
+  stripeOnboardingStatus: "ready",
+  stripeTransfersEnabled: true,
+  stripePayoutsEnabled: true,
+};
+
 describe("QuotesService", () => {
   const prisma = {
     provider: {
@@ -218,6 +226,7 @@ describe("QuotesService", () => {
       prisma.quote.updateMany.mockReturnValue("update-many-op" as any);
       prisma.serviceRequest.update.mockReturnValue("request-update-op" as any);
       prisma.$transaction.mockResolvedValue([]);
+      prisma.provider.findUnique.mockResolvedValue(readyProvider);
       jest.spyOn(service, "findOne").mockResolvedValue({ id: "q1", status: "accepted" } as any);
 
       await expect(service.respond("q1", "u1", "accepted")).rejects.toThrow(
@@ -233,6 +242,32 @@ describe("QuotesService", () => {
         id: "q1",
         status: "accepted",
       });
+    });
+
+    it("refuses to accept an offer from a provider that cannot receive Stripe payments", async () => {
+      prisma.quote.findUnique.mockResolvedValue({
+        id: "q4",
+        customerId: "customer-1",
+        providerId: "provider-1",
+        status: "pending",
+        requestId: "r1",
+        validUntil: new Date("2099-01-01"),
+        request: { status: "open" },
+      });
+
+      for (const provider of [
+        null,
+        { ...readyProvider, stripeAccountId: null },
+        { ...readyProvider, stripeOnboardingStatus: "pending" },
+        { ...readyProvider, stripeTransfersEnabled: false },
+        { ...readyProvider, stripePayoutsEnabled: false },
+      ]) {
+        prisma.provider.findUnique.mockResolvedValueOnce(provider as any);
+        await expect(
+          service.respond("q4", "customer-1", "accepted"),
+        ).rejects.toThrow("Provider is not ready to receive payments yet");
+      }
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it("refuses to accept an expired quote or one on a closed request", async () => {

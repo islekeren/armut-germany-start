@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header, PanelCard } from "@/components";
@@ -9,6 +9,7 @@ import {
   bookingsApi,
   getStoredAccessToken,
   messagesApi,
+  paymentsApi,
   uploadsApi,
   type CustomerBooking,
   type BookingReview,
@@ -28,6 +29,7 @@ import { useApiErrorMessage } from "@/lib/api-errors";
 export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const locale = useLocale();
   const t = useTranslations("customer.bookings");
   const describeError = useApiErrorMessage();
@@ -44,6 +46,8 @@ export default function BookingDetailPage() {
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [isRefunding, setIsRefunding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -80,6 +84,44 @@ export default function BookingDetailPage() {
     loadBooking();
   }, [loadBooking]);
 
+  const returnedFromCheckout = searchParams.get("payment") === "success";
+  const paymentStatus = booking?.paymentStatus;
+
+  // Returning from Stripe Checkout is not proof of payment: the booking only
+  // becomes paid once Stripe's signed webhook arrives, so poll briefly for it.
+  useEffect(() => {
+    if (!returnedFromCheckout || !bookingId || paymentStatus === "paid") return;
+
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      const token = getStoredAccessToken();
+      if (!token || attempts > 10) {
+        clearInterval(timer);
+        return;
+      }
+      try {
+        setBooking(await bookingsApi.getById(token, bookingId));
+      } catch {
+        // Keep the last known state; the next tick or a reload retries.
+      }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [returnedFromCheckout, bookingId, paymentStatus]);
+
+  useEffect(() => {
+    const paymentResult = searchParams.get("payment");
+    if (paymentResult === "success") {
+      setSuccessMessage(
+        paymentStatus === "paid"
+          ? tDetail("paymentConfirmed")
+          : tDetail("paymentReturnSuccess"),
+      );
+    } else if (paymentResult === "cancel") {
+      setError(tDetail("paymentReturnCancel"));
+    }
+  }, [searchParams, tDetail, paymentStatus]);
+
   const formatDateTime = (value?: string | null) =>
     value
       ? new Intl.DateTimeFormat(localeTag, {
@@ -107,6 +149,52 @@ export default function BookingDetailPage() {
     } catch (err) {
       console.error("Failed to message provider:", err);
       setError(describeError(err, t("messageError")));
+    }
+  };
+
+  const handlePayment = async () => {
+    const token = getStoredAccessToken();
+    if (!token || !booking) {
+      setError(t("loginRequired"));
+      return;
+    }
+
+    setIsPaying(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const checkout = await paymentsApi.createCheckoutSession(
+        token,
+        booking.id,
+      );
+      window.location.assign(checkout.checkoutUrl);
+    } catch (err) {
+      setError(describeError(err, tDetail("paymentError")));
+      setIsPaying(false);
+    }
+  };
+
+  const handleRefund = async () => {
+    const token = getStoredAccessToken();
+    if (!token || !booking) {
+      setError(t("loginRequired"));
+      return;
+    }
+
+    if (!window.confirm(tDetail("refundConfirm"))) {
+      return;
+    }
+
+    setIsRefunding(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await paymentsApi.requestRefund(token, booking.id);
+      setSuccessMessage(tDetail("refundRequested"));
+    } catch (err) {
+      setError(describeError(err, tDetail("refundError")));
+    } finally {
+      setIsRefunding(false);
     }
   };
 
@@ -268,8 +356,18 @@ export default function BookingDetailPage() {
     ? `/my-requests/${booking.quote.request.id}`
     : "/my-requests";
   const canManageSchedule = ["pending", "confirmed"].includes(booking.status);
+  const canCancel = canManageSchedule && booking.paymentStatus !== "paid";
+  // A paid booking must be refunded first; the refund is confirmed by Stripe's
+  // webhook, after which the booking can be cancelled.
+  const canRefund =
+    canManageSchedule &&
+    booking.paymentStatus === "paid" &&
+    !booking.payment?.transferredAt;
   const canReview = booking.status === "completed" && !booking.review;
   const canConfirmCompletion = booking.status === "completion_pending";
+  const canPay =
+    ["pending", "failed"].includes(booking.paymentStatus) &&
+    !["cancelled", "completed"].includes(booking.status);
   const displayStatus = toBookingDisplayStatus(booking.status);
   const categoryLabel =
     locale === "de"
@@ -422,6 +520,29 @@ export default function BookingDetailPage() {
           </div>
 
           <div className="space-y-6">
+            {canPay ? (
+              <PanelCard className="border border-primary/20 bg-primary/5">
+                <h2 className="text-lg font-semibold">
+                  {tDetail("paymentTitle")}
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  {booking.paymentStatus === "failed"
+                    ? tDetail("paymentFailedHint")
+                    : tDetail("paymentHint")}
+                </p>
+                <button
+                  type="button"
+                  onClick={handlePayment}
+                  disabled={isPaying}
+                  className="mt-5 w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPaying
+                    ? tDetail("paymentOpening")
+                    : tDetail("paymentAction")}
+                </button>
+              </PanelCard>
+            ) : null}
+
             {canManageSchedule && (
               <PanelCard className="sticky top-6">
                 <h2 className="text-lg font-semibold">
@@ -452,15 +573,28 @@ export default function BookingDetailPage() {
                       ? tDetail("rescheduling")
                       : tDetail("reschedule")}
                   </button>
-                  <button
-                    onClick={handleCancel}
-                    disabled={isCancelling}
-                    className="rounded-lg border border-rose-200 px-4 py-3 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isCancelling
-                      ? tDetail("cancelling")
-                      : tDetail("cancelBooking")}
-                  </button>
+                  {canCancel ? (
+                    <button
+                      onClick={handleCancel}
+                      disabled={isCancelling}
+                      className="rounded-lg border border-rose-200 px-4 py-3 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isCancelling
+                        ? tDetail("cancelling")
+                        : tDetail("cancelBooking")}
+                    </button>
+                  ) : null}
+                  {canRefund ? (
+                    <button
+                      onClick={handleRefund}
+                      disabled={isRefunding}
+                      className="rounded-lg border border-rose-200 px-4 py-3 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isRefunding
+                        ? tDetail("refunding")
+                        : tDetail("refundAction")}
+                    </button>
+                  ) : null}
                 </div>
               </PanelCard>
             )}

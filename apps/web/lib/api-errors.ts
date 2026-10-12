@@ -32,6 +32,17 @@ const EXACT_MESSAGES: Record<string, string> = {
   "Only customers can create service requests": "customersOnly",
   "No file provided": "noFile",
   "No files provided": "noFile",
+  "Provider is not ready to receive payments yet": "providerNotReadyForPayments",
+  "Provider is not ready to receive Stripe payments":
+    "providerNotReadyForPayments",
+  "Paid bookings must be refunded before cancellation": "refundBeforeCancel",
+  "Booking payment is already finalized": "paymentFinalized",
+  "Booking payment is already refunded": "paymentAlreadyRefunded",
+  "Released payments can only be refunded by an admin": "refundNotAllowed",
+  "Booking must have a confirmed payment before completion":
+    "paymentRequiredForCompletion",
+  "Provider transfer is on hold while the payment is disputed":
+    "paymentDisputed",
 };
 
 const PATTERN_RULES: Array<[RegExp, string]> = [

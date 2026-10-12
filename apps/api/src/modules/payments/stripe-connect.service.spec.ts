@@ -1,0 +1,146 @@
+import { NotFoundException } from "@nestjs/common";
+import { StripeConnectService } from "./stripe-connect.service";
+
+describe("StripeConnectService", () => {
+  const prisma = {
+    provider: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+  const stripeService = {
+    createConnectedAccount: jest.fn(),
+    createOnboardingLink: jest.fn(),
+    retrieveConnectedAccount: jest.fn(),
+    createExpressDashboardLoginLink: jest.fn(),
+    toAccountSnapshot: jest.fn(),
+  };
+  let service: StripeConnectService;
+
+  const provider = {
+    id: "provider-1",
+    userId: "user-1",
+    stripeAccountId: null,
+    stripeOnboardingStatus: "not_started",
+    stripeTransfersEnabled: false,
+    stripePayoutsEnabled: false,
+    stripeRequirementsDue: null,
+    stripeOnboardedAt: null,
+    user: {
+      email: "provider@example.com",
+      firstName: "Test",
+      lastName: "Provider",
+    },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new StripeConnectService(prisma as any, stripeService as any);
+  });
+
+  it("requires an existing provider profile", async () => {
+    prisma.provider.findUnique.mockResolvedValue(null);
+    await expect(service.createAccount("user-1")).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it("creates an Accounts v2 recipient and persists its status", async () => {
+    prisma.provider.findUnique.mockResolvedValue(provider);
+    stripeService.createConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "pending",
+      transfersEnabled: false,
+      payoutsEnabled: false,
+      requirementsDue: [{ description: "identity" }],
+      onboardedAt: null,
+    });
+    prisma.provider.update.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "pending",
+      stripeRequirementsDue: [{ description: "identity" }],
+    });
+
+    await expect(service.createAccount("user-1")).resolves.toEqual(
+      expect.objectContaining({
+        accountId: "acct_test",
+        onboardingStatus: "pending",
+      }),
+    );
+    expect(stripeService.createConnectedAccount).toHaveBeenCalledWith(provider);
+  });
+
+  it("creates an Express Dashboard login link for a ready provider", async () => {
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "ready",
+      stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
+    });
+    stripeService.createExpressDashboardLoginLink.mockResolvedValue({
+      url: "https://connect.stripe.test/express/login",
+    });
+
+    await expect(service.createDashboardLoginLink("user-1")).resolves.toEqual({
+      url: "https://connect.stripe.test/express/login",
+    });
+  });
+
+  it("keeps the original onboardedAt when a ready account is refreshed", async () => {
+    const original = new Date("2026-01-01T00:00:00Z");
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardedAt: original,
+    });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "ready",
+      transfersEnabled: true,
+      payoutsEnabled: true,
+      requirementsDue: [],
+      onboardedAt: new Date(),
+    });
+    prisma.provider.update.mockResolvedValue(provider);
+
+    await service.refreshStatus("user-1");
+
+    expect(prisma.provider.update).toHaveBeenCalledWith({
+      where: { id: "provider-1" },
+      data: expect.objectContaining({ stripeOnboardedAt: original }),
+    });
+  });
+
+  it("re-reads the account from Stripe and stores the snapshot", async () => {
+    stripeService.retrieveConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "restricted",
+      transfersEnabled: false,
+      payoutsEnabled: true,
+      requirementsDue: [{ description: "id" }],
+      onboardedAt: null,
+    });
+    prisma.provider.update.mockResolvedValue({ ...provider });
+
+    await service.syncProvider({
+      id: "provider-1",
+      stripeAccountId: "acct_test",
+      stripeOnboardedAt: new Date(),
+    });
+
+    expect(stripeService.retrieveConnectedAccount).toHaveBeenCalledWith("acct_test");
+    expect(prisma.provider.update).toHaveBeenCalledWith({
+      where: { id: "provider-1" },
+      data: expect.objectContaining({
+        stripeOnboardingStatus: "restricted",
+        stripeTransfersEnabled: false,
+        stripeOnboardedAt: null,
+      }),
+    });
+  });
+});
