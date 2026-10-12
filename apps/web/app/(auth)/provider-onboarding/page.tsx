@@ -19,6 +19,7 @@ import {
   isApiUnavailableError,
   getStoredAccessToken,
   providerApi,
+  usersApi,
   type Category,
 } from "@/lib/api";
 import {
@@ -264,7 +265,7 @@ export default function ProviderOnboardingPage() {
         ? `${formData.description}\n\nSpecialties: ${selectedBranchLabels.join(", ")}`
         : formData.description;
 
-      if (!isAuthenticated)
+      if (!isAuthenticated) {
         await register({
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -274,10 +275,22 @@ export default function ProviderOnboardingPage() {
           userType: "provider",
           gdprConsent: formData.gdprConsent,
         });
+      }
 
       const token = getStoredAccessToken();
       if (!token) {
         throw new Error("No authentication token found");
+      }
+
+      // Resuming onboarding on an existing account: the name/phone fields
+      // stay editable, so persist any edits to the user record (createProfile
+      // only carries provider fields, not these).
+      if (isAuthenticated) {
+        await usersApi.updateProfile(token, {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone || undefined,
+        });
       }
 
       await providerApi.createProfile(token, {
