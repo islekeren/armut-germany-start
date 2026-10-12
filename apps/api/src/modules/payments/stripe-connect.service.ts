@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { Prisma, StripeOnboardingStatus } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { StripeAccountSnapshot, StripeService } from "./stripe.service";
@@ -57,7 +62,8 @@ export class StripeConnectService {
         stripeOnboardingStatus: snapshot.onboardingStatus,
         stripeTransfersEnabled: snapshot.transfersEnabled,
         stripePayoutsEnabled: snapshot.payoutsEnabled,
-        stripeRequirementsDue: snapshot.requirementsDue as Prisma.InputJsonValue,
+        stripeRequirementsDue:
+          snapshot.requirementsDue as Prisma.InputJsonValue,
         // Keep the first time the account became ready instead of restamping
         // it on every status refresh.
         stripeOnboardedAt: snapshot.onboardedAt
@@ -65,6 +71,58 @@ export class StripeConnectService {
           : null,
       },
     });
+  }
+
+  async ensureEligible(providerId: string) {
+    this.stripeService.assertEnabled();
+    const provider = await this.prisma.provider.findUnique({
+      where: { id: providerId },
+    });
+    if (!provider?.stripeAccountId)
+      throw new BadRequestException({
+        code: "provider_missing_account",
+        message: "Provider payment verification is incomplete",
+      });
+    const fresh = await this.syncProvider({
+      id: provider.id,
+      stripeAccountId: provider.stripeAccountId,
+      stripeOnboardedAt: provider.stripeOnboardedAt,
+    });
+    if (
+      fresh.stripeOnboardingStatus !== "ready" ||
+      !fresh.stripeTransfersEnabled ||
+      !fresh.stripePayoutsEnabled
+    ) {
+      throw new BadRequestException({
+        code: "provider_verification_incomplete",
+        message: "Provider payment verification is incomplete",
+      });
+    }
+    return fresh;
+  }
+
+  async getEligibility(providerId: string) {
+    try {
+      await this.ensureEligible(providerId);
+      return { eligible: true, reason: "ready" };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        const response = error.getResponse() as { code?: string };
+        return {
+          eligible: false,
+          reason:
+            response.code === "provider_missing_account"
+              ? "missing_account"
+              : "verification_incomplete",
+        };
+      }
+      if (
+        error instanceof ServiceUnavailableException &&
+        (error.getResponse() as { code?: string }).code === "payments_disabled"
+      )
+        return { eligible: false, reason: "payments_disabled" };
+      return { eligible: false, reason: "verification_unavailable" };
+    }
   }
 
   async createAccount(userId: string) {
@@ -117,9 +175,17 @@ export class StripeConnectService {
     stripeAccountId: string;
     stripeOnboardedAt: Date | null;
   }) {
-    const account = await this.stripeService.retrieveConnectedAccount(
-      provider.stripeAccountId,
-    );
+    let account;
+    try {
+      account = await this.stripeService.retrieveConnectedAccount(
+        provider.stripeAccountId,
+      );
+    } catch {
+      throw new ServiceUnavailableException({
+        code: "provider_verification_unavailable",
+        message: "Provider payment verification is temporarily unavailable",
+      });
+    }
     return this.persistSnapshot(
       provider.id,
       this.stripeService.toAccountSnapshot(account),

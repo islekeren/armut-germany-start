@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import request from "supertest";
+import { StripeService } from "../src/modules/payments/stripe.service";
 import { AppModule } from "../src/app.module";
 import { configureApp } from "../src/app.setup";
 import {
@@ -32,7 +33,25 @@ export const daysFromNow = (days: number) =>
 export async function createTestApp(
   override?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
 ): Promise<INestApplication> {
-  let builder = Test.createTestingModule({ imports: [AppModule] });
+  // Explicit Stripe boundary mock: these database/API tests never validate real Stripe.
+  const stripeMock = {
+    assertEnabled: () => undefined,
+    assertEventMode: () => undefined,
+    getPaymentsMode: () => "sandbox",
+    retrieveConnectedAccount: async (id: string) =>
+      prisma.provider.findUniqueOrThrow({ where: { stripeAccountId: id } }),
+    toAccountSnapshot: (provider: any) => ({
+      accountId: provider.stripeAccountId,
+      onboardingStatus: provider.stripeOnboardingStatus,
+      transfersEnabled: provider.stripeTransfersEnabled,
+      payoutsEnabled: provider.stripePayoutsEnabled,
+      requirementsDue: [],
+      onboardedAt: provider.stripeOnboardedAt,
+    }),
+  };
+  let builder = Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(StripeService)
+    .useValue(stripeMock);
   if (override) {
     builder = override(builder);
   }

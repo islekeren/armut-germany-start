@@ -17,3 +17,6 @@ process.env.S3_PUBLIC_URL ||= "http://127.0.0.1:9190/armut-e2e-uploads";
 process.env.THROTTLE_DISABLED ||= "true";
 
 jest.setTimeout(60000);
+
+// Tests drive durable work explicitly instead of racing an interval.
+process.env.PAYMENT_WORKER_DISABLED = "true";
