@@ -8,6 +8,9 @@ const databaseUrl =
 
 // Production builds by default (what CI runs); E2E_DEV_SERVERS=true switches
 // to watch-mode servers for local debugging.
+// Explicit test-only Stripe boundary; production code still defaults payments disabled.
+const useStripeMock = process.env.E2E_STRIPE_MOCK !== "false";
+
 const useDevServers = process.env.E2E_DEV_SERVERS === "true";
 
 export default defineConfig({
@@ -40,9 +43,11 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: useDevServers
-        ? "npm --prefix ../.. run dev:api"
-        : "npm --prefix ../api run start:prod",
+      command: useStripeMock
+        ? "npm --prefix ../api run build && node ../api/test/browser-server.cjs"
+        : useDevServers
+          ? "npm --prefix ../.. run dev:api"
+          : "npm --prefix ../api run start:prod",
       url: `${apiUrl}/api/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
@@ -61,6 +66,20 @@ export default defineConfig({
         // per-route auth rate limits. Only honoured when NODE_ENV=test.
         NODE_ENV: "test",
         THROTTLE_DISABLED: "true",
+        ...(useStripeMock
+          ? {
+              E2E_STRIPE_MOCK: "true",
+              PAYMENTS_MODE: "sandbox",
+              STRIPE_WEBHOOK_MODE: "sandbox",
+              STRIPE_LIVE_ENABLED: "false",
+              STRIPE_SECRET_KEY: "sk_test_browser_fixture",
+              STRIPE_WEBHOOK_SECRET: "whsec_browser_fixture",
+              STRIPE_CONNECT_RETURN_URL: `${webUrl}/dashboard/finances`,
+              STRIPE_CONNECT_REFRESH_URL: `${webUrl}/dashboard/finances`,
+              STRIPE_CHECKOUT_SUCCESS_URL: `${webUrl}/bookings/{bookingId}?payment=success`,
+              STRIPE_CHECKOUT_CANCEL_URL: `${webUrl}/bookings/{bookingId}?payment=cancel`,
+            }
+          : { PAYMENTS_MODE: "disabled" }),
       },
     },
     {

@@ -182,9 +182,12 @@ The current `codex/stripe-connect-payments` checkout contains:
 - a dispute (`charge.dispute.created`) sets `Payment.disputedAt`, which blocks releasing the provider transfer until the dispute is won (`charge.dispute.closed`)
 - webhook events for objects without platform metadata are acknowledged and ignored
 - transfer reversals run after the webhook's database transaction commits; the event is only marked processed once the reversal is stored, so a Stripe failure makes Stripe redeliver it
-- accepting a quote requires the provider to be Stripe-ready (`ready`, transfers and payouts enabled)
+- acceptance, Checkout and transfer share a fresh Stripe eligibility check (`ready`, transfers and payouts enabled), without trusting either stale positive or stale negative flags
 - checkout and transfer release re-read the connected account from Stripe instead of trusting stored flags
-- after returning from Checkout the booking page polls until the webhook marks the booking paid
+- immutable Checkout attempts prevent stale events from modifying newer attempts; unexpected collections are recorded and held for reconciliation
+- booking details reconcile Checkout state and the page shows processing/polls even after refresh without a payment return query
+- disputes and refunds coordinate with transfer claims through short PostgreSQL row locks and durable reversal operations; no Stripe call is held inside a database transaction
+- payments default disabled; sandbox/live configuration must be explicit and coherent
 - paid bookings must be refunded before cancellation
 
 Release boundary:
@@ -194,7 +197,8 @@ Release boundary:
 
 Known reliability work before production use:
 
-- avoid coupling booking-completion HTTP latency to a synchronous provider transfer
+- completion now reserves a durable operation; enabled API workers release funds and atomically complete the booking/request, while the browser polls the outcome
+- keep at least one payment worker running; reconcile ambiguous operations older than Stripe v1 idempotency retention manually
 - handle partial refunds and the case where a dispute is won after the provider transfer was already reversed (both need a business rule)
 - react to Stripe account-update events instead of relying on live re-checks at checkout and transfer time
 

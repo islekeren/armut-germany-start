@@ -691,7 +691,10 @@
       "budgetRange": "{min}–{max} €",
       "budgetFrom": "ab {min} €",
       "budgetUpTo": "bis {max} €",
-      "acceptConfirm": "Angebot von {provider} über {price} € annehmen? Alle anderen Angebote für diese Anfrage werden dabei abgelehnt."
+      "acceptConfirm": "Angebot von {provider} über {price} € annehmen? Alle anderen Angebote für diese Anfrage werden dabei abgelehnt.",
+      "paymentVerificationIncomplete": "Der Anbieter hat die Zahlungsprüfung noch nicht abgeschlossen. Dieses Angebot kann noch nicht angenommen werden.",
+      "paymentVerificationUnavailable": "Die Zahlungsprüfung ist vorübergehend nicht verfügbar. Bitte aktualisieren Sie die Seite.",
+      "paymentsUnavailable": "Zahlungen sind derzeit nicht verfügbar."
     },
     "bookings": {
       "title": "Meine Buchungen",
@@ -839,7 +842,14 @@
         "confirmCompletionSuccess": "Buchung als abgeschlossen markiert.",
         "confirmCompletionError": "Abschluss konnte nicht bestätigt werden.",
         "reviewImageAlt": "Foto zur Bewertung",
-        "replyImageAlt": "Foto zur Antwort des Anbieters"
+        "replyImageAlt": "Foto zur Antwort des Anbieters",
+        "paymentProcessing": "Die Zahlungsbestätigung wird verarbeitet.",
+        "paymentReconciliation": "Diese Zahlung muss geprüft werden. Bitte kontaktieren Sie den Support.",
+        "paymentsUnavailable": "Zahlungen sind derzeit nicht verfügbar.",
+        "processingUnresolved": "Das Ergebnis wird noch bestätigt. Aktualisieren Sie den Status.",
+        "refreshStatus": "Status aktualisieren",
+        "completionProcessing": "Abschluss wird bestätigt…",
+        "completionFailed": "Der Abschluss konnte nicht bestätigt werden. Bitte kontaktieren Sie den Support."
       }
     },
     "messages": {

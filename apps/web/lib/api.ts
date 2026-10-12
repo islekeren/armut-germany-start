@@ -20,7 +20,10 @@ export class ApiError extends Error {
   status?: number;
   code: ApiErrorCode;
 
-  constructor(message: string, options: { status?: number; code: ApiErrorCode }) {
+  constructor(
+    message: string,
+    options: { status?: number; code: ApiErrorCode },
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = options.status;
@@ -70,7 +73,11 @@ async function getErrorMessage(response: Response) {
 
 function getApiBaseUrl(direct = false) {
   if (typeof window === "undefined") {
-    return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_ORIGIN;
+    return (
+      process.env.API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      DEFAULT_API_ORIGIN
+    );
   }
 
   if (direct) {
@@ -106,7 +113,10 @@ export async function apiRequest<T>(
   const controller = new AbortController();
   const abortFromCaller = () => controller.abort(signal?.reason);
   const timeoutId = setTimeout(
-    () => controller.abort(new DOMException("API request timed out", "TimeoutError")),
+    () =>
+      controller.abort(
+        new DOMException("API request timed out", "TimeoutError"),
+      ),
     timeoutMs,
   );
 
@@ -139,7 +149,8 @@ export async function apiRequest<T>(
     try {
       response = await fetch(url, {
         ...fetchOptions,
-        cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
+        cache:
+          cache ?? (typeof window === "undefined" ? "no-store" : undefined),
         headers,
         signal: controller.signal,
       });
@@ -157,13 +168,16 @@ export async function apiRequest<T>(
 
       if (refreshToken) {
         try {
-          const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
+          const refreshResponse = await fetch(
+            `${getApiBaseUrl(direct)}/api/auth/refresh`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ refreshToken }),
             },
-            body: JSON.stringify({ refreshToken }),
-          });
+          );
 
           if (refreshResponse.ok) {
             const refreshed = (await refreshResponse.json()) as LoginResponse;
@@ -173,7 +187,10 @@ export async function apiRequest<T>(
             localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
 
             const retryHeaders = new Headers(fetchOptions.headers || undefined);
-            retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
+            retryHeaders.set(
+              "Authorization",
+              `Bearer ${refreshed.accessToken}`,
+            );
             if (
               fetchOptions.body &&
               !(fetchOptions.body instanceof FormData) &&
@@ -1022,6 +1039,7 @@ export const providerApi = {
 export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired";
 
 export interface Quote {
+  paymentEligibility?: { eligible: boolean; reason: string };
   id: string;
   requestId: string;
   providerId: string;
@@ -1141,6 +1159,24 @@ export interface BookingReview {
 }
 
 export interface BookingPayment {
+  checkoutState?:
+    | "not_started"
+    | "open"
+    | "confirmation_processing"
+    | "paid"
+    | "refunded"
+    | "failed"
+    | "expired"
+    | "reconciliation_required";
+  canRetry?: boolean;
+  reconciliationReason?: string | null;
+  refundPending?: boolean;
+  disputed?: boolean;
+  completionOperation?: {
+    id: string;
+    status: "pending" | "succeeded" | "failed" | "reconciliation_required";
+    errorCode?: string | null;
+  } | null;
   id: string;
   bookingId: string;
   grossAmount: number;
@@ -1193,6 +1229,7 @@ export interface BookingRequest {
 }
 
 export interface CustomerBooking {
+  paymentsAvailable?: boolean;
   id: string;
   quoteId: string;
   customerId: string;
@@ -1268,11 +1305,14 @@ export const bookingsApi = {
     apiRequest<CustomerBooking>(`/bookings/${id}`, { token }),
 
   updateStatus: (token: string, id: string, status: BookingStatus) =>
-    apiRequest<CustomerBooking>(`/bookings/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-      token,
-    }),
+    apiRequest<CustomerBooking | { operationId: string; status: string }>(
+      `/bookings/${id}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+        token,
+      },
+    ),
 
   reschedule: (token: string, id: string, scheduledDate: string) =>
     apiRequest<CustomerBooking>(`/bookings/${id}/reschedule`, {
@@ -1301,14 +1341,16 @@ export const paymentsApi = {
     ),
 
   createCheckoutSession: (token: string, bookingId: string) =>
-    apiRequest<{ checkoutUrl: string; paymentId: string; reused: boolean }>(
-      "/payments/checkout-session",
-      {
-        method: "POST",
-        body: JSON.stringify({ bookingId }),
-        token,
-      },
-    ),
+    apiRequest<{
+      checkoutUrl: string | null;
+      paymentId: string;
+      reused: boolean;
+      state?: string;
+    }>("/payments/checkout-session", {
+      method: "POST",
+      body: JSON.stringify({ bookingId }),
+      token,
+    }),
 };
 
 export interface ConversationParticipant {
@@ -1448,7 +1490,9 @@ export const notificationsApi = {
   },
 
   getUnreadCount: (token: string) =>
-    apiRequest<{ unreadCount: number }>("/notifications/unread-count", { token }),
+    apiRequest<{ unreadCount: number }>("/notifications/unread-count", {
+      token,
+    }),
 
   markAsRead: (token: string, id: string) =>
     apiRequest<NotificationItem>(`/notifications/${id}/read`, {

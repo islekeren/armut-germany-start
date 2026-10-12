@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header, PanelCard } from "@/components";
 import {
+  ApiError,
   bookingsApi,
   getStoredAccessToken,
   messagesApi,
@@ -46,6 +47,8 @@ export default function BookingDetailPage() {
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [pollExhausted, setPollExhausted] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isRefunding, setIsRefunding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,27 +90,75 @@ export default function BookingDetailPage() {
   const returnedFromCheckout = searchParams.get("payment") === "success";
   const paymentStatus = booking?.paymentStatus;
 
-  // Returning from Stripe Checkout is not proof of payment: the booking only
-  // becomes paid once Stripe's signed webhook arrives, so poll briefly for it.
-  useEffect(() => {
-    if (!returnedFromCheckout || !bookingId || paymentStatus === "paid") return;
+  const checkoutState = booking?.payment?.checkoutState;
+  const completionState = booking?.payment?.completionOperation?.status;
+  const paymentProcessing =
+    ["pending", "failed"].includes(paymentStatus ?? "") &&
+    (checkoutState === "confirmation_processing" ||
+      (returnedFromCheckout && (!checkoutState || checkoutState === "open")));
+  const completionProcessing = isCompleting || completionState === "pending";
 
+  useEffect(() => {
+    if (booking?.status === "completed" || completionState === "succeeded") {
+      setIsCompleting(false);
+      if (completionState === "succeeded")
+        setSuccessMessage(tDetail("confirmCompletionSuccess"));
+    } else if (
+      completionState === "failed" ||
+      completionState === "reconciliation_required"
+    ) {
+      setIsCompleting(false);
+      setError(tDetail("completionFailed"));
+    }
+  }, [booking?.status, completionState, tDetail]);
+
+  // Sequential, bounded polling: no overlapping requests or updates after cleanup.
+  useEffect(() => {
+    if (!bookingId || (!paymentProcessing && !completionProcessing)) return;
+    let disposed = false;
     let attempts = 0;
-    const timer = setInterval(async () => {
-      attempts += 1;
+    let timer: ReturnType<typeof setTimeout>;
+    setPollExhausted(false);
+    const poll = async () => {
       const token = getStoredAccessToken();
-      if (!token || attempts > 10) {
-        clearInterval(timer);
+      if (disposed || !token) return;
+      attempts++;
+      try {
+        const result = await bookingsApi.getById(token, bookingId);
+        if (disposed) return;
+        setBooking(result);
+        if (
+          ["paid", "refunded"].includes(result.paymentStatus) &&
+          !completionProcessing
+        )
+          return;
+        const state = result.payment?.checkoutState;
+        const operation = result.payment?.completionOperation?.status;
+        if (
+          result.status === "completed" ||
+          (operation && operation !== "pending") ||
+          (!completionProcessing &&
+            state &&
+            !["open", "confirmation_processing"].includes(state))
+        )
+          return;
+      } catch {
+        /* Preserve an unresolved outcome and try again. */
+      }
+      if (disposed) return;
+      if (attempts >= 12) {
+        setPollExhausted(true);
+        setIsCompleting(false);
         return;
       }
-      try {
-        setBooking(await bookingsApi.getById(token, bookingId));
-      } catch {
-        // Keep the last known state; the next tick or a reload retries.
-      }
-    }, 2000);
-    return () => clearInterval(timer);
-  }, [returnedFromCheckout, bookingId, paymentStatus]);
+      timer = setTimeout(poll, Math.min(2000 * 1.3 ** attempts, 5000));
+    };
+    timer = setTimeout(poll, 1500);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+    };
+  }, [bookingId, paymentProcessing, completionProcessing]);
 
   useEffect(() => {
     const paymentResult = searchParams.get("payment");
@@ -167,7 +218,25 @@ export default function BookingDetailPage() {
         token,
         booking.id,
       );
-      window.location.assign(checkout.checkoutUrl);
+      if (checkout.checkoutUrl) window.location.assign(checkout.checkoutUrl);
+      else {
+        setBooking((current) =>
+          current
+            ? {
+                ...current,
+                payment: current.payment
+                  ? {
+                      ...current.payment,
+                      checkoutState: "confirmation_processing",
+                      canRetry: false,
+                    }
+                  : current.payment,
+              }
+            : current,
+        );
+        await loadBooking();
+        setIsPaying(false);
+      }
     } catch (err) {
       setError(describeError(err, tDetail("paymentError")));
       setIsPaying(false);
@@ -306,23 +375,36 @@ export default function BookingDetailPage() {
 
   const handleConfirmCompletion = async () => {
     const token = getStoredAccessToken();
-    if (!token || !booking) {
-      setError(t("loginRequired"));
-      return;
-    }
-
+    if (!token || !booking || isCompleting) return;
     setError(null);
     setSuccessMessage(null);
-
+    setIsCompleting(true);
     try {
       await bookingsApi.updateStatus(token, booking.id, "completed");
       await loadBooking();
-      setSuccessMessage(tDetail("confirmCompletionSuccess"));
     } catch (err) {
-      console.error("Failed to confirm completion:", err);
-      setError(
-        describeError(err, tDetail("confirmCompletionError")),
-      );
+      // A browser timeout does not establish a failed financial operation.
+      try {
+        const current = await bookingsApi.getById(token, booking.id);
+        setBooking(current);
+        if (current.status === "completed") {
+          setIsCompleting(false);
+          setSuccessMessage(tDetail("confirmCompletionSuccess"));
+          return;
+        }
+        if (current.payment?.completionOperation) return;
+      } catch {
+        /* Keep polling the authoritative operation. */
+      }
+      if (
+        err instanceof ApiError &&
+        err.code === "http" &&
+        err.status &&
+        err.status < 500
+      ) {
+        setIsCompleting(false);
+        setError(describeError(err, tDetail("confirmCompletionError")));
+      }
     }
   };
 
@@ -362,10 +444,16 @@ export default function BookingDetailPage() {
   const canRefund =
     canManageSchedule &&
     booking.paymentStatus === "paid" &&
+    booking.paymentsAvailable !== false &&
+    !booking.payment?.refundPending &&
     !booking.payment?.transferredAt;
   const canReview = booking.status === "completed" && !booking.review;
   const canConfirmCompletion = booking.status === "completion_pending";
   const canPay =
+    booking.paymentsAvailable !== false &&
+    !paymentProcessing &&
+    (!checkoutState ||
+      ["not_started", "open", "expired", "failed"].includes(checkoutState)) &&
     ["pending", "failed"].includes(booking.paymentStatus) &&
     !["cancelled", "completed"].includes(booking.status);
   const displayStatus = toBookingDisplayStatus(booking.status);
@@ -520,6 +608,41 @@ export default function BookingDetailPage() {
           </div>
 
           <div className="space-y-6">
+            {(paymentProcessing ||
+              checkoutState === "reconciliation_required" ||
+              (booking.paymentsAvailable === false &&
+                ["pending", "failed"].includes(booking.paymentStatus))) && (
+              <PanelCard>
+                <h2 className="text-lg font-semibold">
+                  {tDetail("paymentTitle")}
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  {tDetail(
+                    checkoutState === "reconciliation_required"
+                      ? "paymentReconciliation"
+                      : booking.paymentsAvailable === false
+                        ? "paymentsUnavailable"
+                        : "paymentProcessing",
+                  )}
+                </p>
+                {pollExhausted && (
+                  <p className="mt-2 text-sm text-muted">
+                    {tDetail("processingUnresolved")}
+                  </p>
+                )}
+                {pollExhausted && (
+                  <button
+                    onClick={() => {
+                      setPollExhausted(false);
+                      void loadBooking();
+                    }}
+                    className="mt-3 text-primary"
+                  >
+                    {tDetail("refreshStatus")}
+                  </button>
+                )}
+              </PanelCard>
+            )}
             {canPay ? (
               <PanelCard className="border border-primary/20 bg-primary/5">
                 <h2 className="text-lg font-semibold">
@@ -680,14 +803,32 @@ export default function BookingDetailPage() {
                   {tDetail("confirmCompletionTitle")}
                 </h2>
                 <p className="mt-2 text-sm text-muted">
-                  {tDetail("confirmCompletionHint")}
+                  {completionProcessing
+                    ? tDetail("completionProcessing")
+                    : tDetail("confirmCompletionHint")}
+                  {pollExhausted && ` ${tDetail("processingUnresolved")}`}
                 </p>
                 <button
                   onClick={handleConfirmCompletion}
-                  className="mt-5 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary-dark"
+                  disabled={
+                    completionProcessing ||
+                    booking.paymentsAvailable === false ||
+                    !!completionState
+                  }
+                  className="mt-5 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60"
                 >
-                  {tDetail("confirmCompletion")}
+                  {completionProcessing
+                    ? tDetail("completionProcessing")
+                    : tDetail("confirmCompletion")}
                 </button>
+                {pollExhausted && (
+                  <button
+                    onClick={() => void loadBooking()}
+                    className="mt-3 block text-primary"
+                  >
+                    {tDetail("refreshStatus")}
+                  </button>
+                )}
               </PanelCard>
             )}
 

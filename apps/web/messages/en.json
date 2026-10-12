@@ -691,7 +691,10 @@
       "budgetRange": "€{min}–{max}",
       "budgetFrom": "from €{min}",
       "budgetUpTo": "up to €{max}",
-      "acceptConfirm": "Accept the quote from {provider} for €{price}? All other quotes for this request will be declined."
+      "acceptConfirm": "Accept the quote from {provider} for €{price}? All other quotes for this request will be declined.",
+      "paymentVerificationIncomplete": "The provider has not completed payment verification. This quote cannot be accepted yet.",
+      "paymentVerificationUnavailable": "Payment verification is temporarily unavailable. Please refresh and try again.",
+      "paymentsUnavailable": "Payments are currently unavailable."
     },
     "bookings": {
       "title": "My Bookings",
@@ -839,7 +842,14 @@
         "confirmCompletionSuccess": "Booking marked as completed.",
         "confirmCompletionError": "Could not confirm completion.",
         "reviewImageAlt": "Review photo",
-        "replyImageAlt": "Provider reply photo"
+        "replyImageAlt": "Provider reply photo",
+        "paymentProcessing": "Payment confirmation is processing.",
+        "paymentReconciliation": "This payment needs review. Please contact support.",
+        "paymentsUnavailable": "Payments are currently unavailable.",
+        "processingUnresolved": "The result is still being confirmed. Refresh to check the latest status.",
+        "refreshStatus": "Refresh status",
+        "completionProcessing": "Confirming completion…",
+        "completionFailed": "Completion could not be confirmed. Please contact support."
       }
     },
     "messages": {
