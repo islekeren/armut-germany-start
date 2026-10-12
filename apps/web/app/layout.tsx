@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { Outfit } from "next/font/google";
 import "./globals.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale, getTranslations } from 'next-intl/server';
 import { AuthProvider } from "@/contexts";
 
-const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const outfit = localFont({
+  src: "./fonts/OutfitVariable.ttf",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
   variable: "--font-outfit",
 });
 const geistMono = localFont({
