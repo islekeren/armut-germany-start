@@ -1,0 +1,35 @@
+name: Mirror tested main
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Fast-forward deployment mirror
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Mirror only the current tested main commit
+        env:
+          TESTED_MAIN_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: bash scripts/mirror-deployment.sh "$TESTED_MAIN_COMMIT"

@@ -163,8 +163,12 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - `apps/api/prisma/schema.prisma`: database schema
 - `apps/api/prisma/seed.ts`: development seed data
 - `docker-compose.yml`: local Postgres and Redis only
-- `.github/workflows/ci.yml`: CI plus placeholder deploy jobs on `main` and `develop`
-- `railway.json`: API build and deploy commands for Railway
+- `.github/workflows/ci.yml`: validation on `main` and `develop`
+- `.github/workflows/mirror-deployment.yml`: fast-forward compatibility mirror after successful main CI
+- `.github/workflows/verify-release.yml`: manual verification of the running API/web release
+- `railway.json`: API build, migration and database readiness checks for Railway
+- `apps/web/vercel.json`: Next.js hosting config (Vercel Root Directory `apps/web`)
+- `docs/OBSERVABILITY.md`: private-data-safe logs, correlation IDs and incident triage
 - `render.yaml`: API service definition for Render
 - `Dockerfile`: incomplete Node build-image scaffold; it is not yet a runnable production image
 
@@ -200,7 +204,7 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - API lint currently passes with 9 warnings rather than a warning-free baseline.
 - `apps/web` generates Next.js types before type-checking, but stale generated state can still make fresh-checkout failures worth investigating build-first.
 - The upload env names now match between `apps/api/.env.example` and `UploadsService`.
-- Railway and Render API configs are checked in, but the production hosting topology and externally configured deployment branch are not confirmed by the repository alone.
+- Selected production topology: Railway API + Vercel web, with `main` as the release source. Hosting domains, dashboard gates and branch protection still require external verification; see [DEPLOYMENT.md](./docs/DEPLOYMENT.md).
 - Railway pre-deploy runs migrations only. Demo seeding is blocked outside explicit development/test runtimes; existing hosted databases still require a check for previously seeded accounts.
 - The checked-in `Dockerfile` has no final build, runtime command, or production stage and should not yet be treated as a deployable image.
 

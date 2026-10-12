@@ -6,8 +6,9 @@ services:
     buildCommand: npm ci && npm run db:generate --workspace=api && npm run build --workspace=api
     preDeployCommand: npm run db:migrate:deploy --workspace=api
     startCommand: npm run start:prod --workspace=api
-    healthCheckPath: /api/health
-    autoDeploy: true
+    healthCheckPath: /api/health/ready
+    # Historical alternative only; Railway is the selected API host.
+    autoDeploy: false
     envVars:
       - key: NODE_VERSION
         value: "20"

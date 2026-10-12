@@ -1,3 +1,5 @@
+import { getErrorOperation, reportClientError, validRequestId, type ErrorOperation } from "./observability";
+
 const DEFAULT_API_ORIGIN = "http://localhost:4000";
 const API_UNAVAILABLE_MESSAGE =
   "The service is temporarily unavailable. Please try again shortly.";
@@ -19,12 +21,14 @@ type ApiErrorCode = "http" | "unavailable";
 export class ApiError extends Error {
   status?: number;
   code: ApiErrorCode;
+  requestId?: string;
 
-  constructor(message: string, options: { status?: number; code: ApiErrorCode }) {
+  constructor(message: string, options: { status?: number; code: ApiErrorCode; requestId?: string }) {
     super(message);
     this.name = "ApiError";
     this.status = options.status;
     this.code = options.code;
+    this.requestId = validRequestId(options.requestId);
   }
 }
 
@@ -96,12 +100,25 @@ function getApiTimeoutMs() {
     : DEFAULT_CLIENT_API_TIMEOUT_MS;
 }
 
+function createRequestId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  // getRandomValues also works on HTTP development origins, where randomUUID
+  // is unavailable. Keep UUID v4 correlation without requiring HTTPS locally.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export async function apiRequest<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
   const { token, direct, cache, signal, ...fetchOptions } = options;
   const headers = new Headers(fetchOptions.headers || undefined);
+  const requestId = validRequestId(headers.get("X-Request-ID")) ?? createRequestId();
+  headers.set("X-Request-ID", requestId);
   const timeoutMs = getApiTimeoutMs();
   const controller = new AbortController();
   const abortFromCaller = () => controller.abort(signal?.reason);
@@ -125,6 +142,16 @@ export async function apiRequest<T>(
 
   const baseUrl = getApiBaseUrl(direct);
   const url = `${baseUrl}/api${endpoint}`;
+  // Refresh/retry transport failures are intentionally swallowed by the existing
+  // auth flow. Observe them without changing that flow or its session decisions.
+  const fetchWithTransportReport = async (targetUrl: string, init: RequestInit, operation: ErrorOperation) => {
+    try {
+      return await fetch(targetUrl, init);
+    } catch (error) {
+      if (!signal?.aborted) reportClientError({ operation, code: "unavailable", requestId }, baseUrl);
+      throw error;
+    }
+  };
 
   if (signal) {
     if (signal.aborted) {
@@ -144,7 +171,7 @@ export async function apiRequest<T>(
         signal: controller.signal,
       });
     } catch {
-      throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable" });
+      throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable", requestId });
     }
 
     // On client-side, try refreshing once when access token is expired.
@@ -157,13 +184,21 @@ export async function apiRequest<T>(
 
       if (refreshToken) {
         try {
-          const refreshResponse = await fetch(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
+          const refreshResponse = await fetchWithTransportReport(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "X-Request-ID": requestId,
             },
             body: JSON.stringify({ refreshToken }),
-          });
+          }, "auth");
+
+          if (refreshResponse.status >= 500) {
+            reportClientError({
+              operation: "auth", code: "unavailable", status: refreshResponse.status,
+              requestId: validRequestId(refreshResponse.headers.get("X-Request-ID")) ?? requestId,
+            }, baseUrl);
+          }
 
           if (refreshResponse.ok) {
             const refreshed = (await refreshResponse.json()) as LoginResponse;
@@ -173,6 +208,7 @@ export async function apiRequest<T>(
             localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
 
             const retryHeaders = new Headers(fetchOptions.headers || undefined);
+            retryHeaders.set("X-Request-ID", requestId);
             retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
             if (
               fetchOptions.body &&
@@ -182,11 +218,11 @@ export async function apiRequest<T>(
               retryHeaders.set("Content-Type", "application/json");
             }
 
-            response = await fetch(url, {
+            response = await fetchWithTransportReport(url, {
               ...fetchOptions,
               cache: cache ?? undefined,
               headers: retryHeaders,
-            });
+            }, getErrorOperation(endpoint));
           } else if ([400, 401, 403].includes(refreshResponse.status)) {
             // Only a rejected refresh token ends the session; rate limits and
             // server errors keep it so the next request can retry.
@@ -205,11 +241,15 @@ export async function apiRequest<T>(
         throw new ApiError(API_UNAVAILABLE_MESSAGE, {
           status: response.status,
           code: "unavailable",
+          requestId: validRequestId(response.headers.get("X-Request-ID")) ?? requestId,
         });
       }
 
       const message = await getErrorMessage(response);
-      throw new ApiError(message, { status: response.status, code: "http" });
+      throw new ApiError(message, {
+        status: response.status, code: "http",
+        requestId: validRequestId(response.headers.get("X-Request-ID")) ?? requestId,
+      });
     }
 
     if (response.status === 204) {
@@ -223,6 +263,14 @@ export async function apiRequest<T>(
 
     const text = await response.text();
     return text as T;
+  } catch (error) {
+    if (isApiUnavailableError(error) && !signal?.aborted) {
+      reportClientError({
+        operation: getErrorOperation(endpoint), code: error.code,
+        status: error.status, requestId: error.requestId,
+      }, baseUrl);
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
     if (signal) {

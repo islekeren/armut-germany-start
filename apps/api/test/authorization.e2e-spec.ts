@@ -105,6 +105,7 @@ const ADMIN_ROUTES: Route[] = [
 
 const PUBLIC_ROUTES: Route[] = [
   ["get", "/api/health"],
+  ["get", "/api/health/ready"],
   ["get", "/api/categories"],
   ["get", "/api/providers"],
   ["get", "/api/requests"],
@@ -112,6 +113,7 @@ const PUBLIC_ROUTES: Route[] = [
 
 // Unauthenticated by design; listed so the drift check below knows about them.
 const INTENTIONALLY_PUBLIC: Route[] = [
+  ["post", "/api/health/client-error"],
   ["post", "/api/auth/register"],
   ["post", "/api/auth/login"],
   ["post", "/api/auth/refresh"],
