@@ -97,8 +97,14 @@
 - [x] Confirm current test-mode validation bypass fails the new tests.
 - [x] Implement explicit configuration and test fixture opt-in without changing commission or SDK/API versions unnecessarily. Document whsec provenance limitation, worker operation/recovery, migration/backfill and manual remediation.
 - [x] Run repository lint/build/types, API unit and relevant API integration suites, web unit and relevant Playwright suites. Record genuine failures and environment limitations separately. Check final diff and review payment invariants before committing.
-- [ ] Create a draft PR against `codex/stripe-connect-payments` with validation evidence and remaining risks, attach it to this chat. State real sandbox verification is pending user discussion of API access/test credentials; do not report mock success as Stripe verification.
+- [x] Create a draft PR against `codex/stripe-connect-payments` with validation evidence and remaining risks, attach it to this chat. State real sandbox verification is pending user discussion of API access/test credentials; do not report mock success as Stripe verification.
 
 ## Execution method
 
 Recommended: native implementation in this chat. The six ordered tasks share attempt, operation and locking interfaces, so keeping implementation in one context avoids parallel schema and service edits. No live or sandbox network verification runs before the user's post-implementation access discussion.
+
+## Delivery
+
+Draft PR: https://github.com/islekeren/armut-germany-start/pull/14
+
+Local implementation and verification are complete. Actual Stripe sandbox verification remains pending the user's decision about API access and secure test credentials; no live money or production deployment was performed.
