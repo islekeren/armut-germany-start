@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { ConfigService } from "@nestjs/config";
 import { UsersService } from "../users/users.service";
 import { sanitizeUserResponse } from "../../common/security";
+import { getAuthSecrets } from "../../common/security/auth-config";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -14,7 +15,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>("JWT_SECRET") || "armut-secret-key",
+      secretOrKey: getAuthSecrets(configService).accessSecret,
+      algorithms: ["HS256"],
     });
   }
 

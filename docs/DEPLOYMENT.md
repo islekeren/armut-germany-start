@@ -58,13 +58,9 @@ Practical meaning:
 - checks `/api/health`
 - restarts failed processes up to 10 times
 
-Production blocker:
+Pre-deploy runs migrations only; it never invokes `db:seed`. The demo seed rejects all runtimes except explicit `NODE_ENV=development` or `test` before constructing a database client. Existing taxonomy migrations populate production categories without demo accounts. Keep backfills and one-off data migrations as explicit, reviewed operations.
 
-```text
-preDeployCommand = migrate deploy + db:seed
-```
-
-Running `db:seed` on every deploy can insert or rewrite development/demo data in a production database. Remove seed from the pre-deploy command before using this config for production. Keep production seeding, backfills, and one-off data migrations as explicit, reviewed operations.
+Before release, inspect the hosted database for accounts created by earlier demo seeds (including `admin@test.com`). Removing automatic seeding does not remove existing accounts or revoke their sessions. This checkout does not establish whether those accounts exist in the hosted database.
 
 ### Render
 
@@ -126,7 +122,7 @@ The hosting-dashboard check still requires external confirmation. The repository
 
 Before the first production release:
 
-1. remove automatic production seeding from `railway.json`
+1. verify hosted databases contain no previously seeded demo accounts or credentials
 2. decide which API config is authoritative instead of leaving Railway and Render as equally plausible paths
 3. document and configure the frontend host
 4. replace placeholder GitHub Actions deploy jobs or remove them to avoid false confidence

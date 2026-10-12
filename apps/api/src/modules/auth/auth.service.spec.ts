@@ -54,6 +54,7 @@ describe("AuthService", () => {
     configService = {
       get: jest.fn().mockImplementation((key: string) => {
         const config: Record<string, string> = {
+          NODE_ENV: "test",
           JWT_SECRET: "test-secret",
           JWT_REFRESH_SECRET: "test-refresh-secret",
         };
@@ -77,6 +78,22 @@ describe("AuthService", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("refuses to initialize signing without an explicit refresh secret", () => {
+    const missingRefresh = { get: (key: string) => ({ NODE_ENV: "test", JWT_SECRET: "test-access" })[key] };
+    expect(() => new AuthService(usersService, jwtService, missingRefresh as any, prisma as any))
+      .toThrow(/JWT_REFRESH_SECRET/);
+  });
+
+  it("rejects identical access and refresh secrets in production", () => {
+    const values = {
+      NODE_ENV: "production",
+      JWT_SECRET: "p4J7Q9s2N6u8X1b5C3d0F7h9K2m4R6t8",
+      JWT_REFRESH_SECRET: "p4J7Q9s2N6u8X1b5C3d0F7h9K2m4R6t8",
+    };
+    expect(() => new AuthService(usersService, jwtService, { get: (key: string) => values[key] } as any, prisma as any))
+      .toThrow(/different/);
   });
 
   describe("register", () => {

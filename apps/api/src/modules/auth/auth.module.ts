@@ -7,6 +7,7 @@ import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./jwt.strategy";
 import { UsersModule } from "../users/users.module";
 import { PrismaModule } from "../../common/prisma/prisma.module";
+import { getAuthSecrets } from "../../common/security/auth-config";
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { PrismaModule } from "../../common/prisma/prisma.module";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>("JWT_SECRET") || "armut-secret-key",
+        secret: getAuthSecrets(configService).accessSecret,
         signOptions: {
           expiresIn: "7d" as const,
         },

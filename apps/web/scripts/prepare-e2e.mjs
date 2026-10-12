@@ -19,8 +19,8 @@ const env = {
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
 };
 
-const run = (command, args, cwd) =>
-  execFileSync(command, args, { cwd, stdio: "inherit", env });
+const run = (command, args, cwd, overrides = {}) =>
+  execFileSync(command, args, { cwd, stdio: "inherit", env: { ...env, ...overrides } });
 
 // Start every run from a clean, seeded database so records created by earlier
 // runs cannot push fresh test data off paginated lists. Only databases that
@@ -55,7 +55,7 @@ try {
   await prisma.$disconnect();
 }
 
-run(npm, ["run", "db:seed"], apiDir);
+run(npm, ["run", "db:seed"], apiDir, { NODE_ENV: "test" });
 
 if (
   process.env.E2E_DEV_SERVERS !== "true" &&

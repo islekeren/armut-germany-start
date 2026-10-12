@@ -2,9 +2,13 @@ import { PrismaClient } from "@prisma/client";
 import * as dotenv from "dotenv";
 import * as bcrypt from "bcrypt";
 import { REQUEST_BRANCHES, REQUEST_SECTORS } from "../src/common/request-taxonomy";
+import { assertDemoSeedAllowed } from "../src/common/security/demo-seed-guard";
 
 // Load environment variables from .env file
 dotenv.config();
+
+// This seed creates demo accounts with known passwords, including an admin.
+assertDemoSeedAllowed(process.env.NODE_ENV);
 
 const prisma = new PrismaClient();
 

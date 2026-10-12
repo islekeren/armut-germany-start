@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "crypto";
 import type { PrismaService } from "../../common/prisma/prisma.service";
+import { accountEvents } from "../../common/security/account-events";
 
 const ACTIVE_BOOKING_STATUSES = [
   "pending",
@@ -115,5 +116,6 @@ export async function anonymizeUserAccount(
     }),
   ]);
 
+  accountEvents.emit("deleted", userId);
   return { id: userId, deletedAt };
 }
