@@ -74,6 +74,11 @@ describe("payment safety with PostgreSQL and independent API instances (Stripe m
   const api2 = build(db2);
   beforeEach(async () => {
     jest.clearAllMocks();
+    connect.ensureEligible
+      .mockReset()
+      .mockImplementation(async (id) =>
+        prisma.provider.findUniqueOrThrow({ where: { id } }),
+      );
     sessions.clear();
     await resetAndSeedDatabase();
     const { user } = await createUserFixture({
@@ -649,5 +654,281 @@ describe("payment safety with PostgreSQL and independent API instances (Stripe m
       (await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }))
         .status,
     ).toBe("paid");
+  });
+  it("review: queued transfer rechecks eligibility before its first call", async () => {
+    await paid();
+    const op = await api1.operations.requestTransfer(payment.id);
+    connect.ensureEligible.mockRejectedValueOnce(
+      new Error("Provider verification unavailable"),
+    );
+    await api2.operations.runOperation(op.id);
+    expect(stripe.createTransfer).not.toHaveBeenCalled();
+    expect(
+      (
+        await prisma.paymentOperation.findUniqueOrThrow({
+          where: { id: op.id },
+        })
+      ).firstCalledAt,
+    ).toBeNull();
+  });
+  it("review: typed insufficient-funds reversal is recoverable on the original operation", async () => {
+    await paid();
+    const transfer = await api1.operations.requestTransfer(payment.id);
+    await api1.operations.runOperation(transfer.id);
+    await api1.payments.processWebhook(dispute());
+    const op = await prisma.paymentOperation.findUniqueOrThrow({
+      where: { paymentId_kind: { paymentId: payment.id, kind: "reversal" } },
+    });
+    stripe.reverseTransfer.mockRejectedValueOnce({
+      type: "StripeInvalidRequestError",
+      code: "balance_insufficient",
+    });
+    await expect(api1.operations.runOperation(op.id)).rejects.toBeDefined();
+    await prisma.paymentOperation.update({
+      where: { id: op.id },
+      data: { nextRunAt: new Date(0) },
+    });
+    await api2.operations.drain();
+    expect(
+      (await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }))
+        .transferReversedAt,
+    ).not.toBeNull();
+    expect(stripe.reverseTransfer.mock.calls[0]).toEqual(
+      stripe.reverseTransfer.mock.calls[1],
+    );
+  });
+  it("review: a failed never-called transfer does not revoke customer refund authority", async () => {
+    await paid();
+    const transfer = await api1.operations.requestTransfer(payment.id);
+    await prisma.paymentOperation.update({
+      where: { id: transfer.id },
+      data: { status: "failed", errorCode: "payout_blocked" },
+    });
+    const refund = await api1.operations.requestRefund(
+      { id: booking.customerId },
+      booking.id,
+    );
+    expect(refund.kind).toBe("refund");
+  });
+  it("review: winning a pre-call dispute allows the original completion to resume", async () => {
+    await paid();
+    const completion = await api1.payments.requestCompletion(
+      booking.customerId,
+      booking.id,
+    );
+    await api1.operations.requestTransfer(payment.id);
+    await api1.payments.processWebhook(dispute());
+    await api1.operations.runOperation(completion.operationId);
+    expect(stripe.createTransfer).not.toHaveBeenCalled();
+    await api1.payments.processWebhook(
+      dispute("charge.dispute.closed", "won", 300),
+    );
+    await prisma.paymentOperation.updateMany({
+      where: { paymentId: payment.id },
+      data: { nextRunAt: new Date(0) },
+    });
+    await api2.operations.runOperation(completion.operationId);
+    expect(
+      (await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }))
+        .status,
+    ).toBe("completed");
+    expect(stripe.createTransfer).toHaveBeenCalledTimes(1);
+  });
+  it("review: poison webhook failures do not starve a newly associated dispute", async () => {
+    const checkout = await start();
+    const event = dispute();
+    event.data.object.payment_intent = "pi_associated_later";
+    await api1.payments.processWebhook(event);
+    await prisma.paymentAttempt.update({
+      where: { id: checkout.attemptId },
+      data: { stripePaymentIntentId: "pi_associated_later" },
+    });
+    await prisma.stripeWebhookEvent.update({
+      where: { id: event.id },
+      data: { nextRunAt: new Date(0) },
+    });
+    await prisma.stripeWebhookEvent.createMany({
+      data: Array.from({ length: 20 }, (_, index) => ({
+        id: `evt_poison_${index}`,
+        type: "payment_intent.succeeded",
+        createdAt: new Date(0),
+        nextRunAt: new Date(0),
+        payload: {
+          id: `evt_poison_${index}`,
+          type: "payment_intent.succeeded",
+          data: {
+            object: {
+              id: `pi_poison_${index}`,
+              amount: 15000,
+              currency: "eur",
+              metadata: { paymentId: payment.id, attemptId: "missing" },
+            },
+          },
+        },
+      })),
+    });
+    await api1.payments.reconcilePendingWebhooks();
+    await api2.payments.reconcilePendingWebhooks();
+    expect(
+      (await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }))
+        .disputedAt,
+    ).not.toBeNull();
+    expect(
+      (
+        await prisma.stripeWebhookEvent.findUniqueOrThrow({
+          where: { id: event.id },
+        })
+      ).processedAt,
+    ).not.toBeNull();
+  });
+  it("review: an inactive refund cannot finalize the newer active collection", async () => {
+    const first = await start();
+    const old = sessions.get(first.checkoutUrl!.split("/").pop()!);
+    old.status = "expired";
+    const second = await start();
+    const active = sessions.get(second.checkoutUrl!.split("/").pop()!);
+    await api1.payments.processWebhook({
+      id: "evt_inactive_refund",
+      type: "charge.refunded",
+      data: {
+        object: {
+          id: "ch_old",
+          payment_intent: old.payment_intent,
+          amount: 15000,
+          amount_refunded: 15000,
+          currency: "eur",
+        },
+      },
+    } as any);
+    await api2.payments.processWebhook(
+      sessionEvent(
+        active,
+        "checkout.session.completed",
+        "evt_active_paid_after_refund",
+      ),
+    );
+    const result = await prisma.payment.findUniqueOrThrow({
+      where: { id: payment.id },
+    });
+    expect(result.status).toBe("paid");
+    expect(result.paidAttemptId).toBe(second.attemptId);
+    expect(result.reconciliationReason).not.toBeNull();
+  });
+  it("review: late association cannot lose a reversal between discovery and transfer finalization", async () => {
+    const checkout = await start();
+    const session = sessions.get(checkout.checkoutUrl!.split("/").pop()!);
+    await prisma.paymentAttempt.update({
+      where: { id: checkout.attemptId },
+      data: { stripePaymentIntentId: null },
+    });
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { stripePaymentIntentId: null },
+    });
+    const lookupMiss = deferred();
+    const resumeLookup = deferred();
+    const rowRead = deferred();
+    const resumeRow = deferred();
+    let missed = false;
+    const raceDb = new Proxy(prisma as any, {
+      get(target, property) {
+        if (property !== "$transaction") return target[property];
+        return (callback: any) =>
+          prisma.$transaction(
+            async (tx) =>
+              callback(
+                new Proxy(tx as any, {
+                  get(inner, key) {
+                    if (key !== "payment") return inner[key];
+                    return new Proxy(inner.payment, {
+                      get(delegate, method) {
+                        if (method === "findFirst")
+                          return async (args: any) => {
+                            const row = await delegate.findFirst(args);
+                            if (!row && !missed) {
+                              missed = true;
+                              lookupMiss.resolve(true);
+                              await resumeLookup.promise;
+                            }
+                            return row;
+                          };
+                        if (method === "findUnique")
+                          return async (args: any) => {
+                            const row = await delegate.findUnique(args);
+                            if (row && missed) {
+                              rowRead.resolve(true);
+                              await resumeRow.promise;
+                            }
+                            return row;
+                          };
+                        return delegate[method];
+                      },
+                    });
+                  },
+                }),
+              ),
+            { timeout: 20_000 },
+          );
+      },
+    });
+    const event = dispute();
+    event.data.object.payment_intent = session.payment_intent;
+    const handling = build(raceDb).payments.processWebhook(event);
+    await lookupMiss.promise;
+    await api2.payments.processWebhook({
+      id: "evt_late_association",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: session.payment_intent,
+          metadata: session.metadata,
+          amount: 15000,
+          currency: "eur",
+          latest_charge: "ch_safety",
+        },
+      },
+    } as any);
+    resumeLookup.resolve(true);
+    const phase = await Promise.race([
+      rowRead.promise.then(() => "unlocked_read"),
+      handling.then(() => "retained"),
+    ]);
+    const transfer = await api2.operations.requestTransfer(payment.id);
+    await api2.operations.runOperation(transfer.id);
+    if (phase === "unlocked_read") {
+      resumeRow.resolve(true);
+      await handling;
+    } else await api2.payments.processWebhook(event);
+    expect(
+      await prisma.paymentOperation.count({
+        where: { paymentId: payment.id, kind: "reversal" },
+      }),
+    ).toBe(1);
+  });
+  it("review: paid webhook racing Checkout creation returns success without requiring a redirect URL", async () => {
+    stripe.createCheckoutSession.mockImplementation(async (params: any) => {
+      await api2.payments.processWebhook({
+        id: "evt_paid_during_create",
+        type: "payment_intent.succeeded",
+        data: {
+          object: {
+            id: "pi_during_create",
+            amount: 15000,
+            currency: "eur",
+            latest_charge: "ch_safety",
+            metadata: params.metadata,
+          },
+        },
+      } as any);
+      return {
+        id: "cs_during_create",
+        status: "complete",
+        url: null,
+        payment_intent: "pi_during_create",
+      };
+    });
+    await expect(start()).resolves.toEqual(
+      expect.objectContaining({ state: "paid", checkoutUrl: null }),
+    );
   });
 });

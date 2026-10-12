@@ -122,7 +122,11 @@ export class PaymentOperationsService {
         !admin &&
         (fresh.stripeTransferId ||
           fresh.booking.status === "completed" ||
-          fresh.operations.some((op) => op.kind === "transfer"))
+          fresh.operations.some(
+            (op) =>
+              op.kind === "transfer" &&
+              !(op.status === "failed" && !op.firstCalledAt),
+          ))
       ) {
         throw new ForbiddenException(
           "Released payments can only be refunded by an admin",
@@ -249,6 +253,47 @@ export class PaymentOperationsService {
       return;
     }
     if (op.kind === "transfer" && !op.firstCalledAt) {
+      // Eligibility may have changed while this durable operation was queued.
+      const payment = await this.prisma.payment.findUniqueOrThrow({
+        where: { id: op.paymentId },
+      });
+      let provider;
+      try {
+        provider = await this.connect.ensureEligible(payment.providerId);
+      } catch (error) {
+        const response = (
+          error as { getResponse?: () => { code?: string } }
+        ).getResponse?.();
+        await this.prisma.paymentOperation.updateMany({
+          where: { id, leaseToken: token },
+          data: {
+            errorCode: response?.code ?? "provider_verification_unavailable",
+            leaseUntil: null,
+            nextRunAt: new Date(Date.now() + 10_000),
+          },
+        });
+        return;
+      }
+      if (
+        provider.stripeAccountId !==
+        (op.payload as unknown as Stripe.TransferCreateParams).destination
+      ) {
+        await this.coordination.withPayment(op.paymentId, async (tx) => {
+          await tx.paymentOperation.update({
+            where: { id },
+            data: {
+              status: "reconciliation_required",
+              errorCode: "provider_account_changed",
+              leaseUntil: null,
+            },
+          });
+          await tx.payment.update({
+            where: { id: op.paymentId },
+            data: { reconciliationReason: "provider_account_changed" },
+          });
+        });
+        return;
+      }
       const allowed = await this.coordination.withPayment(
         op.paymentId,
         async (tx) => {
@@ -259,9 +304,14 @@ export class PaymentOperationsService {
             await tx.paymentOperation.update({
               where: { id },
               data: {
-                status: "failed",
+                status: payment.reconciliationReason
+                  ? "reconciliation_required"
+                  : payment.status === "paid"
+                    ? "pending"
+                    : "failed",
                 errorCode: "payout_blocked",
                 leaseUntil: null,
+                nextRunAt: new Date(Date.now() + 10_000),
               },
             });
             return false;
@@ -312,19 +362,32 @@ export class PaymentOperationsService {
       } else throw new Error("Unknown payment operation");
     } catch (error) {
       const stripeError = error as { type?: string; code?: string };
-      const definitive = [
-        "StripeInvalidRequestError",
-        "StripeCardError",
-        "StripePermissionError",
-        "StripeAuthenticationError",
-      ].includes(stripeError.type ?? "");
+      const retryableReversal =
+        op.kind === "reversal" &&
+        ["balance_insufficient", "insufficient_funds"].includes(
+          stripeError.code ?? "",
+        );
+      const definitive =
+        !retryableReversal &&
+        [
+          "StripeInvalidRequestError",
+          "StripeCardError",
+          "StripePermissionError",
+          "StripeAuthenticationError",
+        ].includes(stripeError.type ?? "");
       await this.prisma.paymentOperation.updateMany({
         where: { id, leaseToken: token },
         data: {
-          status: definitive ? "failed" : "pending",
-          errorCode: definitive
-            ? "stripe_rejected"
-            : "stripe_outcome_uncertain",
+          status: definitive
+            ? op.kind === "reversal"
+              ? "reconciliation_required"
+              : "failed"
+            : "pending",
+          errorCode: retryableReversal
+            ? stripeError.code
+            : definitive
+              ? "stripe_rejected"
+              : "stripe_outcome_uncertain",
           leaseUntil: null,
           nextRunAt: new Date(Date.now() + 10_000),
         },
@@ -390,6 +453,23 @@ export class PaymentOperationsService {
             provider: true,
           },
         });
+        if (
+          currentTransfer.status === "pending" &&
+          payment.status === "paid" &&
+          !payment.transferReversedAt &&
+          !payment.reconciliationReason
+        ) {
+          await tx.paymentOperation.update({
+            where: { id: op.id },
+            data: {
+              status: "pending",
+              errorCode: currentTransfer.errorCode,
+              leaseUntil: null,
+              nextRunAt: new Date(Date.now() + 10_000),
+            },
+          });
+          return;
+        }
         if (
           this.blocked(payment) ||
           payment.transferReversedAt ||
@@ -466,7 +546,11 @@ export class PaymentOperationsService {
       await this.prisma.paymentOperation.updateMany({
         where: { id: op.id, leaseToken: token },
         data: {
-          status: definitive ? "failed" : "pending",
+          status: definitive
+            ? op.kind === "reversal"
+              ? "reconciliation_required"
+              : "failed"
+            : "pending",
           errorCode: definitive ? "payout_blocked" : "completion_pending",
           leaseUntil: null,
           nextRunAt: new Date(Date.now() + 5000),

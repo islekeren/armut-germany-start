@@ -72,14 +72,18 @@ describe("durable operation recovery", () => {
       db,
       coordination as any,
       stripe as any,
-      {} as any,
+      {
+        ensureEligible: jest
+          .fn()
+          .mockResolvedValue({ stripeAccountId: "acct" }),
+      } as any,
     );
   });
   it("holds transfer before an already recorded dispute", async () => {
     payment.disputedAt = new Date();
     await service.runOperation("op");
     expect(stripe.createTransfer).not.toHaveBeenCalled();
-    expect(operation.status).toBe("failed");
+    expect(operation.status).toBe("pending");
   });
   it("stores transfer and schedules reversal for a dispute during the call", async () => {
     stripe.createTransfer.mockImplementation(async () => {

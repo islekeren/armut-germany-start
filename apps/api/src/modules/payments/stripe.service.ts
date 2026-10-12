@@ -52,6 +52,12 @@ export class StripeService implements OnModuleInit {
       );
   }
 
+  private assertObjectMode<T>(object: T): T {
+    const livemode = (object as { livemode?: boolean }).livemode;
+    if (typeof livemode === "boolean") this.assertEventMode({ livemode });
+    return object;
+  }
+
   private required(name: string) {
     const value = this.configService.get<string>(name)?.trim();
     if (!value) {
@@ -170,33 +176,35 @@ export class StripeService implements OnModuleInit {
       provider.companyName?.trim() ||
       `${provider.user.firstName} ${provider.user.lastName}`.trim();
 
-    return this.stripe.v2.core.accounts.create(
-      {
-        contact_email: provider.user.email,
-        display_name: displayName,
-        dashboard: "express",
-        identity: { country: "de" },
-        defaults: {
-          currency: "eur",
-          locales: ["de-DE"],
-          responsibilities: {
-            fees_collector: "application",
-            losses_collector: "application",
+    return this.assertObjectMode(
+      await this.stripe.v2.core.accounts.create(
+        {
+          contact_email: provider.user.email,
+          display_name: displayName,
+          dashboard: "express",
+          identity: { country: "de" },
+          defaults: {
+            currency: "eur",
+            locales: ["de-DE"],
+            responsibilities: {
+              fees_collector: "application",
+              losses_collector: "application",
+            },
           },
-        },
-        configuration: {
-          recipient: {
-            capabilities: {
-              stripe_balance: {
-                stripe_transfers: { requested: true },
+          configuration: {
+            recipient: {
+              capabilities: {
+                stripe_balance: {
+                  stripe_transfers: { requested: true },
+                },
               },
             },
           },
+          include: ["configuration.recipient", "requirements"],
+          metadata: { providerId: provider.id },
         },
-        include: ["configuration.recipient", "requirements"],
-        metadata: { providerId: provider.id },
-      },
-      { idempotencyKey: `provider-account:${provider.id}` },
+        { idempotencyKey: `provider-account:${provider.id}` },
+      ),
     );
   }
 
@@ -219,9 +227,11 @@ export class StripeService implements OnModuleInit {
   }
 
   async retrieveConnectedAccount(accountId: string) {
-    return this.stripe.v2.core.accounts.retrieve(accountId, {
-      include: ["configuration.recipient", "requirements"],
-    });
+    return this.assertObjectMode(
+      await this.stripe.v2.core.accounts.retrieve(accountId, {
+        include: ["configuration.recipient", "requirements"],
+      }),
+    );
   }
 
   toAccountSnapshot(account: Stripe.V2.Core.Account): StripeAccountSnapshot {
@@ -252,29 +262,39 @@ export class StripeService implements OnModuleInit {
   }
 
   async retrieveCheckoutSession(sessionId: string) {
-    return this.stripe.checkout.sessions.retrieve(sessionId);
+    return this.assertObjectMode(
+      await this.stripe.checkout.sessions.retrieve(sessionId),
+    );
   }
 
   async expireCheckoutSession(sessionId: string) {
-    return this.stripe.checkout.sessions.expire(sessionId);
+    return this.assertObjectMode(
+      await this.stripe.checkout.sessions.expire(sessionId),
+    );
   }
 
   async createCheckoutSession(
     params: Stripe.Checkout.SessionCreateParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.checkout.sessions.create(params, { idempotencyKey });
+    return this.assertObjectMode(
+      await this.stripe.checkout.sessions.create(params, { idempotencyKey }),
+    );
   }
 
   async retrievePaymentIntent(paymentIntentId: string) {
-    return this.stripe.paymentIntents.retrieve(paymentIntentId);
+    return this.assertObjectMode(
+      await this.stripe.paymentIntents.retrieve(paymentIntentId),
+    );
   }
 
   async createTransfer(
     params: Stripe.TransferCreateParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.transfers.create(params, { idempotencyKey });
+    return this.assertObjectMode(
+      await this.stripe.transfers.create(params, { idempotencyKey }),
+    );
   }
 
   async reverseTransfer(
@@ -282,16 +302,20 @@ export class StripeService implements OnModuleInit {
     params: Stripe.TransferCreateReversalParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.transfers.createReversal(transferId, params, {
-      idempotencyKey,
-    });
+    return this.assertObjectMode(
+      await this.stripe.transfers.createReversal(transferId, params, {
+        idempotencyKey,
+      }),
+    );
   }
 
   async createRefund(
     params: Stripe.RefundCreateParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.refunds.create(params, { idempotencyKey });
+    return this.assertObjectMode(
+      await this.stripe.refunds.create(params, { idempotencyKey }),
+    );
   }
 
   async createExpressDashboardLoginLink(accountId: string) {

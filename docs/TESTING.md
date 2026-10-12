@@ -272,3 +272,13 @@ calls Stripe. Set E2E_STRIPE_MOCK=false to exercise actual disabled mode. Review
 tests can arrange completed bookings directly. Tests requiring actual Checkout,
 signed webhook delivery or a real Connect read need separately authorized sandbox
 access; do not present the local mock server as real Stripe verification.
+
+Local validation on October 12, 2026 for the payment safety branch:
+
+- root unit tests: 361 passed (326 API, 28 web, 7 shared/UI)
+- targeted API/DB suites: 259 passed, including 27 payment safety cases with two independent Prisma clients and controlled race barriers
+- production-build Playwright: 15 passed across customer bookings, payment processing, provider readiness and the complete marketplace journey; desktop/mobile processing screenshots and console check captured locally
+- root lint, build and type checks passed; existing 9 API lint warnings and root Expo config warning remain
+- Prisma validation and migrated-database/schema comparison passed; legacy backfill regression passed
+- independent review findings were reproduced with failing regressions before fixes; all covering regressions passed afterward
+- no actual Stripe sandbox flow, live payment or production deployment was performed

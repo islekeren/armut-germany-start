@@ -1,6 +1,6 @@
 # Payment Safety Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Complete payment safety and consistency blockers of draft PR #8 without changing business payment rules.
 
@@ -33,11 +33,11 @@
 
 **Interfaces:** `PaymentCoordinationService.withPayment<T>(paymentId: string, work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>` uses a short PostgreSQL row-lock transaction. `PaymentAttemptsService.createCheckout(userId: string, bookingId: string)` preserves the existing redirect response for open sessions and provides a processing result for completed sessions. `reconcileCheckout(paymentId: string)` resolves remote state outside the lock. `applySession(tx, session, outcome)` and `applyIntent(tx, intent, outcome)` correlate by attemptId or exact legacy object identifiers.
 
-- [ ] Write regression tests asserting simultaneous retry yields one active attempt/session, inactive failure leaves newer attempt unchanged, success is absorbing within an attempt, duplicate success notifications occur once, late paid attempt is recorded and blocks fulfillment, and database failure recovers one Session.
-- [ ] Run targeted Jest/API tests and confirm the regressions fail against the current implementation.
-- [ ] Add PaymentAttempt, active/paid attempt references, immutable request payload, reconciliation reason and lifecycle fields. Backfill legacy identifiers and amounts with deterministic attempt IDs; constrain unique associations and sequence. Reserve/reuse under lock, call Stripe with stable payload/key, finalize under lock. Only verified non-payable sessions allow successors. Persist stale collection and hold instead of ignoring it. Wire expired events.
-- [ ] Run targeted tests, Prisma validation/generation and migration on a disposable database; verify the two-instance concurrent test and legacy-event matching.
-- [ ] Commit the independently testable attempt changes.
+- [x] Write regression tests asserting simultaneous retry yields one active attempt/session, inactive failure leaves newer attempt unchanged, success is absorbing within an attempt, duplicate success notifications occur once, late paid attempt is recorded and blocks fulfillment, and database failure recovers one Session.
+- [x] Run targeted Jest/API tests and confirm the regressions fail against the current implementation.
+- [x] Add PaymentAttempt, active/paid attempt references, immutable request payload, reconciliation reason and lifecycle fields. Backfill legacy identifiers and amounts with deterministic attempt IDs; constrain unique associations and sequence. Reserve/reuse under lock, call Stripe with stable payload/key, finalize under lock. Only verified non-payable sessions allow successors. Persist stale collection and hold instead of ignoring it. Wire expired events.
+- [x] Run targeted tests, Prisma validation/generation and migration on a disposable database; verify the two-instance concurrent test and legacy-event matching.
+- [x] Commit the independently testable attempt changes.
 
 ### Task 2: Durable dispute/refund/transfer coordination — ARM-39
 
@@ -45,11 +45,11 @@
 
 **Interfaces:** `PaymentOperationsService.requestTransfer(paymentId: string): Promise<PaymentOperation>` and `requestRefund(user: {id: string; userType?: string}, bookingId: string): Promise<PaymentOperation>` reserve immutable operations under the shared lock. `runOperation(operationId: string): Promise<void>` claims a lease, calls Stripe outside the transaction and finalizes/reconciles. `drain(limit: number): Promise<void>` recovers runnable/expired-lease operations. Dispute/refund ingestion persists obligations before marking events processed.
 
-- [ ] Write tests for dispute/refund before/during/after transfer, created-after-closed dispute, unmatched dispute before intent association, failed reversal/replay, customer refund during claimed payout, worker lease recovery, Stripe success followed by database failure and uncertainty older than 24 hours.
-- [ ] Run tests and confirm each missing behavior fails.
-- [ ] Add PaymentDispute with durable Stripe identity/status/event order, PaymentOperation with unique business identity/type/status/payload/key/lease/timestamps/error, and persisted webhook payload/association state. Coordinate transfer claims, refund intents and webhook writes under the same lock. Late holds enqueue reversal when transfer returns. Preserve authorization and irreversible-transfer holds. Recover using the original Stripe operation identity; uncertain operations older than 24 hours require reconciliation rather than blind recreation.
-- [ ] Verify targeted unit and real-PostgreSQL API tests, including simulated DB finalization failure and worker restart. Ensure no Stripe mock is invoked inside an open DB transaction.
-- [ ] Commit the coordinated operations and recovery changes.
+- [x] Write tests for dispute/refund before/during/after transfer, created-after-closed dispute, unmatched dispute before intent association, failed reversal/replay, customer refund during claimed payout, worker lease recovery, Stripe success followed by database failure and uncertainty older than 24 hours.
+- [x] Run tests and confirm each missing behavior fails.
+- [x] Add PaymentDispute with durable Stripe identity/status/event order, PaymentOperation with unique business identity/type/status/payload/key/lease/timestamps/error, and persisted webhook payload/association state. Coordinate transfer claims, refund intents and webhook writes under the same lock. Late holds enqueue reversal when transfer returns. Preserve authorization and irreversible-transfer holds. Recover using the original Stripe operation identity; uncertain operations older than 24 hours require reconciliation rather than blind recreation.
+- [x] Verify targeted unit and real-PostgreSQL API tests, including simulated DB finalization failure and worker restart. Ensure no Stripe mock is invoked inside an open DB transaction.
+- [x] Commit the coordinated operations and recovery changes.
 
 ### Task 3: Shared fresh provider eligibility — ARM-34
 
@@ -57,11 +57,11 @@
 
 **Interfaces:** `StripeConnectService.getEligibility(providerId: string): Promise<{eligible: boolean; reason: 'ready'|'missing_account'|'verification_incomplete'|'verification_unavailable'|'payments_disabled'}>` refreshes existing accounts without a cached readiness precondition. `ensureEligible(providerId: string): Promise<Provider>` is authoritative before acceptance, Checkout and transfer. Quote customer responses expose only eligibility and safe reason.
 
-- [ ] Write tests for missing/pending/restricted/transfers-disabled/payouts-disabled states, cached false becoming ready, cached true becoming restricted, upstream failure, and eligibility changing after render. Assert no quote/request mutation for rejection.
-- [ ] Run targeted tests to demonstrate existing cache divergence.
-- [ ] Centralize fresh-read eligibility, inject Connect into QuotesModule, guard before mutations and provide customer-safe eligibility fields. Render explanations and handle backend race rejection in English/German.
-- [ ] Verify quote API/unit suites and Playwright acceptance flow.
-- [ ] Commit shared eligibility changes.
+- [x] Write tests for missing/pending/restricted/transfers-disabled/payouts-disabled states, cached false becoming ready, cached true becoming restricted, upstream failure, and eligibility changing after render. Assert no quote/request mutation for rejection.
+- [x] Run targeted tests to demonstrate existing cache divergence.
+- [x] Centralize fresh-read eligibility, inject Connect into QuotesModule, guard before mutations and provide customer-safe eligibility fields. Render explanations and handle backend race rejection in English/German.
+- [x] Verify quote API/unit suites and Playwright acceptance flow.
+- [x] Commit shared eligibility changes.
 
 ### Task 4: Durable completion outcome — ARM-37
 
@@ -69,11 +69,11 @@
 
 **Interfaces:** `requestCompletion(userId: string, bookingId: string): Promise<{operationId: string; status: string}>` reserves/reuses one completion operation. Booking detail exposes `completionOperation: {id: string; status: string; errorCode?: string}|null`. Worker completes booking/request and local notifications atomically after reconciled payout. Repeated authorized completion requests return the original result.
 
-- [ ] Write tests for delayed Stripe response, browser timeout/server success, repeat requests, actual Stripe failure, transfer success/DB failure recovery and dispute during completion.
-- [ ] Confirm regressions fail, including current completed-booking retry rejection.
-- [ ] Return durable operation promptly, resume via worker, commit completion state atomically and expose outcomes. Frontend holds processing state, polls after request acceptance/timeout and distinguishes actual failure from unresolved outcome; second click never creates another transfer.
-- [ ] Run targeted booking API/unit and browser tests, checking worker restart recovery.
-- [ ] Commit durable completion changes.
+- [x] Write tests for delayed Stripe response, browser timeout/server success, repeat requests, actual Stripe failure, transfer success/DB failure recovery and dispute during completion.
+- [x] Confirm regressions fail, including current completed-booking retry rejection.
+- [x] Return durable operation promptly, resume via worker, commit completion state atomically and expose outcomes. Frontend holds processing state, polls after request acceptance/timeout and distinguishes actual failure from unresolved outcome; second click never creates another transfer.
+- [x] Run targeted booking API/unit and browser tests, checking worker restart recovery.
+- [x] Commit durable completion changes.
 
 ### Task 5: Authoritative payment processing UI — ARM-36
 
@@ -81,11 +81,11 @@
 
 **Interfaces:** BookingPayment exposes `checkoutState: 'not_started'|'open'|'confirmation_processing'|'paid'|'failed'|'expired'|'reconciliation_required'` and `canRetry: boolean`. Booking read reconciles uncertain remote session status outside DB transactions. Frontend polls boundedly with backoff/cleanup and never treats URL success as authoritative payment.
 
-- [ ] Write tests for success return, refresh/revisit without payment query, webhook delay, paid/failed transition, repeated clicks and polling cleanup/exhaustion.
-- [ ] Confirm current Pay CTA regression in browser test.
-- [ ] Show inline processing, hide Pay until confirmed eligible, honor authoritative remote/local status and add English/German processing/unresolved/retry copy.
-- [ ] Run targeted browser and API tests.
-- [ ] Commit processing UI changes.
+- [x] Write tests for success return, refresh/revisit without payment query, webhook delay, paid/failed transition, repeated clicks and polling cleanup/exhaustion.
+- [x] Confirm current Pay CTA regression in browser test.
+- [x] Show inline processing, hide Pay until confirmed eligible, honor authoritative remote/local status and add English/German processing/unresolved/retry copy.
+- [x] Run targeted browser and API tests.
+- [x] Commit processing UI changes.
 
 ### Task 6: Explicit configuration and delivery
 
@@ -93,10 +93,10 @@
 
 **Interfaces:** `StripeService.getPaymentsMode(): 'disabled'|'sandbox'|'live'`; startup validates coherent configuration in every NODE_ENV. Disabled rejects external payment/Connect operations. Live requires explicit opt-in and HTTPS; signed event mode must match configured webhook/payment mode.
 
-- [ ] Write tests for disabled default/no calls, missing keys/webhook/URLs, mismatched test/live credentials and webhook declaration, malformed modes, live without opt-in, live insecure URLs and wrong signed event mode.
-- [ ] Confirm current test-mode validation bypass fails the new tests.
-- [ ] Implement explicit configuration and test fixture opt-in without changing commission or SDK/API versions unnecessarily. Document whsec provenance limitation, worker operation/recovery, migration/backfill and manual remediation.
-- [ ] Run repository lint/build/types, API unit and relevant API integration suites, web unit and relevant Playwright suites. Record genuine failures and environment limitations separately. Check final diff and review payment invariants before committing.
+- [x] Write tests for disabled default/no calls, missing keys/webhook/URLs, mismatched test/live credentials and webhook declaration, malformed modes, live without opt-in, live insecure URLs and wrong signed event mode.
+- [x] Confirm current test-mode validation bypass fails the new tests.
+- [x] Implement explicit configuration and test fixture opt-in without changing commission or SDK/API versions unnecessarily. Document whsec provenance limitation, worker operation/recovery, migration/backfill and manual remediation.
+- [x] Run repository lint/build/types, API unit and relevant API integration suites, web unit and relevant Playwright suites. Record genuine failures and environment limitations separately. Check final diff and review payment invariants before committing.
 - [ ] Create a draft PR against `codex/stripe-connect-payments` with validation evidence and remaining risks, attach it to this chat. State real sandbox verification is pending user discussion of API access/test credentials; do not report mock success as Stripe verification.
 
 ## Execution method

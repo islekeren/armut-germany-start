@@ -130,8 +130,14 @@ export class PaymentAttemptsService {
       return {
         paymentId: attempt.paymentId,
         attemptId,
-        checkoutUrl: attempt.checkoutUrl,
-        state: "confirmation_processing",
+        checkoutUrl: attempt.status === "open" ? attempt.checkoutUrl : null,
+        state: attempt.paidAt
+          ? "paid"
+          : attempt.status === "open"
+            ? "open"
+            : attempt.status === "reconciliation_required"
+              ? "reconciliation_required"
+              : "confirmation_processing",
         reused: true,
       };
     if (
@@ -157,48 +163,89 @@ export class PaymentAttemptsService {
         attempt.payload as unknown as Stripe.Checkout.SessionCreateParams,
         `checkout-session:${attempt.id}`,
       );
-      await this.coordination.withPayment(attempt.paymentId, async (tx) => {
-        const fresh = await tx.paymentAttempt.findUniqueOrThrow({
-          where: { id: attemptId },
-        });
-        await tx.paymentAttempt.update({
-          where: { id: attemptId },
-          data: {
-            stripeCheckoutSessionId: session.id,
-            stripePaymentIntentId: objectId(session.payment_intent),
-            checkoutUrl: session.url,
-            expiresAt: session.expires_at
-              ? new Date(session.expires_at * 1000)
-              : undefined,
-            status:
-              fresh.paidAt || ["complete", "expired"].includes(fresh.status)
-                ? fresh.status
-                : "open",
-            leaseUntil: null,
-            leaseToken: null,
-          },
-        });
-        await tx.payment.updateMany({
-          where: {
-            id: attempt.paymentId,
-            activeAttemptId: attempt.id,
-            paidAttemptId: null,
-          },
-          data: {
-            stripeCheckoutSessionId: session.id,
-            stripePaymentIntentId: objectId(session.payment_intent),
-          },
-        });
-      });
-      if (!session.url)
-        throw new BadRequestException("Stripe did not return a checkout URL");
-      return {
-        paymentId: attempt.paymentId,
-        attemptId,
-        checkoutUrl: session.url,
-        state: "open",
-        reused: false,
-      };
+      const result = await this.coordination.withPayment(
+        attempt.paymentId,
+        async (tx) => {
+          const fresh = await tx.paymentAttempt.findUniqueOrThrow({
+            where: { id: attemptId },
+          });
+          if (
+            (fresh.stripeCheckoutSessionId &&
+              fresh.stripeCheckoutSessionId !== session.id) ||
+            (fresh.stripePaymentIntentId &&
+              objectId(session.payment_intent) &&
+              fresh.stripePaymentIntentId !== objectId(session.payment_intent))
+          ) {
+            throw new BadRequestException("Stripe attempt object mismatch");
+          }
+          const payment = await tx.payment.findUniqueOrThrow({
+            where: { id: attempt.paymentId },
+          });
+          let status = fresh.paidAt
+            ? "paid"
+            : session.status === "complete"
+              ? fresh.failureConfirmed
+                ? "expired"
+                : "complete"
+              : session.status === "expired"
+                ? "expired"
+                : ["complete", "expired", "reconciliation_required"].includes(
+                      fresh.status,
+                    )
+                  ? fresh.status
+                  : "open";
+          if (status === "open" && !session.url) {
+            status = "reconciliation_required";
+            await tx.payment.update({
+              where: { id: attempt.paymentId },
+              data: { reconciliationReason: "checkout_not_redirectable" },
+            });
+          }
+          await tx.paymentAttempt.update({
+            where: { id: attemptId },
+            data: {
+              stripeCheckoutSessionId: session.id,
+              stripePaymentIntentId: objectId(session.payment_intent),
+              checkoutUrl: status === "open" ? session.url : null,
+              expiresAt: session.expires_at
+                ? new Date(session.expires_at * 1000)
+                : undefined,
+              status,
+              leaseUntil: null,
+              leaseToken: null,
+            },
+          });
+          await tx.payment.updateMany({
+            where: {
+              id: attempt.paymentId,
+              activeAttemptId: attempt.id,
+              OR: [{ paidAttemptId: null }, { paidAttemptId: attempt.id }],
+            },
+            data: {
+              stripeCheckoutSessionId: session.id,
+              stripePaymentIntentId: objectId(session.payment_intent),
+            },
+          });
+          const state =
+            payment.reconciliationReason || status === "reconciliation_required"
+              ? "reconciliation_required"
+              : payment.status === "refunded"
+                ? "refunded"
+                : status === "paid"
+                  ? "paid"
+                  : status === "complete"
+                    ? "confirmation_processing"
+                    : status;
+          return {
+            paymentId: attempt.paymentId,
+            attemptId,
+            checkoutUrl: state === "open" ? session.url : null,
+            state,
+            reused: false,
+          };
+        },
+      );
+      return result;
     } catch (error) {
       // An ambiguous call never permits a successor; recovery uses the same payload and key.
       await this.prisma.paymentAttempt.updateMany({
@@ -271,7 +318,7 @@ export class PaymentAttemptsService {
     sessionId?: string,
     intentId?: string,
   ) {
-    const attempt = metadata?.attemptId
+    let attempt = metadata?.attemptId
       ? await tx.paymentAttempt.findUnique({
           where: { id: metadata.attemptId },
         })
@@ -290,6 +337,10 @@ export class PaymentAttemptsService {
         );
       return null;
     }
+    await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${attempt.paymentId} FOR UPDATE`;
+    attempt = await tx.paymentAttempt.findUniqueOrThrow({
+      where: { id: attempt.id },
+    });
     const payment = await tx.payment.findUniqueOrThrow({
       where: { id: attempt.paymentId },
       include: { provider: { select: { userId: true } } },

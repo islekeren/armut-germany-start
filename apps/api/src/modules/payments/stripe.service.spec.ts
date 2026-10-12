@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { ConfigService } from "@nestjs/config";
 import { StripeService } from "./stripe.service";
 
@@ -61,6 +62,36 @@ describe("explicit payment configuration", () => {
   it("rejects a signed event from the wrong mode", () => {
     expect(() =>
       (service(sandbox) as any).assertEventMode({ livemode: true }),
+    ).toThrow();
+  });
+  it("review: rejects live API objects returned to a sandbox integration", async () => {
+    const stripe = service(sandbox);
+    (stripe as any).stripeClient = {
+      checkout: {
+        sessions: {
+          retrieve: jest
+            .fn()
+            .mockResolvedValue({ id: "cs_live", livemode: true }),
+        },
+      },
+    };
+    await expect(stripe.retrieveCheckoutSession("cs_live")).rejects.toThrow();
+  });
+  it("validates SDK-signed fixtures and rejects tampered webhook bodies", () => {
+    const stripe = service(sandbox);
+    const payload = JSON.stringify({
+      id: "evt_signed",
+      livemode: false,
+      type: "checkout.session.completed",
+      data: { object: {} },
+    });
+    const header = new Stripe(
+      "sk_test_fixture",
+    ).webhooks.generateTestHeaderString({ payload, secret: "whsec_fixture" });
+    const event = stripe.constructWebhookEvent(Buffer.from(payload), header);
+    expect(() => stripe.assertEventMode(event)).not.toThrow();
+    expect(() =>
+      stripe.constructWebhookEvent(Buffer.from(payload + " "), header),
     ).toThrow();
   });
 });

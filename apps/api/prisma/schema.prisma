@@ -357,6 +357,7 @@ model StripeWebhookEvent {
   createdAt   DateTime  @default(now())
   payload     Json?
   unresolved  Boolean   @default(false)
+  reconciliationReason String?
   nextRunAt   DateTime  @default(now())
   @@index([processedAt, nextRunAt])
 }

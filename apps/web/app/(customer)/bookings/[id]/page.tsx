@@ -236,6 +236,8 @@ export default function BookingDetailPage() {
         );
         await loadBooking();
         setIsPaying(false);
+        if (checkout.state === "paid")
+          setSuccessMessage(tDetail("paymentConfirmed"));
       }
     } catch (err) {
       setError(describeError(err, tDetail("paymentError")));

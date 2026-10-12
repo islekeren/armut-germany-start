@@ -169,45 +169,6 @@ export class PaymentsService {
         where: { id: event.id },
         data: { unresolved: false },
       });
-      const object = event.data.object as unknown as {
-        metadata?: Stripe.Metadata;
-        id: string;
-        payment_intent?: string;
-        charge?: string;
-      };
-      let lockId = object.metadata?.paymentId;
-      if (!lockId) {
-        const attempt = await tx.paymentAttempt.findFirst({
-          where: {
-            OR: [
-              { stripeCheckoutSessionId: object.id },
-              { stripePaymentIntentId: object.id },
-              ...(typeof object.payment_intent === "string"
-                ? [{ stripePaymentIntentId: object.payment_intent }]
-                : []),
-              ...(typeof object.charge === "string"
-                ? [{ stripeChargeId: object.charge }]
-                : []),
-            ],
-          },
-        });
-        const legacy = attempt
-          ? null
-          : await tx.payment.findFirst({
-              where: {
-                OR: [
-                  {
-                    stripePaymentIntentId:
-                      objectId(object.payment_intent) ?? object.id,
-                  },
-                  { stripeChargeId: objectId(object.charge) ?? object.id },
-                ],
-              },
-            });
-        lockId = attempt?.paymentId ?? legacy?.id;
-      }
-      if (lockId)
-        await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${lockId} FOR UPDATE`;
       switch (event.type) {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
@@ -393,7 +354,13 @@ export class PaymentsService {
           },
           include: { provider: { select: { userId: true } } },
         });
-    return { payment, attempt };
+    if (!payment) return { payment, attempt };
+    await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id} FOR UPDATE`;
+    const fresh = await tx.payment.findUniqueOrThrow({
+      where: { id: payment.id },
+      include: { provider: { select: { userId: true } } },
+    });
+    return { payment: fresh, attempt };
   }
 
   private async handleRefundedCharge(
@@ -427,9 +394,11 @@ export class PaymentsService {
           data: { refundedAt: new Date() },
         });
       if (
-        !attempt ||
-        !payment.paidAttemptId ||
-        payment.paidAttemptId === attempt.id
+        !attempt
+          ? !payment.activeAttemptId
+          : payment.paidAttemptId
+            ? payment.paidAttemptId === attempt.id
+            : payment.activeAttemptId === attempt.id
       ) {
         await this.setPaymentStatus(tx, payment, "refunded");
       } else
@@ -558,6 +527,7 @@ export class PaymentsService {
     const pending = await this.prisma.stripeWebhookEvent.findMany({
       where: {
         processedAt: null,
+        reconciliationReason: null,
         nextRunAt: { lte: new Date() },
         payload: { not: Prisma.DbNull },
       },
@@ -567,8 +537,18 @@ export class PaymentsService {
     for (const row of pending) {
       try {
         await this.processWebhook(row.payload as unknown as Stripe.Event);
-      } catch {
-        /* retry durable events next tick */
+      } catch (error) {
+        // Schedule outside the rolled-back handler transaction so poison events cannot monopolize every batch.
+        await this.prisma.stripeWebhookEvent.updateMany({
+          where: { id: row.id, processedAt: null },
+          data: {
+            nextRunAt: new Date(Date.now() + 60_000),
+            reconciliationReason:
+              error instanceof BadRequestException
+                ? "invalid_financial_event"
+                : undefined,
+          },
+        });
       }
     }
   }

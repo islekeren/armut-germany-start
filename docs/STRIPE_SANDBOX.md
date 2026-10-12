@@ -76,7 +76,7 @@ Refunds and disputes:
 
 Confirm the platform charge and delayed provider transfer in the test-mode Dashboard. Use the provider finance page's **Open Stripe Dashboard** action to verify that the connected account can see its earnings and payout information.
 
-Before live mode, define the production refund policy, dispute evidence workflow, tax liability, Radar rules, reconciliation alerts, and restricted-key permissions. The API intentionally rejects live keys while this integration remains sandbox-only.
+Before live mode, define the production refund policy, dispute evidence workflow, tax liability, Radar rules, reconciliation alerts, and restricted-key permissions. The API defaults payments disabled. Sandbox mode rejects live keys; live configuration requires separate explicit opt-in and HTTPS URLs. Do not enable it for these sandbox checks.
 
 ## Payment safety validation and recovery
 
@@ -118,22 +118,24 @@ FROM "Payment" p LEFT JOIN "PaymentOperation" o ON o."paymentId" = p.id
 WHERE p."reconciliationReason" IS NOT NULL OR p."disputedAt" IS NOT NULL
    OR o.status IN ('pending', 'failed', 'reconciliation_required');
 SELECT * FROM "PaymentDispute" ORDER BY "updatedAt" DESC;
-SELECT id, type, "createdAt", "nextRunAt" FROM "StripeWebhookEvent"
+SELECT id, type, "createdAt", "nextRunAt", "reconciliationReason" FROM "StripeWebhookEvent"
 WHERE "processedAt" IS NULL;
 ```
 
 Booking detail responses expose safe dispute IDs/status and operation IDs/outcomes,
 not Stripe request payloads or KYC details. Unassociated financial webhook payloads
 remain durable for later correlation, with delayed replay to avoid starving newer
-work. These payloads contain financial metadata; restrict database access and
+work. Permanent validation failures are held with an event reconciliation reason
+instead of retrying at the head of every worker batch. These payloads contain financial metadata; restrict database access and
 include them in the deployment's data retention/security policy.
 
 For an old ambiguous operation, compare immutable operation metadata, the source
 charge, destination and amount with Stripe records first. Recover the discovered
 object into local state in a short transaction and process any refund/dispute
 reversal obligation. Do not merely clear a hold or use a new idempotency key;
-that can duplicate money movement. A failed reversal or permanent Stripe rejection
-requires operator remediation. Partial refunds remain a held manual-review case;
+that can duplicate money movement. Typed insufficient-funds reversal errors remain retryable on the original
+operation/key; permanent reversal rejections explicitly require reconciliation.
+A failed reversal or permanent Stripe rejection requires operator remediation. Partial refunds remain a held manual-review case;
 no proportional payout policy was introduced. A won dispute never automatically
 re-transfers already reversed funds.
 
