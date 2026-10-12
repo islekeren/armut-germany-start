@@ -15,6 +15,7 @@ export {
   ProviderApprovalNotice,
   useProviderApproval,
 } from "./provider/ProviderApprovalNotice";
+export { useProviderOnboardingCheck } from "./provider/useProviderOnboardingCheck";
 export { MessagesWorkspace } from "./messages/MessagesWorkspace";
 export { FormLabel } from "./forms/FormLabel";
 export { FormInput } from "./forms/FormInput";

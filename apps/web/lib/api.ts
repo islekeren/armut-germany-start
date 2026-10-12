@@ -841,6 +841,7 @@ export interface ProviderProfile {
   services: {
     id: string;
     categoryId: string;
+    isActive: boolean;
     title: string;
     description: string;
     priceType: string;
@@ -981,6 +982,7 @@ export const providerApi = {
 export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired";
 
 export interface Quote {
+  booking?: { id: string; status: BookingStatus } | null;
   id: string;
   requestId: string;
   providerId: string;

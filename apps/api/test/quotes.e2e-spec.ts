@@ -4,6 +4,8 @@ import {
   bearer,
   closeTestApp,
   createProviderFixture,
+  createDealFixture,
+  createBookingFixture,
   createQuoteFixture,
   createRequestFixture,
   createTestApp,
@@ -60,6 +62,51 @@ describe("Quotes (e2e)", () => {
         ...overrides,
       });
   }
+
+  it("shows accepted quotes awaiting booking and the actual booking in all active states", async () => {
+    const { quote } = await createDealFixture({
+      customerId,
+      providerId,
+      quoteStatus: "accepted",
+      requestStatus: "in_progress",
+    });
+    const offers = () =>
+      api().get("/api/quotes/my-quotes").set(bearer(providerToken));
+    const waiting = await offers().expect(200);
+    expect(
+      waiting.body.find((q: { id: string }) => q.id === quote.id).booking,
+    ).toBeNull();
+    expect(await prisma.booking.count()).toBe(0);
+    const booking = await createBookingFixture({
+      quoteId: quote.id,
+      customerId,
+      providerId,
+    });
+    for (const status of [
+      "pending",
+      "confirmed",
+      "in_progress",
+      "completion_pending",
+    ] as const) {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { status },
+      });
+      const response = await offers().expect(200);
+      expect(
+        response.body.find((q: { id: string }) => q.id === quote.id).booking,
+      ).toEqual({ id: booking.id, status });
+      const orders = await api()
+        .get("/api/providers/me/bookings")
+        .set(bearer(providerToken))
+        .expect(200);
+      expect(orders.body).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: booking.id, status }),
+        ]),
+      );
+    }
+  });
 
   describe("POST /api/quotes", () => {
     it("creates a pending quote and notifies the customer", async () => {

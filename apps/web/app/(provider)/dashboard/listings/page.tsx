@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AlertBanner,
   PanelCard,
   ProviderSubpageShell,
   useProviderApproval,
+  useProviderOnboardingCheck,
 } from "@/components";
 import {
   getStoredAccessToken,
@@ -43,6 +45,13 @@ export default function ListingsPage() {
   const tFilters = useTranslations("provider.offers.filters");
   const tApproval = useTranslations("provider.approval");
   const isApproved = useProviderApproval();
+  // The dashboard layout already confirmed this provider's profile exists;
+  // reuse its cached fetch instead of requesting it again here.
+  const profileCheck = useProviderOnboardingCheck(true);
+  const hasActiveServices =
+    profileCheck.status === "exists" && profileCheck.profile
+      ? profileCheck.profile.services.some((service) => service.isActive)
+      : null;
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [allRequests, setAllRequests] = useState<ProviderRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,35 +69,33 @@ export default function ListingsPage() {
   const [maxBudget, setMaxBudget] = useState("");
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = getStoredAccessToken();
-        if (!token) {
-          setAllRequests([]);
-          setError(t("authRequired"));
-          return;
-        }
-
-        const response = await providerApi.getRequests(token, {
-          page: 1,
-          limit: 100,
-        });
-        setAllRequests(response.data);
-      } catch (fetchError) {
-        console.error("Failed to fetch requests", fetchError);
-        setError(
-          describeError(fetchError, t("loadError")),
-        );
-      } finally {
-        setLoading(false);
+  const fetchRequests = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = getStoredAccessToken();
+      if (!token) {
+        setAllRequests([]);
+        setError(t("authRequired"));
+        return;
       }
-    };
 
-    fetchRequests();
+      const response = await providerApi.getRequests(token, {
+        page: 1,
+        limit: 100,
+      });
+      setAllRequests(response.data);
+    } catch (fetchError) {
+      console.error("Failed to fetch requests", fetchError);
+      setError(describeError(fetchError, t("loadError")));
+    } finally {
+      setLoading(false);
+    }
   }, [t, describeError]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
 
   const categoryOptions = useMemo(() => {
     const map = new Map<string, number>();
@@ -337,24 +344,24 @@ export default function ListingsPage() {
               >
                 {t("filters.all")} ({allRequests.length})
               </button>
-              {categoryOptions.map(([slug, count]) => (
+              {categoryOptions.map(([slug, count]) =>
                 (() => {
                   const branch =
-                    getBranchById(slug) || getFallbackBranchByCategorySlug(slug);
+                    getBranchById(slug) ||
+                    getFallbackBranchByCategorySlug(slug);
                   if (!branch) return null;
                   return (
-                <button
-                  key={slug}
-                  type="button"
-                  onClick={() => setCategory(slug)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium ${category === slug ? "bg-primary text-white" : "bg-background text-muted hover:bg-white"}`}
-                >
-                  {getBranchLabel(branch, locale)}{" "}
-                  ({count})
-                </button>
+                    <button
+                      key={slug}
+                      type="button"
+                      onClick={() => setCategory(slug)}
+                      className={`rounded-full px-4 py-2 text-sm font-medium ${category === slug ? "bg-primary text-white" : "bg-background text-muted hover:bg-white"}`}
+                    >
+                      {getBranchLabel(branch, locale)} ({count})
+                    </button>
                   );
-                })()
-              ))}
+                })(),
+              )}
               <div className="ml-auto w-full md:w-56">
                 <label className="mb-1 block text-sm text-muted">
                   {tFilters("sortBy")}
@@ -392,10 +399,61 @@ export default function ListingsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          {filteredRequests.length === 0 ? (
+          {error ? null : filteredRequests.length === 0 ? (
             <PanelCard className="p-8 text-center">
               <div className="mb-4 text-4xl">📭</div>
-              <p className="text-muted">{t("noRequests")}</p>
+              <h2 className="font-semibold">
+                {t(
+                  hasActiveServices === false
+                    ? "empty.noServicesTitle"
+                    : allRequests.length === 0
+                      ? "empty.noEligibleTitle"
+                      : "empty.filteredTitle",
+                )}
+              </h2>
+              <p className="mt-2 text-muted">
+                {t(
+                  hasActiveServices === false
+                    ? "empty.noServicesBody"
+                    : allRequests.length === 0
+                      ? "empty.noEligibleBody"
+                      : "empty.filteredBody",
+                )}
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                {allRequests.length > 0 && hasActiveServices !== false ? (
+                  <button
+                    type="button"
+                    className="rounded-lg bg-primary px-4 py-2 text-white"
+                    onClick={() => {
+                      setSearch("");
+                      setCategory("all");
+                      setDateFilter("all");
+                      setMinBudget("");
+                      setMaxBudget("");
+                      setSortBy("newest");
+                    }}
+                  >
+                    {t("empty.clearFilters")}
+                  </button>
+                ) : (
+                  <>
+                    <Link
+                      href="/dashboard/profile"
+                      className="rounded-lg border border-border px-4 py-2 font-medium text-primary"
+                    >
+                      {t("empty.viewProfile")}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={fetchRequests}
+                      className="rounded-lg bg-primary px-4 py-2 text-white"
+                    >
+                      {t("empty.refresh")}
+                    </button>
+                  </>
+                )}
+              </div>
             </PanelCard>
           ) : (
             filteredRequests.map((request) => (
@@ -456,7 +514,9 @@ export default function ListingsPage() {
                   <span className="flex items-center gap-1 text-muted">
                     📅{" "}
                     {request.preferredDate
-                      ? new Date(request.preferredDate).toLocaleDateString(locale)
+                      ? new Date(request.preferredDate).toLocaleDateString(
+                          locale,
+                        )
                       : t("flexible")}
                   </span>
                   {request.budget ? (
@@ -589,7 +649,6 @@ export default function ListingsPage() {
                 {t("tips.tip4")}
               </li>
             </ul>
-
           </PanelCard>
         </aside>
       </div>

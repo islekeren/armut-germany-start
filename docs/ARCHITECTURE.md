@@ -263,3 +263,46 @@ Treat these files and areas as high-risk:
 - `apps/api/src/modules/notifications/*`
 
 These areas connect multiple user flows and small changes can create wide regressions.
+
+## Provider flow recovery
+
+- Customer rescheduling moves a pending/confirmed booking to `pending`. The
+  provider must confirm the new date from Orders before requesting completion.
+  The existing booking status endpoint enforces ownership and rejects completion
+  from `pending`; final completion remains a customer action.
+- A provider account without a `Provider` record resumes `/provider-onboarding`.
+  Dashboard access checks for that record first. Only a 404 means missing setup;
+  failed network/profile checks offer a retry. An authenticated provider completes
+  the profile using their existing account, without submitting registration again.
+- `POST /api/providers` returns the existing own provider on a retry, without
+  overwriting it or duplicating its services. Nested creation is atomic, and a
+  concurrent unique-key conflict is recovered only when that user's provider
+  exists. Profile updates still use the separate update endpoint.
+- Offers includes pending and accepted quotes. An accepted quote without a
+  booking is explicitly waiting for the customer to create one. Quote acceptance
+  never creates a booking. Once booked, the offer links to the actual order via
+  `/dashboard/orders?booking=<id>`. The authenticated provider quote response
+  includes only the associated booking's ID and status for this link.
+
+### Provider request matching policy (ARM-35)
+
+Listings and direct-ID provider request access use the same eligibility rule:
+`open` request + exact `categoryId` of an active provider service + configured
+service radius. Sector/branch metadata is presentation information; it does not
+broaden eligibility. A parent-category service does not match child requests,
+and a leaf service does not match parent or sibling requests. Inactive services
+and requests outside the radius do not grant access through a direct ID either.
+Providers without configured coordinates retain the existing no-distance-filter
+behavior.
+
+The listings UI distinguishes no active services, no eligible requests, and
+requests excluded by local filters. The profile link opens the working profile
+screen to inspect services or edit location/radius. Service activation/category
+editing is currently unavailable in the dashboard; the empty state states this
+explicitly and does not link to the Services placeholder. Refresh Listings and
+Clear Filters operate on the actual feed and controls.
+
+Regression evidence lives in `providers.e2e-spec.ts` (including parent/child,
+sibling, inactive, empty and radius access), `quotes.e2e-spec.ts` (awaiting booking
+and all four active booking states), `bookings.e2e-spec.ts` (pending transition
+restrictions), and `apps/web/e2e/provider-recovery.spec.ts` (browser recovery flows).

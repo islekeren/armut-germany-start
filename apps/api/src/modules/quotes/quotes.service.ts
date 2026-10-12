@@ -167,6 +167,7 @@ export class QuotesService {
       where: { providerId: provider.id },
       orderBy: { createdAt: "desc" },
       include: {
+        booking: { select: { id: true, status: true } },
         request: {
           include: {
             customer: {
