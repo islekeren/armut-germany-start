@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+/* eslint-disable @next/next/no-html-link-for-pages -- Recovery navigation reloads the server locale after an in-memory language change. */
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { NextIntlClientProvider, useLocale, useTranslations, type AbstractIntlMessages } from "next-intl";
 import { SimpleHeader } from "@/components/SimpleHeader";
 import { FormInput } from "@/components/forms/FormInput";
+import { useAuth } from "@/contexts";
 import { authApi, ApiError } from "@/lib/api";
 import { useApiErrorMessage } from "@/lib/api-errors";
 
@@ -14,11 +17,13 @@ export function RecoveryForm({ mode, messages }: {
   messages?: Record<Locale, AbstractIntlMessages>;
 }) {
   const currentLocale = useLocale();
+  const initialized = useRef(false);
   const [link, setLink] = useState<{ ready: boolean; token: string; locale: Locale }>({
     ready: mode === "request", token: "", locale: currentLocale === "en" ? "en" : "de",
   });
   useEffect(() => {
-    if (mode !== "reset") return;
+    if (mode !== "reset" || initialized.current) return;
+    initialized.current = true;
     const fragment = new URLSearchParams(window.location.hash.slice(1));
     const token = fragment.get("token") || "";
     const locale = fragment.get("locale");
@@ -33,13 +38,26 @@ export function RecoveryForm({ mode, messages }: {
     }
   }, [mode]);
 
-  const form = <Form mode={mode} token={link.token} ready={link.ready} />;
+  const languageControl = mode === "reset" && messages ? (
+    <div className="flex gap-2">
+      {(["de", "en"] as const).map(locale => (
+        <button key={locale} type="button" aria-pressed={link.locale === locale}
+          className="rounded-md border border-white/60 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+          onClick={() => {
+            setLink(previous => ({ ...previous, locale }));
+            document.cookie = `locale=${locale};path=/;max-age=31536000;SameSite=Lax`;
+          }}>{locale === "de" ? "Deutsch" : "English"}</button>
+      ))}
+    </div>
+  ) : undefined;
+  const form = <Form mode={mode} token={link.token} ready={link.ready} languageControl={languageControl} />;
   return messages
     ? <NextIntlClientProvider locale={link.locale} messages={messages[link.locale]}>{form}</NextIntlClientProvider>
     : form;
 }
 
-function Form({ mode, token, ready }: { mode: "request" | "reset"; token: string; ready: boolean }) {
+function Form({ mode, token, ready, languageControl }: { mode: "request" | "reset"; token: string; ready: boolean; languageControl?: ReactNode }) {
+  const { clearSession } = useAuth();
   const t = useTranslations("auth.recovery");
   const locale = useLocale();
   const describeError = useApiErrorMessage();
@@ -63,7 +81,10 @@ function Form({ mode, token, ready }: { mode: "request" | "reset"; token: string
     setBusy(true);
     try {
       if (mode === "request") await authApi.forgotPassword(email, locale);
-      else await authApi.resetPassword(token, password);
+      else {
+        await authApi.resetPassword(token, password);
+        clearSession();
+      }
       setPassword(""); setConfirm("");
       setSuccess(true);
     } catch (cause) {
@@ -74,14 +95,14 @@ function Form({ mode, token, ready }: { mode: "request" | "reset"; token: string
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 pb-10 pt-28">
-      <SimpleHeader />
+      <SimpleHeader languageControl={languageControl} />
       <main className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg sm:p-8">
         <h1 className="text-center text-2xl font-bold text-foreground">{t(mode === "request" ? "requestTitle" : "resetTitle")}</h1>
         <p className="mb-6 mt-3 text-center text-muted">{t(mode === "request" ? "requestIntro" : "resetIntro")}</p>
         {success ? (
           <p role="status" className="rounded-lg bg-primary/10 p-4">{t(mode === "request" ? "requestSuccess" : "resetSuccess")}</p>
         ) : invalidLink ? (
-          <div role="alert"><p>{t("invalidLink")}</p><Link className="mt-4 block text-primary underline" href="/forgot-password">{t("requestAgain")}</Link></div>
+          <div role="alert"><p>{t("invalidLink")}</p><a className="mt-4 block text-primary underline" href="/forgot-password">{t("requestAgain")}</a></div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             {error ? <p role="alert" className="rounded-lg bg-error/10 p-3 text-error">{error}</p> : null}
@@ -104,7 +125,9 @@ function Form({ mode, token, ready }: { mode: "request" | "reset"; token: string
             </button>
           </form>
         )}
-        <Link href="/login" className="mt-6 block text-center text-primary underline">{t("login")}</Link>
+        {mode === "reset"
+          ? <a href="/login" className="mt-6 block text-center text-primary underline">{t("login")}</a>
+          : <Link href="/login" className="mt-6 block text-center text-primary underline">{t("login")}</Link>}
       </main>
     </div>
   );

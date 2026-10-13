@@ -1,12 +1,17 @@
+import { StrictMode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/messages/en.json";
 import de from "@/messages/de.json";
 import { authApi, ApiError } from "@/lib/api";
 import { RecoveryForm } from "./RecoveryForm";
 
-vi.mock("@/components/SimpleHeader", () => ({ SimpleHeader: () => null }));
+const clearSession = vi.fn();
+beforeEach(() => clearSession.mockClear());
+vi.mock("@/contexts", () => ({ useAuth: () => ({ clearSession }) }));
+
+vi.mock("@/components/SimpleHeader", () => ({ SimpleHeader: ({ languageControl }: { languageControl?: React.ReactNode }) => <>{languageControl}</> }));
 function show(mode: "request" | "reset", locale: "de" | "en" = "en") {
   const messages = locale === "en" ? en : de;
   render(<NextIntlClientProvider locale={locale} messages={messages}><RecoveryForm mode={mode} /></NextIntlClientProvider>);
@@ -35,6 +40,7 @@ describe.each(["de", "en"] as const)("RecoveryForm %s", locale => {
     fireEvent.click(screen.getByRole("button", { name: copy.resetSubmit }));
     await screen.findByText(copy.resetSuccess);
     expect(send).toHaveBeenCalledWith(validToken, "NewPassword123!");
+    expect(clearSession).toHaveBeenCalled();
   });
 
   it("rejects mismatched passwords without calling the API", async () => {
@@ -74,5 +80,30 @@ describe.each(["de", "en"] as const)("RecoveryForm %s", locale => {
     fireEvent.click(screen.getByRole("button", { name: copy.requestSubmit }));
     await screen.findByText(copy.error);
     expect(screen.getByRole("button", { name: copy.requestSubmit })).toBeEnabled();
+  });
+});
+
+
+describe("reset token initialization", () => {
+  it("survives React StrictMode effect replay", async () => {
+    window.history.replaceState(null, "", `/reset-password#token=${validToken}`);
+    render(<StrictMode><NextIntlClientProvider locale="en" messages={en}><RecoveryForm mode="reset" /></NextIntlClientProvider></StrictMode>);
+    await waitFor(() => expect(screen.getByLabelText(en.auth.recovery.password)).toBeEnabled());
+    expect(screen.queryByText(en.auth.recovery.invalidLink)).not.toBeInTheDocument();
+  });
+
+  it("switches reset language without discarding the token", async () => {
+    window.history.replaceState(null, "", `/reset-password#token=${validToken}&locale=en`);
+    const send = vi.spyOn(authApi, "resetPassword").mockResolvedValue({ message: "ok" });
+    render(<NextIntlClientProvider locale="en" messages={en}><RecoveryForm mode="reset" messages={{ de, en }} /></NextIntlClientProvider>);
+    await waitFor(() => expect(screen.getByLabelText(en.auth.recovery.password)).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Deutsch" }));
+    await screen.findByText(de.auth.recovery.resetTitle);
+    fireEvent.change(screen.getByLabelText(de.auth.recovery.password), { target: { value: "NewPassword123!" } });
+    fireEvent.change(screen.getByLabelText(de.auth.recovery.confirm), { target: { value: "NewPassword123!" } });
+    fireEvent.click(screen.getByRole("button", { name: de.auth.recovery.resetSubmit }));
+    await screen.findByText(de.auth.recovery.resetSuccess);
+    expect(send).toHaveBeenCalledWith(validToken, "NewPassword123!");
+    expect(clearSession).toHaveBeenCalled();
   });
 });

@@ -31,12 +31,12 @@ auth.service.ts, jwt.strategy.ts, auth.controller.ts; messages.gateway.ts/module
 **Interfaces:** SessionService.create(userId, authVersion), validate(sub, sid),
 revoke(userId, sid); AuthService.logout(userId, sid). JWTs use sub/sid/type.
 
-- [ ] Write HTTP tests: two logins, logout first rejects access/refresh but second
+- [x] Write HTTP tests: two logins, logout first rejects access/refresh but second
   works; password change rejects both sessions and legacy JWTs.
-- [ ] Run tests and observe missing behavior.
-- [ ] Add session/version migration and validation, password transaction and socket
+- [x] Run tests and observe missing behavior.
+- [x] Add session/version migration and validation, password transaction and socket
   event/recipient checks. Refresh reuses sid and never extends session lifetime.
-- [ ] Run unit and HTTP/socket tests; verify cross-instance recipient revocation.
+- [x] Run unit and HTTP/socket tests; verify cross-instance recipient revocation.
 
 ### Task 2: Recovery and email
 
@@ -45,11 +45,11 @@ DTO/controller/module, auth-recovery.e2e-spec.ts, email tests; mailbox preview t
 **Interfaces:** forgotPassword(dto), resetPassword(dto); email.sendReset(to, url,
 locale). Recovery tokens contain digest, version, expiry, consumedAt.
 
-- [ ] Write failing recovery tests for indistinguishable responses, hashing,
+- [x] Write failing recovery tests for indistinguishable responses, hashing,
   expiry, reuse, concurrent attempts, sibling tokens, cooldown, deletion and limits.
-- [ ] Implement row-locked version update and atomic token consumption, generic
+- [x] Implement row-locked version update and atomic token consumption, generic
   errors, disabled/local/SMTP mail transports and validated frontend URL.
-- [ ] Run tests including delivery failure and forbidden production local mode.
+- [x] Run tests including delivery failure and forbidden production local mode.
 
 ### Task 3: Web flow
 
@@ -57,17 +57,28 @@ locale). Recovery tokens contain digest, version, expiry, consumedAt.
 AuthContext.tsx/tests, authorization route table, web recovery tests.
 **Interfaces:** authApi.forgotPassword(email, locale), resetPassword(token, password).
 
-- [ ] Write failing both-locale request/reset tests for submitting, generic success,
+- [x] Write failing both-locale request/reset tests for submitting, generic success,
   malformed/expired fragment, mismatch, network failure and success.
-- [ ] Implement accessible forms; remove secret fragment after reading; clear
+- [x] Implement accessible forms; remove secret fragment after reading; clear
   local auth after password changes; do not pretend failed remote logout succeeded.
-- [ ] Run frontend tests and existing auth-context regression suite.
+- [x] Run frontend tests and existing auth-context regression suite.
 
 ### Task 4: Verify and deliver
 
 **Files:** ENVIRONMENT.md, ARCHITECTURE.md, AUTH_RECOVERY.md, env example.
 
-- [ ] Document local mailbox, SMTP release requirements, migration, logout and cleanup.
-- [ ] Run lint/build/check-types, all unit tests, API e2e and web smoke/recovery e2e.
-- [ ] Review diff and address failures; record environment limitations accurately.
-- [ ] Commit, push and create PR linking ARM-40/ARM-22, noting beta email setup gate.
+- [x] Document local mailbox, SMTP release requirements, migration, logout and cleanup.
+- [x] Run lint/build/check-types, all unit tests, API e2e and web smoke/recovery e2e.
+- [x] Review diff and address failures; record environment limitations accurately.
+- [x] Commit, push and create PR linking ARM-40/ARM-22, noting beta email setup gate.
+
+
+## Execution record
+
+Implemented on the requested branch and rebased onto main release-operations
+commit 7e31e68. Independent security review found StrictMode initialization,
+language-reload token loss, SMTP latency enumeration, and stale reset authentication;
+all four were reproduced with regression tests and fixed. Email provider/domain
+setup remains intentionally outside this implementation and is a beta release gate.
+
+Final checks: lint/build/check-types pass; API unit 355, web unit 59, shared/UI unit 7; API e2e 330; Chromium e2e 70. Existing API lint warnings and root Expo-config test warnings remain.

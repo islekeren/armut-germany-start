@@ -254,3 +254,13 @@ When you finish a task, report validation in two parts:
 Run `node --test scripts/verify-release.test.mjs scripts/mirror-deployment.test.mjs` for 11 checks using real temporary Git remotes and HTTP servers: exact release commits, DB readiness, deadlines, credential-free URLs, stale main runs, divergence and non-force mirror pushes. CI runs these before lint. The current production-build browser smoke run passes all 10 tagged tests.
 
 API observability regressions cover correlation IDs, safe route-template logs, failed database readiness, sanitized startup/runtime errors, telemetry validation/rate limits and CORS headers. Web tests cover request/refresh/retry correlation, safe best-effort telemetry, deduplication, SSR logs and route-boundary retry behavior. Hosting dashboard settings and live production smoke checks are separate from local tests.
+
+
+### Password recovery and revocation
+
+`auth-recovery.e2e-spec.ts` exercises device logout, all-device password revocation,
+hashed/expired/single-use/sibling recovery tokens, concurrency, cooldowns, generic
+responses and endpoint throttles. Socket tests also cover revoked senders and
+recipients. `password-recovery.spec.ts` drives both locales through the local
+mailbox, reset/reuse/expiry states and sign-in after reset. Playwright always uses
+local mail capture; it never dispatches SMTP email. See [AUTH_RECOVERY.md](./AUTH_RECOVERY.md).

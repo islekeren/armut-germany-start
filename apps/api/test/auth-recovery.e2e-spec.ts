@@ -115,6 +115,16 @@ describe("Device session revocation (e2e)", () => {
     expect(await prisma.passwordResetToken.count()).toBe(1);
   });
 
+
+  it("returns generic success before slow email delivery completes", async () => {
+    let release!: () => void;
+    email.sendReset.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
+    try {
+      await api().post("/api/auth/forgot-password").send({ email: "recovery@example.com" })
+        .timeout({ response: 1500 }).expect(201);
+    } finally { release?.(); }
+  });
+
   it("does not disclose a delivery failure", async () => {
     email.sendReset.mockRejectedValueOnce(new Error("private SMTP payload"));
     const known = await api().post("/api/auth/forgot-password").send({ email: "recovery@example.com" }).expect(201);

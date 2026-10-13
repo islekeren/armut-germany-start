@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, type OnModuleDestroy } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import * as bcrypt from "bcrypt";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -11,7 +11,8 @@ const invalidReset = () => new BadRequestException("Invalid or expired reset lin
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
 
 @Injectable()
-export class PasswordRecoveryService {
+export class PasswordRecoveryService implements OnModuleDestroy {
+  private readonly deliveries = new Set<Promise<void>>();
   private readonly logger = new Logger(PasswordRecoveryService.name);
   constructor(private readonly prisma: PrismaService, private readonly email: RecoveryEmailService) {}
 
@@ -37,12 +38,23 @@ export class PasswordRecoveryService {
         } });
         return user.email;
       });
-      if (recipient) await this.email.sendReset(recipient, token, dto.locale || "de");
+      if (recipient) {
+        // SMTP latency must never turn a generic response into an account oracle.
+        // Keep bounded delivery tasks tracked so graceful shutdown can drain them.
+        const delivery = this.email.sendReset(recipient, token, dto.locale || "de")
+          .catch(() => { this.logger.warn("Password recovery email could not be delivered"); });
+        this.deliveries.add(delivery);
+        void delivery.finally(() => this.deliveries.delete(delivery));
+      }
     } catch {
       // Never log exceptions: SMTP errors may contain recipients or raw message bodies.
       this.logger.warn("Password recovery request could not be completed");
     }
     return GENERIC_RESPONSE;
+  }
+
+  async onModuleDestroy() {
+    await Promise.allSettled(this.deliveries);
   }
 
   async resetPassword(dto: ResetPasswordDto) {

@@ -16,7 +16,7 @@ const baseUser: User = {
 };
 
 function AuthProbe() {
-  const { isAuthenticated, isLoading, logout, refreshAuth, changePassword, user } = useAuth();
+  const { isAuthenticated, isLoading, logout, refreshAuth, changePassword, clearSession, user } = useAuth();
   const [error, setError] = useState("");
 
   return (
@@ -31,6 +31,7 @@ function AuthProbe() {
         logout
       </button>
       <button type="button" onClick={() => void changePassword({ currentPassword: "old-password", newPassword: "new-password" })}>change password</button>
+      <button type="button" onClick={clearSession}>clear session</button>
       <p>{error}</p>
     </div>
   );
@@ -146,5 +147,20 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(screen.getByTestId("authenticated")).toHaveTextContent("false"));
     expect(localStorage.getItem("armut_access_token")).toBeNull();
     expect(localStorage.getItem("armut_refresh_token")).toBeNull();
+  });
+
+  it("does not restore authentication from a stale in-flight session check", async () => {
+    localStorage.setItem("armut_access_token", "stored-access");
+    localStorage.setItem("armut_refresh_token", "stored-refresh");
+    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    let finish!: (user: User) => void;
+    vi.spyOn(authApi, "getMe").mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    renderWithProvider();
+    await waitFor(() => expect(screen.getByTestId("authenticated")).toHaveTextContent("true"));
+    fireEvent.click(screen.getByRole("button", { name: "clear session" }));
+    finish(baseUser);
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+    expect(screen.getByTestId("authenticated")).toHaveTextContent("false");
+    expect(localStorage.getItem("armut_user")).toBeNull();
   });
 });

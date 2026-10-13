@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import {
@@ -37,6 +38,7 @@ const REFRESH_TOKEN_KEY = "armut_refresh_token";
 const USER_KEY = "armut_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const sessionEpoch = useRef(0);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Clear auth data
   const clearAuthData = () => {
+    sessionEpoch.current += 1;
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -83,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state from storage
   const initializeAuth = useCallback(async () => {
+    const epoch = sessionEpoch.current;
     setIsLoading(true);
     try {
       const storedUser = getStoredUser();
@@ -95,9 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Try to verify the token by fetching user data
         try {
           const userData = await authApi.getMe(accessToken);
+          if (epoch !== sessionEpoch.current) return;
           localStorage.setItem(USER_KEY, JSON.stringify(userData));
           setUser(userData);
         } catch (error) {
+          if (epoch !== sessionEpoch.current) return;
           if (isTransientApiError(error)) {
             return;
           }
@@ -106,8 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (refreshToken) {
             try {
               const response = await authApi.refreshToken(refreshToken);
+              if (epoch !== sessionEpoch.current) return;
               storeAuthData(response.accessToken, response.refreshToken, response.user);
             } catch (refreshError) {
+              if (epoch !== sessionEpoch.current) return;
               if (isTransientApiError(refreshError)) {
                 return;
               }
@@ -181,9 +189,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Refresh auth
   const refreshAuth = async () => {
+    const epoch = sessionEpoch.current;
     const refreshToken = getRefreshToken();
     if (refreshToken) {
       const response = await authApi.refreshToken(refreshToken);
+      if (epoch !== sessionEpoch.current) return;
       storeAuthData(response.accessToken, response.refreshToken, response.user);
     }
   };

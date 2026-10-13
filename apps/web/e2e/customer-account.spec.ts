@@ -34,7 +34,7 @@ test.describe("account settings", () => {
 
   test("changes the password", async ({ page, loginAs }) => {
     const user = await createUser({ label: "password" });
-    await loginAs(user);
+    const oldSession = await loginAs(user);
     const newPassword = "N3wPassword!";
 
     await page.goto("/settings");
@@ -49,9 +49,13 @@ test.describe("account settings", () => {
       .fill(newPassword);
     await page.getByRole("button", { name: "Change password" }).click();
 
-    await expect(
-      page.getByText("Password changed successfully."),
-    ).toBeVisible();
+    // Password changes now revoke every device, including this one.
+    await expect(page).toHaveURL(/\/login/);
+    const oldAccess = await page.request.get(`${API_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${oldSession.accessToken}` },
+    });
+    expect(oldAccess.status()).toBe(401);
+    expect(await page.evaluate(() => Boolean(localStorage.getItem("armut_access_token")))).toBe(false);
     const login = await page.request.post(`${API_URL}/api/auth/login`, {
       data: { email: user.email, password: newPassword },
     });

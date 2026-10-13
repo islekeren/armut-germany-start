@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { LanguageToggle } from "./LanguageToggle";
 
-export function SimpleHeader() {
+export function SimpleHeader({ languageControl }: { languageControl?: ReactNode } = {}) {
   return (
     <header className="absolute left-0 right-0 top-0 z-10 bg-primary text-white">
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-4 py-4 sm:px-6 lg:px-8">
@@ -11,7 +12,7 @@ export function SimpleHeader() {
           <Link href="/" className="text-xl font-extrabold text-white sm:text-2xl">
             Elf
           </Link>
-          <LanguageToggle />
+          {languageControl ?? <LanguageToggle />}
         </div>
       </div>
     </header>

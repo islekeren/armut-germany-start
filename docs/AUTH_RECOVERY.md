@@ -34,8 +34,13 @@ sibling tokens commit atomically. Concurrent resets cannot both succeed.
 
 Links use configured FRONTEND_URL, not request headers. The secret and locale are
 in a URL fragment, not HTTP query parameters. The reset page clears the fragment
-and honors the email locale. Do not add analytics/session recording that captures
+and honors the email locale. Language changes on this page preserve the token
+in memory without a reload. A successful reset clears browser authentication. Do not add analytics/session recording that captures
 form values on recovery pages. Never log email bodies, reset URLs or SMTP errors.
+SMTP delivery runs outside request completion to avoid exposing account existence
+through mail-server latency. Tasks drain on graceful shutdown; delivery is best
+effort, with no durable retry queue. A crash or transport failure requires a new
+request after the cooldown; generic success does not confirm delivery.
 
 ## Local mailbox
 
