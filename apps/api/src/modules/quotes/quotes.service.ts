@@ -392,23 +392,23 @@ export class QuotesService {
       ]);
 
       await this.notificationsService.bestEffort("quote_accepted", async () => {
-      const providerUser = await this.prisma.provider.findUnique({
-        where: { id: quote.providerId },
-        select: { userId: true },
-      });
-
-      if (providerUser) {
-        await this.notificationsService.createBestEffort(providerUser.userId, {
-          type: "quote_accepted",
-          title: "Your offer was accepted",
-          message: `Your offer for "${quote.request.title}" has been accepted.`,
-          metadata: {
-            requestId: quote.requestId,
-            requestTitle: quote.request.title,
-            quoteId: quote.id,
-          },
+        const providerUser = await this.prisma.provider.findUnique({
+          where: { id: quote.providerId },
+          select: { userId: true },
         });
-      }
+
+        if (providerUser) {
+          await this.notificationsService.createBestEffort(providerUser.userId, {
+            type: "quote_accepted",
+            title: "Your offer was accepted",
+            message: `Your offer for "${quote.request.title}" has been accepted.`,
+            metadata: {
+              requestId: quote.requestId,
+              requestTitle: quote.request.title,
+              quoteId: quote.id,
+            },
+          });
+        }
 
       });
 

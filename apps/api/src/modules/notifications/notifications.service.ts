@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Logger,
+} from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 
 type NotificationOperation =
@@ -31,11 +36,16 @@ export class NotificationsService {
     try {
       await task();
     } catch {
-      this.logger.warn(JSON.stringify({ event: "notification_failed", operation }));
+      this.logger.warn(
+        JSON.stringify({ event: "notification_failed", operation }),
+      );
     }
   }
 
-  async createBestEffort(userId: string, payload: NotificationPayload): Promise<void> {
+  async createBestEffort(
+    userId: string,
+    payload: NotificationPayload,
+  ): Promise<void> {
     await this.bestEffort(payload.type, () => this.create(userId, payload));
   }
 
@@ -96,7 +106,9 @@ export class NotificationsService {
     }
 
     if (notification.userId !== userId) {
-      throw new ForbiddenException("Not authorized to access this notification");
+      throw new ForbiddenException(
+        "Not authorized to access this notification",
+      );
     }
 
     return prisma.notification.update({

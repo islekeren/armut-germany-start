@@ -53,22 +53,23 @@ export function isApiNotFoundError(error: unknown): error is ApiError {
 
 async function getErrorMessage(response: Response) {
   const contentType = response.headers.get("Content-Type") || "";
-
+  // Read once and let transport/abort failures reach apiRequest's normalization.
+  const text = await response.text();
   if (contentType.includes("application/json")) {
-    const payload = await response
-      .json()
-      .catch(() => null as { message?: unknown } | null);
-
+    let payload: { message?: unknown } | null = null;
+    try {
+      payload = JSON.parse(text) as { message?: unknown } | null;
+    } catch {
+      // Malformed error JSON still gets a stable HTTP fallback.
+    }
     if (typeof payload?.message === "string" && payload.message.trim()) {
       return payload.message;
     }
+    return `API Error: ${response.status}`;
   }
-
-  const text = await response.text().catch(() => "");
   if (text && !text.includes("<html")) {
     return text;
   }
-
   return `API Error: ${response.status}`;
 }
 
@@ -142,15 +143,12 @@ export async function apiRequest<T>(
 
   const baseUrl = getApiBaseUrl(direct);
   const url = `${baseUrl}/api${endpoint}`;
-  // Refresh/retry transport failures are intentionally swallowed by the existing
-  // auth flow. Observe them without changing that flow or its session decisions.
-  const fetchWithTransportReport = async (targetUrl: string, init: RequestInit, operation: ErrorOperation) => {
-    try {
-      return await fetch(targetUrl, init);
-    } catch (error) {
-      if (!signal?.aborted) reportClientError({ operation, code: "unavailable", requestId }, baseUrl);
-      throw error;
-    }
+  let operation: ErrorOperation = getErrorOperation(endpoint);
+  const fetchStage = async (targetUrl: string, init: RequestInit) => {
+    controller.signal.throwIfAborted();
+    const response = await fetch(targetUrl, { ...init, signal: controller.signal });
+    controller.signal.throwIfAborted();
+    return response;
   };
 
   if (signal) {
@@ -162,17 +160,11 @@ export async function apiRequest<T>(
   }
 
   try {
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        ...fetchOptions,
-        cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
-        headers,
-        signal: controller.signal,
-      });
-    } catch {
-      throw new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable", requestId });
-    }
+    let response = await fetchStage(url, {
+      ...fetchOptions,
+      cache: cache ?? (typeof window === "undefined" ? "no-store" : undefined),
+      headers,
+    });
 
     // On client-side, try refreshing once when access token is expired.
     if (
@@ -183,55 +175,42 @@ export async function apiRequest<T>(
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (refreshToken) {
-        try {
-          const refreshResponse = await fetchWithTransportReport(`${getApiBaseUrl(direct)}/api/auth/refresh`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Request-ID": requestId,
-            },
-            body: JSON.stringify({ refreshToken }),
-          }, "auth");
+        operation = "auth";
+        const refreshResponse = await fetchStage(`${baseUrl}/api/auth/refresh`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-ID": requestId,
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
 
-          if (refreshResponse.status >= 500) {
-            reportClientError({
-              operation: "auth", code: "unavailable", status: refreshResponse.status,
-              requestId: validRequestId(refreshResponse.headers.get("X-Request-ID")) ?? requestId,
-            }, baseUrl);
-          }
+        if (refreshResponse.ok) {
+          const refreshed = (await refreshResponse.json()) as LoginResponse;
+          controller.signal.throwIfAborted();
 
-          if (refreshResponse.ok) {
-            const refreshed = (await refreshResponse.json()) as LoginResponse;
+          localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
+          localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
+          localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
 
-            localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
-            localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
-            localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
-
-            const retryHeaders = new Headers(fetchOptions.headers || undefined);
-            retryHeaders.set("X-Request-ID", requestId);
-            retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
-            if (
-              fetchOptions.body &&
-              !(fetchOptions.body instanceof FormData) &&
-              !retryHeaders.has("Content-Type")
-            ) {
-              retryHeaders.set("Content-Type", "application/json");
-            }
-
-            response = await fetchWithTransportReport(url, {
-              ...fetchOptions,
-              cache: cache ?? undefined,
-              headers: retryHeaders,
-            }, getErrorOperation(endpoint));
-          } else if ([400, 401, 403].includes(refreshResponse.status)) {
-            // Only a rejected refresh token ends the session; rate limits and
-            // server errors keep it so the next request can retry.
-            localStorage.removeItem(ACCESS_TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-          }
-        } catch {
-          // Network failure while refreshing: keep the session for a retry.
+          const retryHeaders = new Headers(headers);
+          retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
+          operation = getErrorOperation(endpoint);
+          // Retry is outside refresh error handling: its failure must surface
+          // as its own ApiError, never the original unauthorized response.
+          response = await fetchStage(url, {
+            ...fetchOptions,
+            cache: cache ?? undefined,
+            headers: retryHeaders,
+          });
+        } else if ([400, 401, 403].includes(refreshResponse.status)) {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          // Preserve the protected request's unauthorized response.
+        } else {
+          // Rate limits and server failures do not invalidate the session.
+          response = refreshResponse;
         }
       }
     }
@@ -246,6 +225,7 @@ export async function apiRequest<T>(
       }
 
       const message = await getErrorMessage(response);
+      controller.signal.throwIfAborted();
       throw new ApiError(message, {
         status: response.status, code: "http",
         requestId: validRequestId(response.headers.get("X-Request-ID")) ?? requestId,
@@ -258,19 +238,25 @@ export async function apiRequest<T>(
 
     const contentType = response.headers.get("Content-Type") || "";
     if (contentType.includes("application/json")) {
-      return response.json();
+      const result = await response.json();
+      controller.signal.throwIfAborted();
+      return result as T;
     }
 
     const text = await response.text();
+    controller.signal.throwIfAborted();
     return text as T;
   } catch (error) {
-    if (isApiUnavailableError(error) && !signal?.aborted) {
+    const apiError = error instanceof ApiError
+      ? error
+      : new ApiError(API_UNAVAILABLE_MESSAGE, { code: "unavailable", requestId });
+    if (isApiUnavailableError(apiError) && !signal?.aborted) {
       reportClientError({
-        operation: getErrorOperation(endpoint), code: error.code,
-        status: error.status, requestId: error.requestId,
+        operation, code: apiError.code,
+        status: apiError.status, requestId: apiError.requestId,
       }, baseUrl);
     }
-    throw error;
+    throw apiError;
   } finally {
     clearTimeout(timeoutId);
     if (signal) {

@@ -148,9 +148,9 @@ export class RequestsService {
     }
 
     const resolvedTaxonomy = resolveRequestTaxonomy({
-      requestSector: requestSector,
-      requestBranch: requestBranch,
-      categorySlug: categorySlug,
+      requestSector,
+      requestBranch,
+      categorySlug,
     });
 
     if (!resolvedTaxonomy.branchId || !resolvedTaxonomy.sectorId) {
