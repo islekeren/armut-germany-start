@@ -591,7 +591,28 @@
       "errorPasswordMismatch": "Passwords do not match.",
       "errorGdpr": "Please accept the Privacy Policy and Terms & Conditions.",
       "errorDefault": "Registration failed. Please try again."
-    }
+    },
+    "recovery": {
+      "requestTitle": "Forgot your password?",
+      "requestIntro": "Enter your email address to request a reset link.",
+      "resetTitle": "Choose a new password",
+      "resetIntro": "Your other devices will be signed out after resetting your password.",
+      "email": "Email address",
+      "password": "New password",
+      "confirm": "Confirm new password",
+      "requestSubmit": "Send reset link",
+      "resetSubmit": "Reset password",
+      "loading": "Please wait…",
+      "requestSuccess": "If an account exists for this email, you will receive a reset link. Please also check your spam folder.",
+      "resetSuccess": "Your password has been reset. Sign in with your new password.",
+      "invalidLink": "This reset link is invalid, expired, or has already been used. Please request a new link.",
+      "mismatch": "The passwords do not match.",
+      "tooShort": "Use at least 8 characters.",
+      "error": "Something went wrong. Please try again.",
+      "login": "Back to sign in",
+      "requestAgain": "Request a new link"
+    },
+    "logoutError": "Could not sign you out. Check your connection and try again."
   },
   "customer": {
     "requests": {
@@ -1334,7 +1355,7 @@
     "changePassword": "Change password",
     "passwordTooShort": "The new password must be at least 8 characters long.",
     "passwordMismatch": "The new passwords do not match.",
-    "passwordChanged": "Password changed successfully.",
+    "passwordChanged": "Password changed. Please sign in again.",
     "passwordError": "Could not change your password."
   }
 }

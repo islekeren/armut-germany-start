@@ -29,7 +29,16 @@
   "globalPassThroughEnv": [
     "E2E_ALLOW_RESET",
     "E2E_DEV_SERVERS",
-    "E2E_SKIP_BUILD"
+    "E2E_SKIP_BUILD",
+    "EMAIL_TRANSPORT",
+    "EMAIL_LOCAL_DIR",
+    "EMAIL_FROM",
+    "FRONTEND_URL",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_SECURE",
+    "SMTP_USER",
+    "SMTP_PASSWORD"
   ],
   "tasks": {
     "build": {

@@ -506,6 +506,16 @@ export interface ChangePasswordData {
 }
 
 export const authApi = {
+  forgotPassword: (email: string, locale: string) =>
+    apiRequest<{ message: string }>("/auth/forgot-password", {
+      method: "POST", body: JSON.stringify({ email, locale }),
+    }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    apiRequest<{ message: string }>("/auth/reset-password", {
+      method: "POST", body: JSON.stringify({ token, newPassword }),
+    }),
+
   login: (data: LoginData) =>
     apiRequest<LoginResponse>("/auth/login", {
       method: "POST",

@@ -13,7 +13,7 @@ describe("AuthController", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new AuthController(authService as any);
+    controller = new AuthController(authService as any, {} as any);
   });
 
   it("registers a user", async () => {
@@ -50,13 +50,13 @@ describe("AuthController", () => {
   });
 
   it("logs out current user", async () => {
-    const req = { user: { id: "u1" } };
+    const req = { user: { id: "u1", sessionId: "s1" } };
     authService.logout.mockResolvedValue({ message: "Logged out successfully" });
 
     await expect(controller.logout(req)).resolves.toEqual({
       message: "Logged out successfully",
     });
-    expect(authService.logout).toHaveBeenCalledWith("u1");
+    expect(authService.logout).toHaveBeenCalledWith("u1", "s1");
   });
 
   it("returns current user on me endpoint", async () => {

@@ -18,7 +18,8 @@ describe("AuthService", () => {
   let usersService: jest.Mocked<UsersService>;
   let jwtService: jest.Mocked<JwtService>;
   let configService: jest.Mocked<ConfigService>;
-  let prisma: { user: { update: jest.Mock } };
+  let prisma: any;
+  let sessions: any;
 
   const mockUser = {
     id: "user-1",
@@ -32,6 +33,8 @@ describe("AuthService", () => {
     isVerified: true,
     gdprConsent: true,
     deletedAt: null,
+    authVersion: 0,
+    passwordResetRequestedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -65,14 +68,26 @@ describe("AuthService", () => {
     prisma = {
       user: {
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      passwordResetToken: { deleteMany: jest.fn() },
+    };
+    prisma.$transaction = (callback: any) => callback(prisma);
+    sessions = {
+      create: jest.fn().mockResolvedValue({ id: "session-1", expiresAt: new Date(Date.now() + 86400_000) }),
+      validate: jest.fn(async () => {
+        const user = await usersService.findById("user-1");
+        if (!user) throw new UnauthorizedException();
+        return { id: "session-1", user, expiresAt: new Date(Date.now() + 86400_000) };
+      }),
+      revoke: jest.fn(),
     };
 
     service = new AuthService(
       usersService,
       jwtService,
       configService,
-      prisma as unknown as PrismaService
+      prisma as unknown as PrismaService, sessions
     );
   });
 
@@ -82,7 +97,7 @@ describe("AuthService", () => {
 
   it("refuses to initialize signing without an explicit refresh secret", () => {
     const missingRefresh = { get: (key: string) => ({ NODE_ENV: "test", JWT_SECRET: "test-access" })[key] };
-    expect(() => new AuthService(usersService, jwtService, missingRefresh as any, prisma as any))
+    expect(() => new AuthService(usersService, jwtService, missingRefresh as any, prisma as any, sessions))
       .toThrow(/JWT_REFRESH_SECRET/);
   });
 
@@ -92,7 +107,7 @@ describe("AuthService", () => {
       JWT_SECRET: "p4J7Q9s2N6u8X1b5C3d0F7h9K2m4R6t8",
       JWT_REFRESH_SECRET: "p4J7Q9s2N6u8X1b5C3d0F7h9K2m4R6t8",
     };
-    expect(() => new AuthService(usersService, jwtService, { get: (key: string) => values[key] } as any, prisma as any))
+    expect(() => new AuthService(usersService, jwtService, { get: (key: string) => values[key] } as any, prisma as any, sessions))
       .toThrow(/different/);
   });
 
@@ -174,7 +189,7 @@ describe("AuthService", () => {
 
   describe("refreshToken", () => {
     it("should refresh tokens successfully", async () => {
-      jwtService.verify.mockReturnValue({ sub: mockUser.id });
+      jwtService.verify.mockReturnValue({ sub: mockUser.id, sid: "session-1", type: "refresh" });
       usersService.findById.mockResolvedValue(mockUser);
       jwtService.signAsync.mockResolvedValue("new-mock-token");
 
@@ -238,9 +253,9 @@ describe("AuthService", () => {
         newPassword: "new",
       });
 
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: mockUser.id },
-        data: { password: "next-hash" },
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: mockUser.id, deletedAt: null, authVersion: 0 },
+        data: { password: "next-hash", authVersion: { increment: 1 } },
       });
       expect(result).toEqual({ message: "Password changed successfully" });
     });
@@ -248,7 +263,7 @@ describe("AuthService", () => {
 
   describe("logout", () => {
     it("should return a success message", async () => {
-      await expect(service.logout(mockUser.id)).resolves.toEqual({
+      await expect(service.logout(mockUser.id, "session-1")).resolves.toEqual({
         message: "Logged out successfully",
       });
     });

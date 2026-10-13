@@ -18,6 +18,8 @@ enum UserType {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
+  authVersion  Int      @default(0)
+  passwordResetRequestedAt DateTime?
   password     String
   phone        String?
   firstName    String
@@ -31,6 +33,9 @@ model User {
   deletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  authSessions AuthSession[]
+  passwordResetTokens PasswordResetToken[]
 
   // Relations
   provider           Provider?
@@ -382,4 +387,33 @@ model Message {
   @@index([conversationId])
   @@index([senderId])
   @@index([createdAt])
+}
+
+
+// Sessions have an absolute lifetime; refresh never creates a new session.
+model AuthSession {
+  id          String @id @default(uuid())
+  userId      String
+  authVersion Int
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id          String @id @default(uuid())
+  userId      String
+  tokenHash   String @unique
+  authVersion Int
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime @default(now())
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

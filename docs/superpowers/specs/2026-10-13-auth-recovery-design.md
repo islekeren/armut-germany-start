@@ -1,96 +1,58 @@
 # ARM-40 and ARM-22: password recovery and session revocation
 
-## Goal
+## Approved scope
 
-Implement the acceptance criteria of ARM-40 and ARM-22 together on a separate
-branch, validate the API and web flows, and open a pull request against main.
+Implement both issues together and open a PR against main. The owner approved
+implementation on 2026-10-13 with approximately 100 beta users, no domain or email
+provider yet, and logout of the current device only. Real delivery remains a beta
+release prerequisite; do not invent a sender identity or provision a provider.
 
-## Proposed authentication policy
+## Authentication
 
-Use a persisted integer authentication version on User. Include that version and
-an explicit token type in newly issued access and refresh JWTs. Every protected
-HTTP request, refresh request, socket connection, socket event, and socket
-delivery must verify the current version and active account status.
+Persist AuthSession for each registration/login with an opaque UUID, user ID,
+authentication version, seven-day absolute expiry, and revocation timestamp.
+Access and refresh JWTs carry the session ID and explicit token type. Refresh
+retains the same session and cannot extend its absolute lifetime. Verify the
+session, version, active user and expiry in HTTP guards, refresh and sockets.
+Logout revokes only the authenticated session. Tabs sharing browser storage share
+one session. Password change/reset atomically increment the User authentication
+version and invalidate outstanding recovery tokens, revoking every session.
 
-Password change, password reset, and logout increment the version. Logout is
-explicitly **all devices**. This avoids adding a separate per-device session
-subsystem. Password changes require logging in again, including on the device
-that changed the password. The frontend clears local authentication accordingly.
+Issue login sessions with the version of the password snapshot actually verified;
+a login racing a password change may produce only an unusable old session, never
+an authorized new one. Local revocation events evict sockets immediately; socket
+events and outgoing deliveries check persistence to enforce across instances.
+Preserve deleted-account denial and exclude all internal fields from responses.
 
-Alternative: persisted per-device sessions permit current-device logout, but
-require session creation, expiry, rotation, cleanup, and additional socket
-identity checks. Choose this only if current-device logout is required.
+## Recovery
 
-Version updates must be atomic with password updates and reset-token invalidation.
-Guard against a login/password change race by issuing tokens with the version of
-the account whose password was verified, never a newer version fetched afterward.
-Preserve the existing denial of deleted accounts and response sanitization.
+Add generic forgot-password responses for known/unknown accounts and delivery
+failures, endpoint request/reset throttles, and a persisted 60-second per-account
+request cooldown. Generate 32 random bytes as base64url, store SHA-256 digest only,
+with 30-minute expiry and the user's authentication version. Reset consumes tokens
+atomically; reuse/concurrent consumption and deleted users fail. Successful reset
+invalidates every other token and every existing session. Registration, change,
+and reset use the existing minimum-eight-character password policy.
 
-Use the existing account-event pattern to disconnect local sockets immediately.
-Database checks before events and recipient delivery enforce revocation across
-API instances as well. Do not rely exclusively on in-process events.
+Use a configured trusted frontend URL, never request Host headers, for links.
+Put the token in a URL fragment to keep it out of HTTP access logs/referrers.
+Carry de/en locale in the request and email. The page removes the fragment after
+reading it and never logs the secret. Both locales cover request/reset, validation,
+network failures, invalid/expired links, submitting and success states.
 
-## Password recovery
+## Email
 
-Add POST /api/auth/forgot-password and POST /api/auth/reset-password using the
-existing DTO and controller conventions. Return the same generic response for
-known and unknown email addresses, including delivery failures. Bound request
-and reset attempts with endpoint throttles and account-level request cooldowns.
-Never return token details through API responses or logs.
+Provide an injectable email boundary with disabled, development-local mailbox,
+and configurable SMTP transports. Local capture writes private mail files outside
+tracked source and offers a loopback-only preview tool; it is rejected outside
+explicit development/test runtimes. No raw tokens or personal data are logged.
+SMTP credentials and verified sender are external configuration; there is no
+chosen beta vendor. Default disabled mode must be documented prominently.
 
-Generate 32 random bytes, encode as base64url, and store only the SHA-256 digest
-with user ID and a 30-minute expiry. A reset transaction validates and atomically
-consumes the token, updates the password, increments the authentication version,
-and invalidates all other outstanding tokens. Concurrent reuse must fail.
-Deleted accounts cannot request or complete a reset.
+## Rollout and verification
 
-Password validation uses the existing registration/change policy: minimum eight
-characters. Tests exercise validation, expiry, malformed tokens, reuse,
-concurrent consumption, throttling, and indistinguishable API responses.
-
-## Email and frontend
-
-The repository already documents SENDGRID_API_KEY and EMAIL_FROM, but has no
-delivery integration. Proposed beta integration: SendGrid using configured,
-verified sender credentials. The actual sender identity must be supplied by the
-owner; the placeholder noreply@armut.de is not evidence of domain ownership.
-No paid service provisioning or live email dispatch is part of implementation.
-Document local email testing using a development-only capture transport with no
-raw token logging, and document production configuration requirements.
-
-Use a configured trusted frontend URL to build reset links, not request Host
-headers. Preserve locale in links and email copy. Prefer URL fragments for the
-secret so it does not appear in HTTP access logs or referrer headers.
-
-Replace the forgot-password placeholder with a real request page and add a reset
-page. Use the existing auth layout, centralized API client, and both German and
-English translation files. Cover submitting, generic request success, validation,
-invalid/expired link, network failure, reset success, and return to login.
-
-## Migration and rollout
-
-Add the authentication version and indexed password-reset-token persistence via
-a checked-in Prisma migration. Reject old JWTs missing the new claims: deployment
-requires all users to sign in again. Run migrations before deploying the API.
-Avoid mixed old/new API instances because old code does not enforce revocation.
-Document reset-token retention/cleanup and all-devices logout in environment and
-auth documentation. Production email sender verification remains a release gate.
-
-## Validation
-
-Add service/controller tests and real API integration tests for password reset,
-password change, logout, access/refresh denial, deleted accounts, and two signed-in
-sessions. Extend socket integration tests to check existing and new socket access
-and revoked recipients. Update the authorization route table for both endpoints.
-Add frontend tests for request/reset states in both locales.
-
-Run repository lint, build, type checks, API unit/e2e, and relevant web tests as
-required by AGENTS.md and docs/TESTING.md. Report any environment limits accurately
-in the PR. Review the final diff for secret leakage and concurrency errors before
-opening the PR.
-
-## Required decision before implementation
-
-Confirm all-devices logout and the proposed email configuration approach. Auth
-semantics require human clarification under AGENTS.md. The brainstorming skill
-also requires review of this written design before implementation planning.
+Check in Prisma migration before API deployment. Reject legacy JWTs without
+session claims (all users sign in again). Do not run mixed old/new API versions.
+Expired session/recovery data has documented cleanup. Verify API service and
+HTTP integration behavior, concurrency, throttling, socket sender/recipient checks,
+and both-locale frontend states; run repository checks and e2e as documented.

@@ -59,6 +59,10 @@ export default defineConfig({
           "http://localhost:3000,http://127.0.0.1:3000",
         // Lets many test users log in from one IP without hitting the
         // per-route auth rate limits. Only honoured when NODE_ENV=test.
+        // E2E never dispatches external mail, even if SMTP is configured locally.
+        EMAIL_TRANSPORT: "local",
+        EMAIL_LOCAL_DIR: process.env.EMAIL_LOCAL_DIR || ".local-mail",
+        FRONTEND_URL: webUrl,
         NODE_ENV: "test",
         THROTTLE_DISABLED: "true",
       },

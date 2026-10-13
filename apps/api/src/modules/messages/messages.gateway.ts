@@ -12,12 +12,13 @@ import { JwtService } from "@nestjs/jwt";
 import { type OnModuleDestroy } from "@nestjs/common";
 import { MessagesService } from "./messages.service";
 import { SendMessageDto } from "./dto/message.dto";
-import { UsersService } from "../users/users.service";
+import { SessionService } from "../auth/session.service";
 import { accountEvents } from "../../common/security/account-events";
 import { isAllowedOrigin } from "../../common/security/cors-origin";
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
+  sessionId?: string;
   expiresAt?: number;
   authentication?: Promise<boolean>;
 }
@@ -44,12 +45,21 @@ export class MessagesGateway
     }
   };
 
+  private readonly onSessionRevoked = (userId: string, sessionId: string) => {
+    for (const id of this.connectedUsers.get(userId) || []) {
+      const socket = this.sessions.get(id)?.socket;
+      if (socket?.sessionId === sessionId) socket.disconnect(true);
+    }
+  };
+
   constructor(
     private jwtService: JwtService,
     private messagesService: MessagesService,
-    private usersService: UsersService,
+    private sessionService: SessionService,
   ) {
     accountEvents.on("deleted", this.onAccountDeleted);
+    accountEvents.on("sessionsRevoked", this.onAccountDeleted);
+    accountEvents.on("sessionRevoked", this.onSessionRevoked);
   }
 
   async handleConnection(socket: AuthenticatedSocket) {
@@ -66,14 +76,15 @@ export class MessagesGateway
 
       if (typeof token !== "string" || !token) throw new Error("Invalid token");
       const payload = this.jwtService.verify(token, { algorithms: ["HS256"] });
-      if (typeof payload.sub !== "string" || !payload.sub || !Number.isSafeInteger(payload.exp)) {
+      if (payload.type !== "access" || typeof payload.sid !== "string" || typeof payload.sub !== "string" || !payload.sub || !Number.isSafeInteger(payload.exp)) {
         throw new Error("Invalid claims");
       }
-      const user = await this.usersService.findById(payload.sub);
+      const session = await this.sessionService.validate(payload.sub, payload.sid);
       const expiresAt = payload.exp * 1000;
-      if (!user || expiresAt <= Date.now() || !socket.connected) throw new Error("Invalid account");
+      if (!session || expiresAt <= Date.now() || !socket.connected) throw new Error("Invalid account");
       if ((this.connectedUsers.get(payload.sub)?.length || 0) >= 10) throw new Error("Connection limit");
       socket.userId = payload.sub;
+      socket.sessionId = payload.sid;
       socket.expiresAt = expiresAt;
 
       // Add socket to user's connections
@@ -86,10 +97,12 @@ export class MessagesGateway
       this.sessions.set(socket.id, { socket, timer });
       // Register revocation before awaiting room membership or another lookup.
       // A deletion racing with authentication must not miss this session.
-      if (!await this.usersService.findById(payload.sub) || !socket.connected || expiresAt <= Date.now()) {
+      await this.sessionService.validate(payload.sub, payload.sid);
+      if (!socket.connected || expiresAt <= Date.now()) {
         throw new Error("Revoked during authentication");
       }
       socket.data.userId = socket.userId;
+      socket.data.sessionId = socket.sessionId;
       socket.data.expiresAt = expiresAt;
       await socket.join(`user:${socket.userId}`);
       return true;
@@ -114,8 +127,8 @@ export class MessagesGateway
     this.eventBudgets.set(socket.userId, budget);
     if (budget.count > 100) return "Too many socket events. Try again later.";
     try {
-      const user = await this.usersService.findById(socket.userId);
-      if (!user || socket.expiresAt <= Date.now() || !socket.connected) throw new Error("Revoked account");
+      await this.sessionService.validate(socket.userId, socket.sessionId);
+      if (socket.expiresAt <= Date.now() || !socket.connected) throw new Error("Revoked account");
       return null;
     } catch {
       socket.disconnect(true);
@@ -127,20 +140,20 @@ export class MessagesGateway
     room: string, event: string, payload: unknown,
     participantIds: string[], excludeSocketId?: string,
   ) {
-    // Recheck recipients too: a deletion performed on another API instance
-    // must not leave an idle socket receiving messages from an old room.
-    const active = new Set<string>();
-    for (const userId of new Set(participantIds)) {
-      if (await this.usersService.findById(userId)) active.add(userId);
-    }
+    // A revocation on another API instance must not leave an idle recipient
+    // receiving private events. Check each device, not just the account.
+    const participants = new Set(participantIds);
     const recipients = await this.server.in(room).fetchSockets();
     const allowed: string[] = [];
     for (const recipient of recipients) {
-      const userId = recipient.data.userId;
-      if (!active.has(userId) || !(recipient.data.expiresAt > Date.now())) {
+      try {
+        if (!participants.has(recipient.data.userId) || !(recipient.data.expiresAt > Date.now())) {
+          throw new Error("Revoked recipient");
+        }
+        await this.sessionService.validate(recipient.data.userId, recipient.data.sessionId);
+        if (recipient.id !== excludeSocketId) allowed.push(recipient.id);
+      } catch {
         recipient.disconnect(true);
-      } else if (recipient.id !== excludeSocketId) {
-        allowed.push(recipient.id);
       }
     }
     if (allowed.length) this.server.to(allowed).emit(event, payload);
@@ -148,6 +161,8 @@ export class MessagesGateway
 
   onModuleDestroy() {
     accountEvents.off("deleted", this.onAccountDeleted);
+    accountEvents.off("sessionsRevoked", this.onAccountDeleted);
+    accountEvents.off("sessionRevoked", this.onSessionRevoked);
     for (const { socket, timer } of this.sessions.values()) {
       clearTimeout(timer);
       socket.disconnect(true);

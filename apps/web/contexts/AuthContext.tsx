@@ -10,6 +10,8 @@ import {
 } from "react";
 import {
   authApi,
+  ApiError,
+  type ChangePasswordData,
   isTransientApiError,
   type User,
   type LoginData,
@@ -23,6 +25,8 @@ interface AuthContextType {
   login: (data: LoginData) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
+  clearSession: () => void;
+  changePassword: (data: ChangePasswordData) => Promise<void>;
   refreshAuth: () => Promise<void>;
 }
 
@@ -142,16 +146,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeAuthData(response.accessToken, response.refreshToken, response.user);
   };
 
-  // Logout
+  // Successful logout revokes this persisted device session. Keep credentials
+  // on network failures so the user can retry instead of silently leaving it live.
   const logout = async () => {
     const accessToken = getAccessToken();
-    if (accessToken) {
-      try {
-        await authApi.logout(accessToken);
-      } catch {
-        // Ignore logout errors
+    const refreshToken = getRefreshToken();
+    try {
+      if (accessToken) {
+        try { await authApi.logout(accessToken); }
+        catch (error) {
+          if (!(error instanceof ApiError) || error.status !== 401) throw error;
+          if (refreshToken) {
+            const refreshed = await authApi.refreshToken(refreshToken);
+            await authApi.logout(refreshed.accessToken);
+          }
+        }
+      } else if (refreshToken) {
+        const refreshed = await authApi.refreshToken(refreshToken);
+        await authApi.logout(refreshed.accessToken);
       }
+    } catch (error) {
+      // An already revoked/expired session needs only local cleanup.
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
     }
+    clearAuthData();
+  };
+
+  const changePassword = async (data: ChangePasswordData) => {
+    const token = getAccessToken();
+    if (!token) throw new ApiError("Authentication required", { status: 401, code: "http" });
+    await authApi.changePassword(token, data);
     clearAuthData();
   };
 
@@ -173,6 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        clearSession: clearAuthData,
+        changePassword,
         refreshAuth,
       }}
     >
