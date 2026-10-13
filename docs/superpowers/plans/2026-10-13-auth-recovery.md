@@ -81,4 +81,7 @@ language-reload token loss, SMTP latency enumeration, and stale reset authentica
 all four were reproduced with regression tests and fixed. Email provider/domain
 setup remains intentionally outside this implementation and is a beta release gate.
 
-Final checks: lint/build/check-types pass; API unit 355, web unit 59, shared/UI unit 7; API e2e 330; Chromium e2e 70. Existing API lint warnings and root Expo-config test warnings remain.
+Final checks after merging main 8da8b97: lint/build/check-types pass; API unit 390,
+web unit 78, shared/UI unit 7; full API e2e 330. Full Chromium e2e 70 passed before
+this final main merge; the 16 auth/account/recovery browser tests passed again on
+the integrated code. Existing API lint warnings and root Expo-config test warnings remain.
