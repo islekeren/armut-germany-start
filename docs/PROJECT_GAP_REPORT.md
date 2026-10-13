@@ -60,7 +60,7 @@ It is a repo-grounded gap report based on:
 - Upload env names are now aligned between `apps/api/.env.example` and `UploadsService`.
 - `railway.json` and `render.yaml` exist, but the production host and externally selected deployment branch are not confirmed.
 - `railway.json` runs `db:seed` during every pre-deploy, which is unsafe for production.
-- The checked-in `Dockerfile` is not a complete runnable production image.
+- Resolved October 13, 2026: the checked-in `Dockerfile` generates Prisma, compiles the API and defines its production start command.
 - No checked-in frontend deployment config defines the production web release path.
 - GitHub Actions deploy jobs are placeholders only.
 - `apps/mobile` is still dormant scaffolding rather than a real workspace.

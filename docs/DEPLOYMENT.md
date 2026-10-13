@@ -11,7 +11,7 @@ Updated October 12, 2026. The selected topology is **Railway API + Vercel web**,
 | Database | Railway PostgreSQL or the configured PostgreSQL host | API pre-deploy owns `prisma migrate deploy` | Backups, restore rehearsal and migration compatibility |
 | Object storage | Existing S3-compatible bucket configured on the API | No provisioning or demo seeding during releases | Confirm upload/read/delete with a staging fixture |
 
-`render.yaml` is a historical alternative; automatic deployment is disabled in that file. It is not the selected API path. The root Dockerfile remains a scaffold and is not the production runtime path.
+`render.yaml` is a historical alternative; automatic deployment is disabled in that file. It is not the selected API path. Railway detects the root Dockerfile and builds the API image with it, even when `railway.json` names Railpack. The Dockerfile generates Prisma and compiles the API; the Railway config supplies the start command, pre-deploy migrations and readiness check. Changing `buildCommand` alone does not change the Dockerfile build.
 
 Both components must be deployed for every release SHA, including a change that affects only one app. Railway has no API-only watch filter, and Vercel uses an explicit ignored-build command that continues builds. Disable any dashboard option that skips unchanged projects; otherwise one component may retain a previous commit and the verifier will correctly reject the release.
 
