@@ -170,7 +170,7 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - `apps/web/vercel.json`: Next.js hosting config (Vercel Root Directory `apps/web`)
 - `docs/OBSERVABILITY.md`: private-data-safe logs, correlation IDs and incident triage
 - `render.yaml`: API service definition for Render
-- `Dockerfile`: incomplete Node build-image scaffold; it is not yet a runnable production image
+- `Dockerfile`: Node API image with Prisma generation, NestJS compilation and a production start command
 
 ## Current Product Notes
 
@@ -206,7 +206,7 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - The upload env names now match between `apps/api/.env.example` and `UploadsService`.
 - Selected production topology: Railway API + Vercel web, with `main` as the release source. Hosting domains, dashboard gates and branch protection still require external verification; see [DEPLOYMENT.md](./docs/DEPLOYMENT.md).
 - Railway pre-deploy runs migrations only. Demo seeding is blocked outside explicit development/test runtimes; existing hosted databases still require a check for previously seeded accounts.
-- The checked-in `Dockerfile` has no final build, runtime command, or production stage and should not yet be treated as a deployable image.
+- The checked-in `Dockerfile` builds and starts the API. Railway owns pre-deploy migrations and readiness checks; the image currently retains build dependencies.
 
 ## Recommended Branch Policy
 
