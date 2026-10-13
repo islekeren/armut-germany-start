@@ -527,9 +527,11 @@ export class BookingsService {
         updatedBooking.quote?.request?.id ?? updatedBooking.quote?.requestId;
       const requestTitle =
         updatedBooking.quote?.request?.title ?? "service request";
-      await this.notifyCustomerCompletionRequested(updatedBooking);
+      await this.notificationsService.bestEffort("booking_completion_message", () =>
+        this.notifyCustomerCompletionRequested(updatedBooking),
+      );
       if (updatedBooking.customer?.id) {
-        await this.notificationsService.create(updatedBooking.customer.id, {
+        await this.notificationsService.createBestEffort(updatedBooking.customer.id, {
           type: "booking_completion_pending",
           title: "Completion confirmation required",
           message: `Provider marked "${requestTitle}" as completed. Please confirm.`,
@@ -553,7 +555,7 @@ export class BookingsService {
 
       if (customerUserId) {
         tasks.push(
-          this.notificationsService.create(customerUserId, {
+          this.notificationsService.createBestEffort(customerUserId, {
             type: "booking_completed",
             title: "Job completed",
             message: `Booking "${requestTitle}" is marked as completed.`,
@@ -568,7 +570,7 @@ export class BookingsService {
       }
       if (providerUserId) {
         tasks.push(
-          this.notificationsService.create(providerUserId, {
+          this.notificationsService.createBestEffort(providerUserId, {
             type: "booking_completed",
             title: "Job completed",
             message: `Booking "${requestTitle}" has been confirmed as completed.`,
@@ -597,7 +599,7 @@ export class BookingsService {
       const tasks: Promise<unknown>[] = [];
       if (customerUserId) {
         tasks.push(
-          this.notificationsService.create(customerUserId, {
+          this.notificationsService.createBestEffort(customerUserId, {
             type: "booking_cancelled",
             title: "Booking cancelled",
             message,
@@ -613,7 +615,7 @@ export class BookingsService {
       }
       if (providerUserId) {
         tasks.push(
-          this.notificationsService.create(providerUserId, {
+          this.notificationsService.createBestEffort(providerUserId, {
             type: "booking_cancelled",
             title: "Booking cancelled",
             message,

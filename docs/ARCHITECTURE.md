@@ -212,6 +212,18 @@ Known reliability work before production use:
 - authenticated users can list notifications
 - unread count is exposed separately
 - users can mark one notification or all notifications as read
+- quote creation/acceptance, request cancellation, and booking completion/cancellation
+  notifications are best-effort after the main mutation succeeds; each recipient
+  is attempted independently. Automated completion messages follow the same rule.
+  Notification failures do not trigger mutation retries; no outbox or durable
+  delivery guarantee is implemented.
+- request taxonomy edits validate the final sector/branch combination against the
+  existing category. Missing legacy values resolve within that category; ordinary
+  title/location/date edits leave taxonomy untouched.
+- API requests share one timeout and abort signal across the initial request,
+  token refresh, and one retry. Refresh rejection clears the session; transport,
+  timeout, rate-limit and server errors retain it. Caller abort is not reported
+  as an outage.
 
 ## Shared Packages
 

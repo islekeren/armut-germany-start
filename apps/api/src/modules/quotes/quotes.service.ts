@@ -88,7 +88,7 @@ export class QuotesService {
       },
     });
 
-    await this.notificationsService.create(request.customerId, {
+    await this.notificationsService.createBestEffort(request.customerId, {
       type: "quote_received",
       title: "New offer received",
       message: `You received a new offer for "${request.title}".`,
@@ -391,23 +391,26 @@ export class QuotesService {
         }),
       ]);
 
-      const providerUser = await this.prisma.provider.findUnique({
-        where: { id: quote.providerId },
-        select: { userId: true },
-      });
-
-      if (providerUser) {
-        await this.notificationsService.create(providerUser.userId, {
-          type: "quote_accepted",
-          title: "Your offer was accepted",
-          message: `Your offer for "${quote.request.title}" has been accepted.`,
-          metadata: {
-            requestId: quote.requestId,
-            requestTitle: quote.request.title,
-            quoteId: quote.id,
-          },
+      await this.notificationsService.bestEffort("quote_accepted", async () => {
+        const providerUser = await this.prisma.provider.findUnique({
+          where: { id: quote.providerId },
+          select: { userId: true },
         });
-      }
+
+        if (providerUser) {
+          await this.notificationsService.createBestEffort(providerUser.userId, {
+            type: "quote_accepted",
+            title: "Your offer was accepted",
+            message: `Your offer for "${quote.request.title}" has been accepted.`,
+            metadata: {
+              requestId: quote.requestId,
+              requestTitle: quote.request.title,
+              quoteId: quote.id,
+            },
+          });
+        }
+
+      });
 
       return this.findOne(id, userId);
     }

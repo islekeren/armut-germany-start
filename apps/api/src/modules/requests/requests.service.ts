@@ -107,6 +107,61 @@ export class RequestsService {
     return uuidRegex.test(str);
   }
 
+  private validateTaxonomy(
+    categorySlug: string,
+    requestSector?: string | null,
+    requestBranch?: string | null,
+  ) {
+    const matchingBranches = getRequestBranchesByCategorySlug(categorySlug);
+    if (!matchingBranches.length) {
+      throw new BadRequestException(
+        "Category is not available in request taxonomy",
+      );
+    }
+
+    const branch = getRequestBranchById(requestBranch);
+    if (requestBranch && !branch) {
+      throw new BadRequestException("Invalid request branch");
+    }
+
+    const sector = getRequestSectorById(requestSector);
+    if (requestSector && !sector) {
+      throw new BadRequestException("Invalid request sector");
+    }
+
+    if (branch && branch.categorySlug !== categorySlug) {
+      throw new BadRequestException("Request branch does not match category");
+    }
+
+    if (branch && sector && branch.sectorId !== sector.id) {
+      throw new BadRequestException(
+        "Request sector does not match request branch",
+      );
+    }
+
+    if (
+      !branch &&
+      sector &&
+      !matchingBranches.some((item) => item.sectorId === sector.id)
+    ) {
+      throw new BadRequestException("Request sector does not match category");
+    }
+
+    const resolvedTaxonomy = resolveRequestTaxonomy({
+      requestSector,
+      requestBranch,
+      categorySlug,
+    });
+
+    if (!resolvedTaxonomy.branchId || !resolvedTaxonomy.sectorId) {
+      throw new BadRequestException(
+        "Category is not supported by the request taxonomy",
+      );
+    }
+
+    return resolvedTaxonomy;
+  }
+
   async create(
     customerId: string,
     createRequestDto: CreateRequestDto,
@@ -135,52 +190,11 @@ export class RequestsService {
       throw new NotFoundException("Category not found");
     }
 
-    const matchingBranches = getRequestBranchesByCategorySlug(category.slug);
-    if (!matchingBranches.length) {
-      throw new BadRequestException(
-        "Category is not available in request taxonomy",
-      );
-    }
-
-    const branch = getRequestBranchById(createRequestDto.requestBranch);
-    if (createRequestDto.requestBranch && !branch) {
-      throw new BadRequestException("Invalid request branch");
-    }
-
-    const sector = getRequestSectorById(createRequestDto.requestSector);
-    if (createRequestDto.requestSector && !sector) {
-      throw new BadRequestException("Invalid request sector");
-    }
-
-    if (branch && branch.categorySlug !== category.slug) {
-      throw new BadRequestException("Request branch does not match category");
-    }
-
-    if (branch && sector && branch.sectorId !== sector.id) {
-      throw new BadRequestException(
-        "Request sector does not match request branch",
-      );
-    }
-
-    if (
-      !branch &&
-      sector &&
-      !matchingBranches.some((item) => item.sectorId === sector.id)
-    ) {
-      throw new BadRequestException("Request sector does not match category");
-    }
-
-    const resolvedTaxonomy = resolveRequestTaxonomy({
-      requestSector: createRequestDto.requestSector,
-      requestBranch: createRequestDto.requestBranch,
-      categorySlug: category.slug,
-    });
-
-    if (!resolvedTaxonomy.branchId || !resolvedTaxonomy.sectorId) {
-      throw new BadRequestException(
-        "Category is not supported by the request taxonomy",
-      );
-    }
+    const resolvedTaxonomy = this.validateTaxonomy(
+      category.slug,
+      createRequestDto.requestSector,
+      createRequestDto.requestBranch,
+    );
 
     const {
       categoryId: _categoryId,
@@ -394,6 +408,38 @@ export class RequestsService {
       throw new ForbiddenException("Not authorized to update this request");
     }
 
+    const taxonomyUpdate: { requestSector?: string; requestBranch?: string } = {};
+    const taxonomyChanged =
+      updateRequestDto.requestSector !== undefined ||
+      updateRequestDto.requestBranch !== undefined;
+
+    if (taxonomyChanged) {
+      // An omitted field keeps its value. Explicit null/empty must never be
+      // treated as a request to fall back or clear an otherwise valid pair.
+      for (const value of [updateRequestDto.requestSector, updateRequestDto.requestBranch]) {
+        if (value !== undefined && (typeof value !== "string" || !value.trim())) {
+          throw new BadRequestException("Request taxonomy values must not be empty");
+        }
+      }
+      const category = await this.prisma.category.findUnique({
+        where: { id: request.categoryId },
+      });
+      if (!category) {
+        throw new BadRequestException("Category is not available in request taxonomy");
+      }
+      const resolved = this.validateTaxonomy(
+        category.slug,
+        updateRequestDto.requestSector !== undefined
+          ? updateRequestDto.requestSector
+          : request.requestSector,
+        updateRequestDto.requestBranch !== undefined
+          ? updateRequestDto.requestBranch
+          : request.requestBranch,
+      );
+      taxonomyUpdate.requestSector = resolved.sectorId!;
+      taxonomyUpdate.requestBranch = resolved.branchId!;
+    }
+
     const locationUpdate =
       updateRequestDto.postalCode !== undefined
         ? this.resolveLocation(
@@ -407,6 +453,7 @@ export class RequestsService {
       where: { id },
       data: {
         ...updateRequestDto,
+        ...taxonomyUpdate,
         ...locationUpdate,
         preferredDate: updateRequestDto.preferredDate
           ? new Date(updateRequestDto.preferredDate)
@@ -471,7 +518,7 @@ export class RequestsService {
     }
 
     await Promise.all([
-      this.notificationsService.create(userId, {
+      this.notificationsService.createBestEffort(userId, {
         type: "request_cancelled",
         title: "Request cancelled",
         message: `Your request "${request.title}" has been cancelled.`,
@@ -482,7 +529,7 @@ export class RequestsService {
         },
       }),
       ...providerUserIds.map((providerUserId) =>
-        this.notificationsService.create(providerUserId, {
+        this.notificationsService.createBestEffort(providerUserId, {
           type: "request_cancelled",
           title: "Request cancelled",
           message: `A customer cancelled the request "${request.title}".`,
