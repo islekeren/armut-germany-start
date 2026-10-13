@@ -1,4 +1,5 @@
 import {
+  ArgumentsHost,
   Controller,
   Get,
   HttpException,
@@ -7,6 +8,7 @@ import {
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { configureApp } from "../../app.setup";
+import { SafeHttpExceptionFilter } from "./http-observability";
 import { SafeRuntimeLogger } from "./safe-runtime-logger";
 import { PrismaService } from "../prisma/prisma.service";
 import { ThrottleModule } from "../throttle/throttle.module";
@@ -213,5 +215,31 @@ describe("HTTP observability", () => {
       .set("X-Forwarded-For", "192.0.2.52")
       .send({ operation: "unknown", code: "render" })
       .expect(429);
+  });
+});
+
+describe("SafeHttpExceptionFilter outside HTTP", () => {
+  it("defers to Nest's WS exception handling instead of writing an HTTP response", () => {
+    const filter = new SafeHttpExceptionFilter();
+    const emit = jest.fn();
+    const host = {
+      getType: () => "ws",
+      switchToWs: () => ({
+        getClient: () => ({ emit }),
+        getPattern: () => "sendMessage",
+        getData: () => ({ conversationId: "x" }),
+      }),
+      switchToHttp: () => {
+        throw new Error("must not touch the HTTP response in a WS context");
+      },
+    } as unknown as ArgumentsHost;
+
+    // A socket.io gateway handler has no Express response to write to;
+    // the filter must not attempt response.status(...).json(...) here.
+    expect(() => filter.catch(new Error("boom"), host)).not.toThrow();
+    expect(emit).toHaveBeenCalledWith(
+      "exception",
+      expect.objectContaining({ status: "error" }),
+    );
   });
 });
