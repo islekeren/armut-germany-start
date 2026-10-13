@@ -1,3 +1,4 @@
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   BadRequestException,
   ForbiddenException,
@@ -21,9 +22,9 @@ describe("RequestsService", () => {
       findUnique: jest.fn(),
     },
   };
-  const notificationsService = {
+  const notificationsService = Object.assign(new NotificationsService(prisma as any), {
     create: jest.fn(),
-  };
+  });
 
   let service: RequestsService;
 

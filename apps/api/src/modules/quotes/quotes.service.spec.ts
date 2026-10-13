@@ -1,3 +1,4 @@
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   BadRequestException,
   ForbiddenException,
@@ -28,9 +29,9 @@ describe("QuotesService", () => {
     },
     $transaction: jest.fn(),
   };
-  const notificationsService = {
+  const notificationsService = Object.assign(new NotificationsService(prisma as any), {
     create: jest.fn(),
-  };
+  });
 
   let service: QuotesService;
 

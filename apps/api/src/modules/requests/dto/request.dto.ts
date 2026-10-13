@@ -6,6 +6,8 @@ import {
   IsDateString,
   IsEnum,
   Min,
+  ValidateIf,
+  IsNotEmpty,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -68,11 +70,13 @@ export class CreateRequestDto {
 }
 
 export class UpdateRequestDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsNotEmpty()
   @IsString()
   requestSector?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsNotEmpty()
   @IsString()
   requestBranch?: string;
 
