@@ -289,6 +289,22 @@ describe("Messages gateway (e2e)", () => {
       expect(await prisma.message.count()).toBe(0);
     });
 
+    it("survives a payload the global ValidationPipe rejects instead of crashing the socket", async () => {
+      const alice = await connectAs(aliceToken);
+      await join(alice);
+
+      const validationFailure = waitFor(alice, "exception");
+      alice.emit("sendMessage", { conversationId });
+      await expect(validationFailure).resolves.toBeTruthy();
+
+      // The connection, and the gateway process, must still work afterwards.
+      const ack = await alice.emitWithAck("sendMessage", {
+        conversationId,
+        content: "still alive",
+      });
+      expect(ack).toMatchObject({ success: true });
+    });
+
     it("stops delivering after leaveConversation", async () => {
       const alice = await connectAs(aliceToken);
       const bob = await connectAs(bobToken);

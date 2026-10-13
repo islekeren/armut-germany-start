@@ -6,6 +6,7 @@ import {
   ExceptionFilter,
   HttpException,
 } from "@nestjs/common";
+import { BaseWsExceptionFilter } from "@nestjs/websockets";
 import type { Request, Response, NextFunction } from "express";
 import { isUUID } from "class-validator";
 
@@ -52,7 +53,16 @@ export function httpObservability(
 /** Deliberate HTTP responses retain their contract; unexpected errors stay private. */
 @Catch()
 export class SafeHttpExceptionFilter implements ExceptionFilter {
+  private readonly wsFallback = new BaseWsExceptionFilter();
+
   catch(exception: unknown, host: ArgumentsHost) {
+    if (host.getType() !== "http") {
+      // Non-HTTP contexts (e.g. the socket.io message gateway) have no
+      // Express response to write to; defer to Nest's own WS exception
+      // handling instead of crashing on response.status(...).
+      this.wsFallback.catch(exception, host);
+      return;
+    }
     const response = host.switchToHttp().getResponse<Response>();
     const status =
       exception instanceof HttpException ? exception.getStatus() : 500;
