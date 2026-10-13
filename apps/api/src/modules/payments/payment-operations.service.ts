@@ -546,11 +546,7 @@ export class PaymentOperationsService {
       await this.prisma.paymentOperation.updateMany({
         where: { id: op.id, leaseToken: token },
         data: {
-          status: definitive
-            ? op.kind === "reversal"
-              ? "reconciliation_required"
-              : "failed"
-            : "pending",
+          status: definitive ? "failed" : "pending",
           errorCode: definitive ? "payout_blocked" : "completion_pending",
           leaseUntil: null,
           nextRunAt: new Date(Date.now() + 5000),

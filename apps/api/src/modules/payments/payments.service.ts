@@ -381,6 +381,11 @@ export class PaymentsService {
       return;
     }
     this.validateAmount(payment, charge.amount, charge.currency);
+    const isPaidOrActiveAttempt = !attempt
+      ? !payment.activeAttemptId
+      : payment.paidAttemptId
+        ? payment.paidAttemptId === attempt.id
+        : payment.activeAttemptId === attempt.id;
     // Partial refunds retain existing policy: flag for operations; do not invent a proportional payout.
     if (charge.amount_refunded !== charge.amount) {
       await tx.payment.update({
@@ -393,13 +398,7 @@ export class PaymentsService {
           where: { id: attempt.id },
           data: { refundedAt: new Date() },
         });
-      if (
-        !attempt
-          ? !payment.activeAttemptId
-          : payment.paidAttemptId
-            ? payment.paidAttemptId === attempt.id
-            : payment.activeAttemptId === attempt.id
-      ) {
+      if (isPaidOrActiveAttempt) {
         await this.setPaymentStatus(tx, payment, "refunded");
       } else
         await tx.payment.update({
@@ -407,7 +406,13 @@ export class PaymentsService {
           data: { reconciliationReason: "stale_collection_refunded" },
         });
     }
-    if (payment.stripeTransferId && !payment.transferReversedAt)
+    // Only the attempt that was actually paid/transferred can owe a reversal;
+    // a refund on a stale/duplicate collection must not reverse someone else's transfer.
+    if (
+      isPaidOrActiveAttempt &&
+      payment.stripeTransferId &&
+      !payment.transferReversedAt
+    )
       await this.operations.enqueueReversal(
         tx,
         payment.id,
@@ -507,15 +512,6 @@ export class PaymentsService {
       status: fresh.status,
       operationId: fresh.id,
     };
-  }
-
-  async releaseProviderFunds(bookingId: string) {
-    const payment = await this.prisma.payment.findUniqueOrThrow({
-      where: { bookingId },
-    });
-    const op = await this.operations.requestTransfer(payment.id);
-    await this.operations.runOperation(op.id);
-    return this.prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
   }
 
   async requestCompletion(userId: string, bookingId: string) {

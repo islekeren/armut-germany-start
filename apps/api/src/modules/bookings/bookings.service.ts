@@ -480,15 +480,6 @@ export class BookingsService {
 
     const previousStatus = booking.status;
     const updateData: any = { status };
-    if (status === "completed") {
-      updateData.completedAt = new Date();
-
-      // Update request status
-      await this.prisma.serviceRequest.update({
-        where: { id: booking.quote.requestId },
-        data: { status: "completed" },
-      });
-    }
 
     if (status === "cancelled") {
       // Give the customer a way forward: reopen the request so new quotes can
