@@ -1,24 +1,24 @@
 # Testing
 
-Security validation updated October 12, 2026.
+Release and observability validation updated October 12, 2026.
 
 ## Current Command Matrix
 
 | Command                                               | Scope                 | Status                   | Notes                                                                                                       |
 | ----------------------------------------------------- | --------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `npm run lint`                                        | whole repo            | Pass with warnings       | all lint tasks exit successfully; API lint emits 9 warnings and 0 errors                                    |
+| `npm run lint`                                        | whole repo            | Pass with warnings       | all lint tasks exit successfully; API lint emits 12 baseline warnings and 0 errors                                    |
 | `npm run build`                                       | whole repo            | Pass                     | builds both `web` and `api` successfully                                                                    |
 | `npm run check-types`                                 | whole repo            | Pass                     | active apps and packages pass                                                                               |
-| `npm run test`                                        | whole repo            | Pass with config warning | 362 tests pass: API 327, web 28, shared 4, UI 3; the root Expo `tsconfig.json` produces a warning |
+| `npm run test`                                        | whole repo            | Pass with config warning | 396 tests pass: API 346, web 43, shared 4, UI 3; the root Expo `tsconfig.json` produces a warning |
 | `cd apps/web && npm run lint`                         | web                   | Pass                     | `prepare-e2e.mjs` now declares its Node global                                                              |
 | `cd apps/web && npm run build`                        | web                   | Pass                     | Next.js production build succeeds                                                                           |
 | `cd apps/web && npm run check-types`                  | web                   | Pass                     | the script runs `next typegen` before `tsc --noEmit`                                                        |
 | `cd apps/web && npm run test`                         | web unit tests        | Pass                     | 28 tests passed on September 24, 2026                                                                       |
-| `cd apps/api && npm run lint`                         | api                   | Pass with warnings       | 9 warnings, 0 errors                                                                                        |
+| `cd apps/api && npm run lint`                         | api                   | Pass with warnings       | 12 baseline warnings, 0 errors                                                                                        |
 | `cd apps/api && npm run check-types`                  | api                   | Pass                     | no current TypeScript failures                                                                              |
 | `cd apps/api && npm run build`                        | api                   | Pass                     | Nest build succeeds                                                                                         |
-| `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 35 suites, 327 tests on October 12, 2026                                                                  |
-| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 15 suites, 299 tests on October 12, 2026 against `docker-compose.test.yml`                                |
+| `cd apps/api && npm run test -- --watchman=false`     | api unit tests        | Pass                     | 37 suites, 346 tests on October 12, 2026                                                                  |
+| `cd apps/api && npm run test:e2e -- --watchman=false` | api e2e               | Pass                     | 15 suites, 311 tests on October 12, 2026 against `docker-compose.test.yml`                                |
 | `cd apps/web && npm run test:e2e`                     | web Playwright e2e    | Pass                     | 52 tests (6 tagged `@smoke`) on October 12, 2026 against production builds                                |
 | `cd packages/shared && npm run test`                  | shared unit tests     | Pass                     | 4 tests passed                                                                                              |
 | `cd packages/ui && npm run test`                      | UI package unit tests | Pass                     | 3 tests passed                                                                                              |
@@ -248,3 +248,9 @@ When you finish a task, report validation in two parts:
 
 1. what you ran
 2. whether any failures were real regressions, known repo issues, or environment-specific caveats
+
+## Release safeguards and observability
+
+Run `node --test scripts/verify-release.test.mjs scripts/mirror-deployment.test.mjs` for 11 checks using real temporary Git remotes and HTTP servers: exact release commits, DB readiness, deadlines, credential-free URLs, stale main runs, divergence and non-force mirror pushes. CI runs these before lint. The current production-build browser smoke run passes all 10 tagged tests.
+
+API observability regressions cover correlation IDs, safe route-template logs, failed database readiness, sanitized startup/runtime errors, telemetry validation/rate limits and CORS headers. Web tests cover request/refresh/retry correlation, safe best-effort telemetry, deduplication, SSR logs and route-boundary retry behavior. Hosting dashboard settings and live production smoke checks are separate from local tests.

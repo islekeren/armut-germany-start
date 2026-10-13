@@ -21,6 +21,10 @@ docker compose up -d postgres redis
 - npm workspaces are the active package manager model
 - the root project declares `npm@10.9.2`
 
+## Release identity
+
+Production API uses Railway and the web uses Vercel. Railway injects `RAILWAY_GIT_COMMIT_SHA`; Vercel injects `VERCEL_GIT_COMMIT_SHA`. `APP_COMMIT_SHA` is a fallback for a manual deployment and must be the exact full 40-character commit. Missing/invalid metadata is reported as `unknown`, so release verification fails rather than claiming the wrong version. These values contain no credentials. See [DEPLOYMENT.md](./DEPLOYMENT.md) for host directory, CI gates and rollout checks.
+
 ## API Environment
 
 Expected local file:

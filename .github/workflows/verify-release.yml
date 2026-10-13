@@ -1,0 +1,42 @@
+name: Verify running release
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full main commit deployed to both Railway and Vercel
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    name: Verify API and web release
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Verify a main release with passing CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          REPO: ${{ github.repository }}
+        run: |
+          [[ "$RELEASE_COMMIT" =~ ^[a-fA-F0-9]{40}$ ]]
+          git merge-base --is-ancestor "$RELEASE_COMMIT" origin/main
+          gh api "repos/$REPO/actions/runs?branch=main&event=push&head_sha=$RELEASE_COMMIT&per_page=100" \
+            --jq '.workflow_runs | any(.name == "CI" and .head_sha == env.RELEASE_COMMIT and .conclusion == "success")' | grep -qx true
+      - name: Verify readiness, exact deployed commits and web availability
+        env:
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          API_ORIGIN: ${{ vars.PRODUCTION_API_URL }}
+          WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_URL }}
+        run: node scripts/verify-release.mjs "$RELEASE_COMMIT" "$API_ORIGIN" "$WEB_ORIGIN"

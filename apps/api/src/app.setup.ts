@@ -1,5 +1,9 @@
 import { type INestApplication, ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
+import {
+  httpObservability,
+  SafeHttpExceptionFilter,
+} from "./common/observability/http-observability";
 import { isAllowedOrigin } from "./common/security/cors-origin";
 
 /**
@@ -9,6 +13,9 @@ import { isAllowedOrigin } from "./common/security/cors-origin";
 export function configureApp(app: INestApplication) {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set("trust proxy", 1);
+
+  app.use(httpObservability);
+  app.useGlobalFilters(new SafeHttpExceptionFilter());
 
   // Security headers with Helmet
   app.use(helmet());
@@ -24,8 +31,13 @@ export function configureApp(app: INestApplication) {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    exposedHeaders: ["X-Total-Count", "X-Page", "X-Limit"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-Request-ID",
+    ],
+    exposedHeaders: ["X-Total-Count", "X-Page", "X-Limit", "X-Request-ID"],
   });
 
   // Global validation pipe
