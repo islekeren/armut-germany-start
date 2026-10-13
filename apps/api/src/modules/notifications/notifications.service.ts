@@ -1,9 +1,43 @@
-import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
+import { Injectable, NotFoundException, ForbiddenException, Logger } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+
+type NotificationOperation =
+  | "quote_accepted"
+  | "quote_received"
+  | "request_cancelled"
+  | "booking_completion_message"
+  | "booking_completion_pending"
+  | "booking_completed"
+  | "booking_cancelled";
+
+type NotificationPayload = {
+  type: NotificationOperation;
+  title: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+};
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(private prisma: PrismaService) {}
+
+  /** Use only for notification side effects after the primary mutation succeeds. */
+  async bestEffort(
+    operation: NotificationOperation,
+    task: () => Promise<unknown>,
+  ): Promise<void> {
+    try {
+      await task();
+    } catch {
+      this.logger.warn(JSON.stringify({ event: "notification_failed", operation }));
+    }
+  }
+
+  async createBestEffort(userId: string, payload: NotificationPayload): Promise<void> {
+    await this.bestEffort(payload.type, () => this.create(userId, payload));
+  }
 
   async create(
     userId: string,

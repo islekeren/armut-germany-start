@@ -88,7 +88,7 @@ export class QuotesService {
       },
     });
 
-    await this.notificationsService.create(request.customerId, {
+    await this.notificationsService.createBestEffort(request.customerId, {
       type: "quote_received",
       title: "New offer received",
       message: `You received a new offer for "${request.title}".`,
@@ -391,13 +391,14 @@ export class QuotesService {
         }),
       ]);
 
+      await this.notificationsService.bestEffort("quote_accepted", async () => {
       const providerUser = await this.prisma.provider.findUnique({
         where: { id: quote.providerId },
         select: { userId: true },
       });
 
       if (providerUser) {
-        await this.notificationsService.create(providerUser.userId, {
+        await this.notificationsService.createBestEffort(providerUser.userId, {
           type: "quote_accepted",
           title: "Your offer was accepted",
           message: `Your offer for "${quote.request.title}" has been accepted.`,
@@ -408,6 +409,8 @@ export class QuotesService {
           },
         });
       }
+
+      });
 
       return this.findOne(id, userId);
     }

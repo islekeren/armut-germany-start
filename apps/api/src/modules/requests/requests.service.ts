@@ -471,7 +471,7 @@ export class RequestsService {
     }
 
     await Promise.all([
-      this.notificationsService.create(userId, {
+      this.notificationsService.createBestEffort(userId, {
         type: "request_cancelled",
         title: "Request cancelled",
         message: `Your request "${request.title}" has been cancelled.`,
@@ -482,7 +482,7 @@ export class RequestsService {
         },
       }),
       ...providerUserIds.map((providerUserId) =>
-        this.notificationsService.create(providerUserId, {
+        this.notificationsService.createBestEffort(providerUserId, {
           type: "request_cancelled",
           title: "Request cancelled",
           message: `A customer cancelled the request "${request.title}".`,
