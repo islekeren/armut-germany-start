@@ -44,7 +44,28 @@ describe("QuotesService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new QuotesService(prisma as any, notificationsService as any);
+    service = new QuotesService(
+      prisma as any,
+      notificationsService as any,
+      {
+        getEligibility: jest
+          .fn()
+          .mockResolvedValue({ eligible: true, reason: "ready" }),
+        ensureEligible: async () => {
+          const provider = await prisma.provider.findUnique({});
+          if (
+            !provider?.stripeAccountId ||
+            provider.stripeOnboardingStatus !== "ready" ||
+            !provider.stripeTransfersEnabled ||
+            !provider.stripePayoutsEnabled
+          )
+            throw new BadRequestException(
+              "Provider payment verification is incomplete",
+            );
+          return provider;
+        },
+      } as any,
+    );
   });
 
   describe("create", () => {
@@ -68,14 +89,26 @@ describe("QuotesService", () => {
         .mockResolvedValueOnce({ id: "r1", status: "closed", customerId: "c1" })
         .mockResolvedValueOnce({ id: "r1", status: "open", customerId: "c1" })
         .mockResolvedValueOnce({ id: "r1", status: "open", customerId: "c1" });
-      prisma.quote.findFirst.mockResolvedValueOnce({ id: "q-existing" }).mockResolvedValueOnce(null);
+      prisma.quote.findFirst
+        .mockResolvedValueOnce({ id: "q-existing" })
+        .mockResolvedValueOnce(null);
       prisma.quote.create.mockResolvedValue({ id: "q1" });
 
-      await expect(service.create("u1", dto)).rejects.toThrow(ForbiddenException);
-      await expect(service.create("u1", dto)).rejects.toThrow(ForbiddenException);
-      await expect(service.create("u1", dto)).rejects.toThrow(NotFoundException);
-      await expect(service.create("u1", dto)).rejects.toThrow(BadRequestException);
-      await expect(service.create("u1", dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create("u1", dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.create("u1", dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.create("u1", dto)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.create("u1", dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.create("u1", dto)).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.create("u1", dto)).resolves.toEqual({ id: "q1" });
     });
   });
@@ -93,13 +126,13 @@ describe("QuotesService", () => {
       prisma.quote.findMany.mockResolvedValue([{ id: "q1" }]);
 
       await expect(service.findByRequest("r1", "u1")).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
       await expect(service.findByRequest("r1", "u1")).rejects.toThrow(
-        ForbiddenException
+        ForbiddenException,
       );
       await expect(service.findByRequest("r1", "customer-1")).resolves.toEqual([
-        { id: "q1" },
+        { id: "q1", paymentEligibility: { eligible: true, reason: "ready" } },
       ]);
     });
   });
@@ -110,9 +143,13 @@ describe("QuotesService", () => {
       .mockResolvedValueOnce({ id: "p1" });
     prisma.quote.findMany.mockResolvedValue([{ id: "q1" }]);
 
-    await expect(service.findByProvider("u1")).rejects.toThrow(NotFoundException);
+    await expect(service.findByProvider("u1")).rejects.toThrow(
+      NotFoundException,
+    );
     await expect(service.findByProvider("u1")).resolves.toEqual([{ id: "q1" }]);
-    await expect(service.findByCustomer("customer-1")).resolves.toEqual([{ id: "q1" }]);
+    await expect(service.findByCustomer("customer-1")).resolves.toEqual([
+      { id: "q1" },
+    ]);
   });
 
   describe("findOne", () => {
@@ -132,10 +169,16 @@ describe("QuotesService", () => {
       prisma.user.findUnique
         .mockResolvedValueOnce({ userType: "customer" })
         .mockResolvedValueOnce({ userType: "admin" });
-      prisma.provider.findUnique.mockResolvedValueOnce({ id: "other-provider" });
+      prisma.provider.findUnique.mockResolvedValueOnce({
+        id: "other-provider",
+      });
 
-      await expect(service.findOne("q1", "u1")).rejects.toThrow(NotFoundException);
-      await expect(service.findOne("q1", "u1")).rejects.toThrow(ForbiddenException);
+      await expect(service.findOne("q1", "u1")).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findOne("q1", "u1")).rejects.toThrow(
+        ForbiddenException,
+      );
       await expect(service.findOne("q1", "u1")).resolves.toEqual({
         id: "q1",
         customerId: "customer-1",
@@ -149,12 +192,12 @@ describe("QuotesService", () => {
         lastName: true,
         profileImage: true,
       });
-      expect(quoteDetailQuery.select.provider.select.user.select).not.toHaveProperty(
-        "phone"
-      );
-      expect(quoteDetailQuery.select.provider.select.user.select).not.toHaveProperty(
-        "email"
-      );
+      expect(
+        quoteDetailQuery.select.provider.select.user.select,
+      ).not.toHaveProperty("phone");
+      expect(
+        quoteDetailQuery.select.provider.select.user.select,
+      ).not.toHaveProperty("email");
     });
   });
 
@@ -168,28 +211,40 @@ describe("QuotesService", () => {
         .mockResolvedValueOnce({ id: "p1" });
       prisma.quote.findUnique
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: "q1", providerId: "other", status: "pending" })
-        .mockResolvedValueOnce({ id: "q1", providerId: "p1", status: "accepted" })
-        .mockResolvedValueOnce({ id: "q1", providerId: "p1", status: "pending" });
+        .mockResolvedValueOnce({
+          id: "q1",
+          providerId: "other",
+          status: "pending",
+        })
+        .mockResolvedValueOnce({
+          id: "q1",
+          providerId: "p1",
+          status: "accepted",
+        })
+        .mockResolvedValueOnce({
+          id: "q1",
+          providerId: "p1",
+          status: "pending",
+        });
       prisma.quote.update.mockResolvedValue({ id: "q1", price: 120 });
 
       await expect(service.update("q1", "u1", {} as any)).rejects.toThrow(
-        ForbiddenException
+        ForbiddenException,
       );
       await expect(service.update("q1", "u1", {} as any)).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
       await expect(service.update("q1", "u1", {} as any)).rejects.toThrow(
-        ForbiddenException
+        ForbiddenException,
       );
       await expect(service.update("q1", "u1", {} as any)).rejects.toThrow(
-        BadRequestException
+        BadRequestException,
       );
       await expect(
         service.update("q1", "u1", {
           price: 120,
           validUntil: "2099-03-05T00:00:00.000Z",
-        } as any)
+        } as any),
       ).resolves.toEqual({ id: "q1", price: 120 });
     });
   });
@@ -227,18 +282,22 @@ describe("QuotesService", () => {
       prisma.serviceRequest.update.mockReturnValue("request-update-op" as any);
       prisma.$transaction.mockResolvedValue([]);
       prisma.provider.findUnique.mockResolvedValue(readyProvider);
-      jest.spyOn(service, "findOne").mockResolvedValue({ id: "q1", status: "accepted" } as any);
+      jest
+        .spyOn(service, "findOne")
+        .mockResolvedValue({ id: "q1", status: "accepted" } as any);
 
       await expect(service.respond("q1", "u1", "accepted")).rejects.toThrow(
-        NotFoundException
+        NotFoundException,
       );
       await expect(service.respond("q1", "u1", "accepted")).rejects.toThrow(
-        ForbiddenException
+        ForbiddenException,
       );
-      await expect(service.respond("q1", "customer-1", "accepted")).rejects.toThrow(
-        BadRequestException
-      );
-      await expect(service.respond("q1", "customer-1", "accepted")).resolves.toEqual({
+      await expect(
+        service.respond("q1", "customer-1", "accepted"),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.respond("q1", "customer-1", "accepted"),
+      ).resolves.toEqual({
         id: "q1",
         status: "accepted",
       });
@@ -265,7 +324,7 @@ describe("QuotesService", () => {
         prisma.provider.findUnique.mockResolvedValueOnce(provider as any);
         await expect(
           service.respond("q4", "customer-1", "accepted"),
-        ).rejects.toThrow("Provider is not ready to receive payments yet");
+        ).rejects.toThrow("Provider payment verification is incomplete");
       }
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
@@ -299,7 +358,10 @@ describe("QuotesService", () => {
     });
 
     it("rejects quotes whose validity date is already past", async () => {
-      prisma.provider.findUnique.mockResolvedValue({ id: "p1", isApproved: true });
+      prisma.provider.findUnique.mockResolvedValue({
+        id: "p1",
+        isApproved: true,
+      });
 
       await expect(
         service.create("provider-user", {
@@ -321,7 +383,9 @@ describe("QuotesService", () => {
       });
       prisma.quote.update.mockResolvedValue({ id: "q2", status: "rejected" });
 
-      await expect(service.respond("q2", "customer-1", "rejected")).resolves.toEqual({
+      await expect(
+        service.respond("q2", "customer-1", "rejected"),
+      ).resolves.toEqual({
         id: "q2",
         status: "rejected",
       });
@@ -338,15 +402,35 @@ describe("QuotesService", () => {
         .mockResolvedValueOnce({ id: "p1" });
       prisma.quote.findUnique
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: "q1", providerId: "other", status: "pending" })
-        .mockResolvedValueOnce({ id: "q1", providerId: "p1", status: "accepted" })
-        .mockResolvedValueOnce({ id: "q1", providerId: "p1", status: "pending" });
+        .mockResolvedValueOnce({
+          id: "q1",
+          providerId: "other",
+          status: "pending",
+        })
+        .mockResolvedValueOnce({
+          id: "q1",
+          providerId: "p1",
+          status: "accepted",
+        })
+        .mockResolvedValueOnce({
+          id: "q1",
+          providerId: "p1",
+          status: "pending",
+        });
       prisma.quote.delete.mockResolvedValue({ id: "q1" });
 
-      await expect(service.withdraw("q1", "u1")).rejects.toThrow(ForbiddenException);
-      await expect(service.withdraw("q1", "u1")).rejects.toThrow(NotFoundException);
-      await expect(service.withdraw("q1", "u1")).rejects.toThrow(ForbiddenException);
-      await expect(service.withdraw("q1", "u1")).rejects.toThrow(BadRequestException);
+      await expect(service.withdraw("q1", "u1")).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.withdraw("q1", "u1")).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.withdraw("q1", "u1")).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(service.withdraw("q1", "u1")).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.withdraw("q1", "u1")).resolves.toEqual({ id: "q1" });
     });
   });

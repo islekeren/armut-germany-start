@@ -183,3 +183,34 @@ Repo-specific note:
 4. Run Prisma generate, migrate, and seed in `apps/api`
 5. Start the repo with `npm run dev`
 6. Verify `http://localhost:3000` and `http://localhost:4000/api/docs`
+
+## Explicit payment mode and recovery worker
+
+`PAYMENTS_MODE` is `disabled` by default. In this mode the API starts without
+Stripe credentials, payment/Connect calls are rejected, quote eligibility reports
+payments unavailable, and the customer payment/completion controls are disabled.
+Existing financial records remain readable. No payment worker runs.
+
+For local testing set `PAYMENTS_MODE=sandbox` and `STRIPE_WEBHOOK_MODE=sandbox`,
+with a test secret/restricted key, webhook signing secret, and all four Connect
+and Checkout URLs from the env example. An optional `STRIPE_PUBLISHABLE_KEY`
+must also be a test key. Missing or inconsistent enabled configuration fails
+startup even when `NODE_ENV=test`.
+
+Live configuration additionally requires `STRIPE_LIVE_ENABLED=true`, a live
+key, `STRIPE_WEBHOOK_MODE=live`, and HTTPS return/cancel URLs. This is an explicit
+configuration path, not an instruction to enable live payments. This change was
+not deployed and no real-money validation was performed. Commission, refund
+authorization and platform fee/loss responsibility remain unchanged.
+
+Webhook signing secrets do not encode test/live mode or account identity in their
+prefix. The explicit mode declaration and signed event `livemode` validation
+reject mode mismatches, but operators must verify endpoint/account provenance in
+Stripe when configuring the secret. Do not copy another account's endpoint secret.
+
+The API runs a durable reconciliation worker every two seconds while payments
+are enabled. At least one API instance must remain running. Work is coordinated
+in PostgreSQL, so multiple instances are supported; `PAYMENT_WORKER_DISABLED=true`
+is only for tests or deliberate operator-controlled maintenance. Completion is
+reserved by the HTTP request and performed by the worker. Booking details expose
+checkout state and completion operation outcome for frontend polling.

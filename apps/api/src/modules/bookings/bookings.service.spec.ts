@@ -45,15 +45,20 @@ describe("BookingsService", () => {
     create: jest.fn(),
   };
   const paymentsService = {
-    releaseProviderFunds: jest.fn(),
+    requestCompletion: jest.fn(),
+    getBookingPaymentState: jest.fn().mockResolvedValue({}),
+    isEnabled: jest.fn(() => true),
   };
 
   let service: BookingsService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    paymentsService.releaseProviderFunds.mockResolvedValue({
-      stripeTransferId: "tr_test",
+    jest.resetAllMocks();
+    paymentsService.isEnabled.mockReturnValue(true);
+    paymentsService.getBookingPaymentState.mockResolvedValue({});
+    paymentsService.requestCompletion.mockResolvedValue({
+      operationId: "completion-1",
+      status: "pending",
     });
     service = new BookingsService(
       prisma as any,
@@ -203,28 +208,28 @@ describe("BookingsService", () => {
       });
 
     await expect(
-      service.findOne("missing", { id: "customer-1", userType: "customer" })
+      service.findOne("missing", { id: "customer-1", userType: "customer" }),
     ).rejects.toThrow(NotFoundException);
     await expect(
-      service.findOne("b1", { id: "other-user", userType: "customer" })
+      service.findOne("b1", { id: "other-user", userType: "customer" }),
     ).rejects.toThrow(ForbiddenException);
     await expect(
-      service.findOne("b1", { id: "customer-1", userType: "customer" })
-    ).resolves.toEqual({
+      service.findOne("b1", { id: "customer-1", userType: "customer" }),
+    ).resolves.toMatchObject({
       id: "b1",
       customerId: "customer-1",
       provider: { userId: "provider-user" },
     });
     await expect(
-      service.findOne("b1", { id: "provider-user", userType: "provider" })
-    ).resolves.toEqual({
+      service.findOne("b1", { id: "provider-user", userType: "provider" }),
+    ).resolves.toMatchObject({
       id: "b1",
       customerId: "customer-1",
       provider: { userId: "provider-user" },
     });
     await expect(
-      service.findOne("b1", { id: "admin-1", userType: "admin" })
-    ).resolves.toEqual({
+      service.findOne("b1", { id: "admin-1", userType: "admin" }),
+    ).resolves.toMatchObject({
       id: "b1",
       customerId: "customer-1",
       provider: { userId: "provider-user" },
@@ -238,9 +243,9 @@ describe("BookingsService", () => {
       phone: true,
       profileImage: true,
     });
-    expect(bookingDetailQuery.select.provider.select.user.select).not.toHaveProperty(
-      "email"
-    );
+    expect(
+      bookingDetailQuery.select.provider.select.user.select,
+    ).not.toHaveProperty("email");
     expect(bookingDetailQuery.select.customer.select).toEqual({
       id: true,
       firstName: true,
@@ -248,7 +253,9 @@ describe("BookingsService", () => {
       phone: true,
       profileImage: true,
     });
-    expect(bookingDetailQuery.select.customer.select).not.toHaveProperty("email");
+    expect(bookingDetailQuery.select.customer.select).not.toHaveProperty(
+      "email",
+    );
   });
 
   describe("updateStatus", () => {
@@ -329,20 +336,23 @@ describe("BookingsService", () => {
       ).rejects.toThrow(ForbiddenException);
       await expect(
         service.updateStatus("b1", "provider-user", "completed"),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(ForbiddenException);
       await expect(
         service.updateStatus("b1", "customer-1", "completed"),
       ).resolves.toEqual(
-        expect.objectContaining({ id: "b1", status: "completed" }),
+        expect.objectContaining({
+          operationId: "completion-1",
+          status: "pending",
+        }),
       );
-      expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
-        where: { id: "r1" },
-        data: { status: "completed" },
-      });
-      expect(paymentsService.releaseProviderFunds).toHaveBeenCalledWith("b1");
+      expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
+      expect(paymentsService.requestCompletion).toHaveBeenCalledWith(
+        "customer-1",
+        "b1",
+      );
     });
 
-    it("notifies both parties when the customer confirms completion", async () => {
+    it("reserves completion without prematurely completing or notifying", async () => {
       prisma.booking.findUnique.mockResolvedValue({
         id: "b1",
         status: "completion_pending",
@@ -350,45 +360,11 @@ describe("BookingsService", () => {
         provider: { userId: "provider-user" },
         quote: { requestId: "r1" },
       });
-      prisma.booking.update.mockResolvedValue({
-        id: "b1",
-        status: "completed",
-        quote: {
-          requestId: "r1",
-          request: { id: "r1", title: "Deep cleaning" },
-        },
-        customer: { id: "customer-1" },
-        provider: { user: { id: "provider-user" } },
-      });
-      prisma.serviceRequest.update.mockResolvedValue({
-        id: "r1",
-        status: "completed",
-      });
-
-      await service.updateStatus("b1", "customer-1", "completed");
-
-      expect(notificationsService.create).toHaveBeenNthCalledWith(1, "customer-1", {
-        type: "booking_completed",
-        title: "Job completed",
-        message: 'Booking "Deep cleaning" is marked as completed.',
-        metadata: {
-          bookingId: "b1",
-          requestId: "r1",
-          requestTitle: "Deep cleaning",
-          audience: "customer",
-        },
-      });
-      expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
-        type: "booking_completed",
-        title: "Job completed",
-        message: 'Booking "Deep cleaning" has been confirmed as completed.',
-        metadata: {
-          bookingId: "b1",
-          requestId: "r1",
-          requestTitle: "Deep cleaning",
-          audience: "provider",
-        },
-      });
+      await expect(
+        service.updateStatus("b1", "customer-1", "completed"),
+      ).resolves.toEqual({ operationId: "completion-1", status: "pending" });
+      expect(prisma.booking.update).not.toHaveBeenCalled();
+      expect(notificationsService.create).not.toHaveBeenCalled();
     });
 
     it("does not complete the booking when provider funds cannot be released", async () => {
@@ -399,7 +375,7 @@ describe("BookingsService", () => {
         provider: { userId: "provider-user" },
         quote: { requestId: "r1" },
       });
-      paymentsService.releaseProviderFunds.mockRejectedValue(
+      paymentsService.requestCompletion.mockRejectedValue(
         new BadRequestException("Booking must have a confirmed payment"),
       );
 
@@ -448,30 +424,38 @@ describe("BookingsService", () => {
         "request-reopen-op",
       ]);
 
-      expect(notificationsService.create).toHaveBeenNthCalledWith(1, "customer-1", {
-        type: "booking_cancelled",
-        title: "Booking cancelled",
-        message: 'Booking "Window cleaning" was cancelled by the customer.',
-        metadata: {
-          bookingId: "b2",
-          requestId: "r2",
-          requestTitle: "Window cleaning",
-          previousStatus: "confirmed",
-          cancelledBy: "customer",
+      expect(notificationsService.create).toHaveBeenNthCalledWith(
+        1,
+        "customer-1",
+        {
+          type: "booking_cancelled",
+          title: "Booking cancelled",
+          message: 'Booking "Window cleaning" was cancelled by the customer.',
+          metadata: {
+            bookingId: "b2",
+            requestId: "r2",
+            requestTitle: "Window cleaning",
+            previousStatus: "confirmed",
+            cancelledBy: "customer",
+          },
         },
-      });
-      expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
-        type: "booking_cancelled",
-        title: "Booking cancelled",
-        message: 'Booking "Window cleaning" was cancelled by the customer.',
-        metadata: {
-          bookingId: "b2",
-          requestId: "r2",
-          requestTitle: "Window cleaning",
-          previousStatus: "confirmed",
-          cancelledBy: "customer",
+      );
+      expect(notificationsService.create).toHaveBeenNthCalledWith(
+        2,
+        "provider-user",
+        {
+          type: "booking_cancelled",
+          title: "Booking cancelled",
+          message: 'Booking "Window cleaning" was cancelled by the customer.',
+          metadata: {
+            bookingId: "b2",
+            requestId: "r2",
+            requestTitle: "Window cleaning",
+            previousStatus: "confirmed",
+            cancelledBy: "customer",
+          },
         },
-      });
+      );
     });
 
     it("requires a paid booking to be refunded before cancellation", async () => {

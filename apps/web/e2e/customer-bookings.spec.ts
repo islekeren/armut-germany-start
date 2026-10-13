@@ -88,20 +88,18 @@ test.describe("customer bookings", () => {
     ).toBe("open");
   });
 
-  test("confirms completion and leaves a review", async ({ page, loginAs }) => {
+  test("leaves a review on an authoritatively completed booking", async ({
+    page,
+    loginAs,
+  }) => {
     const { customer, booking, provider } = await createDeal({
       label: "bk-review",
-      bookingStatus: "completion_pending",
+      bookingStatus: "completed",
       paid: true,
     });
     await loginAs(customer);
 
     await page.goto(`/bookings/${booking!.id}`);
-    await page
-      .getByRole("button", { name: "Confirm job is completed" })
-      .click();
-    await expect(page.getByText("Booking marked as completed.")).toBeVisible();
-
     await expect(
       page.getByRole("heading", { name: "Leave a review" }),
     ).toBeVisible();
@@ -124,17 +122,27 @@ test.describe("customer bookings", () => {
         .totalReviews,
     ).toBe(1);
   });
-  test("asks for payment on an unpaid booking", async ({ page, loginAs }) => {
+  test("explains disabled payments on an unpaid booking", async ({
+    page,
+    loginAs,
+  }) => {
     const { customer, booking } = await createDeal({
       label: "bk-unpaid",
       bookingStatus: "confirmed",
     });
     await loginAs(customer);
 
+    await page.route(`**/api/bookings/${booking!.id}`, async (route) => {
+      const body = await (await route.fetch()).json();
+      await route.fulfill({ json: { ...body, paymentsAvailable: false } });
+    });
     await page.goto(`/bookings/${booking!.id}`);
     await expect(
-      page.getByRole("button", { name: "Pay and confirm booking" }),
+      page.getByText("Payments are currently unavailable.", { exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Pay and confirm booking" }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Cancel Booking" }),
     ).toBeVisible();

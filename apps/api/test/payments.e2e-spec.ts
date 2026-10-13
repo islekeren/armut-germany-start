@@ -2,6 +2,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
+import { PaymentOperationsService } from "../src/modules/payments/payment-operations.service";
 import { StripeService } from "../src/modules/payments/stripe.service";
 import {
   closeTestApp,
@@ -17,6 +18,9 @@ describe("Stripe Connect payments (e2e)", () => {
   let webhookEvent: any;
 
   const stripeService = {
+    assertEnabled: jest.fn(),
+    assertEventMode: jest.fn(),
+    getPaymentsMode: () => "sandbox",
     getCommissionRate: jest.fn(() => 0.15),
     getCheckoutUrls: jest.fn((bookingId: string) => ({
       successUrl: `http://localhost/bookings/${bookingId}?payment=success`,
@@ -38,7 +42,9 @@ describe("Stripe Connect payments (e2e)", () => {
   };
 
   beforeAll(async () => {
-    const moduleFixture = await Test.createTestingModule({ imports: [AppModule] })
+    const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    })
       .overrideProvider(StripeService)
       .useValue(stripeService)
       .compile();
@@ -217,6 +223,7 @@ describe("Stripe Connect payments (e2e)", () => {
           payment_intent: "pi_e2e",
           metadata: {
             paymentId: payment.id,
+            attemptId: payment.activeAttemptId,
             bookingId: booking.id,
             providerId: provider.id,
             customerId: customer.id,
@@ -243,12 +250,16 @@ describe("Stripe Connect payments (e2e)", () => {
     });
     stripeService.createTransfer.mockResolvedValue({ id: "tr_e2e" });
 
-    await request(app.getHttpServer())
+    const completion = await request(app.getHttpServer())
       .patch(`/api/bookings/${booking.id}/status`)
       .set("Authorization", `Bearer ${customerAuth.accessToken}`)
       .send({ status: "completed" })
       .expect(200);
 
+    expect(completion.body.status).toBe("pending");
+    await app
+      .get(PaymentOperationsService)
+      .runOperation(completion.body.operationId);
     const [updatedBooking, updatedPayment, notifications] = await Promise.all([
       prisma.booking.findUniqueOrThrow({ where: { id: booking.id } }),
       prisma.payment.findUniqueOrThrow({ where: { id: payment.id } }),
@@ -334,7 +345,10 @@ describe("Stripe Connect payments (e2e)", () => {
     });
     const customerAuth = await loginAs(app, "refund-customer@example.com");
     const otherAuth = await loginAs(app, "refund-other@example.com");
-    stripeService.createRefund.mockResolvedValue({ id: "re_e2e", status: "pending" });
+    stripeService.createRefund.mockResolvedValue({
+      id: "re_e2e",
+      status: "pending",
+    });
 
     await request(app.getHttpServer())
       .post("/api/payments/refund")
@@ -347,7 +361,13 @@ describe("Stripe Connect payments (e2e)", () => {
       .set("Authorization", `Bearer ${customerAuth.accessToken}`)
       .send({ bookingId: booking.id })
       .expect(201);
-    expect(response.body).toEqual({ refundId: "re_e2e", status: "pending" });
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        refundId: "re_e2e",
+        status: "succeeded",
+        operationId: expect.any(String),
+      }),
+    );
     expect(stripeService.createRefund).toHaveBeenCalledTimes(1);
 
     // The signed refund webhook flips the payment, after which the booking can be cancelled.
@@ -388,7 +408,14 @@ describe("Stripe Connect payments (e2e)", () => {
     webhookEvent = {
       id: "evt_e2e_foreign",
       type: "payment_intent.succeeded",
-      data: { object: { id: "pi_foreign", amount: 500, currency: "eur", metadata: {} } },
+      data: {
+        object: {
+          id: "pi_foreign",
+          amount: 500,
+          currency: "eur",
+          metadata: {},
+        },
+      },
     };
     await request(app.getHttpServer())
       .post("/api/payments/webhook")

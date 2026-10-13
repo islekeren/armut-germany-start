@@ -9,6 +9,9 @@ describe("StripeConnectService", () => {
     },
   };
   const stripeService = {
+    assertEnabled: jest.fn(),
+    assertEventMode: jest.fn(),
+    getPaymentsMode: () => "sandbox",
     createConnectedAccount: jest.fn(),
     createOnboardingLink: jest.fn(),
     retrieveConnectedAccount: jest.fn(),
@@ -96,7 +99,9 @@ describe("StripeConnectService", () => {
       stripeAccountId: "acct_test",
       stripeOnboardedAt: original,
     });
-    stripeService.retrieveConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({
+      id: "acct_test",
+    });
     stripeService.toAccountSnapshot.mockReturnValue({
       accountId: "acct_test",
       onboardingStatus: "ready",
@@ -116,7 +121,9 @@ describe("StripeConnectService", () => {
   });
 
   it("re-reads the account from Stripe and stores the snapshot", async () => {
-    stripeService.retrieveConnectedAccount.mockResolvedValue({ id: "acct_test" });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({
+      id: "acct_test",
+    });
     stripeService.toAccountSnapshot.mockReturnValue({
       accountId: "acct_test",
       onboardingStatus: "restricted",
@@ -133,7 +140,9 @@ describe("StripeConnectService", () => {
       stripeOnboardedAt: new Date(),
     });
 
-    expect(stripeService.retrieveConnectedAccount).toHaveBeenCalledWith("acct_test");
+    expect(stripeService.retrieveConnectedAccount).toHaveBeenCalledWith(
+      "acct_test",
+    );
     expect(prisma.provider.update).toHaveBeenCalledWith({
       where: { id: "provider-1" },
       data: expect.objectContaining({
@@ -141,6 +150,106 @@ describe("StripeConnectService", () => {
         stripeTransfersEnabled: false,
         stripeOnboardedAt: null,
       }),
+    });
+  });
+  it("refreshes a cached ineligible account before deciding", async () => {
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+    });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({
+      id: "acct_test",
+    });
+    prisma.provider.update.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "ready",
+      stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
+    });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "ready",
+      transfersEnabled: true,
+      payoutsEnabled: true,
+      requirementsDue: [],
+      onboardedAt: new Date(),
+    });
+    await expect((service as any).ensureEligible(provider.id)).resolves.toEqual(
+      expect.objectContaining({ stripeOnboardingStatus: "ready" }),
+    );
+    expect(stripeService.retrieveConnectedAccount).toHaveBeenCalledWith(
+      "acct_test",
+    );
+  });
+
+  it.each([
+    { stripeAccountId: null },
+    { stripeOnboardingStatus: "pending" },
+    { stripeOnboardingStatus: "restricted" },
+    { stripeTransfersEnabled: false },
+    { stripePayoutsEnabled: false },
+  ])("rejects fresh ineligible state %s", async (change) => {
+    const fresh = {
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "ready",
+      stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
+      ...change,
+    };
+    prisma.provider.findUnique.mockResolvedValue({ ...provider, ...fresh });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({
+      id: "acct_test",
+    });
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: fresh.stripeOnboardingStatus,
+      transfersEnabled: fresh.stripeTransfersEnabled,
+      payoutsEnabled: fresh.stripePayoutsEnabled,
+      requirementsDue: [],
+      onboardedAt: null,
+    });
+    prisma.provider.update.mockResolvedValue(fresh);
+    await expect(service.ensureEligible(provider.id)).rejects.toThrow(
+      "Provider payment verification is incomplete",
+    );
+  });
+  it("does not trust a cached ready account that is now restricted", async () => {
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "ready",
+      stripeTransfersEnabled: true,
+      stripePayoutsEnabled: true,
+    });
+    stripeService.retrieveConnectedAccount.mockResolvedValue({});
+    stripeService.toAccountSnapshot.mockReturnValue({
+      accountId: "acct_test",
+      onboardingStatus: "restricted",
+      transfersEnabled: false,
+      payoutsEnabled: false,
+      requirementsDue: [],
+      onboardedAt: null,
+    });
+    prisma.provider.update.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+      stripeOnboardingStatus: "restricted",
+    });
+    await expect(service.ensureEligible(provider.id)).rejects.toThrow();
+  });
+  it("fails closed with an unavailable reason on upstream failure", async () => {
+    prisma.provider.findUnique.mockResolvedValue({
+      ...provider,
+      stripeAccountId: "acct_test",
+    });
+    stripeService.retrieveConnectedAccount.mockRejectedValue(
+      new Error("Stripe unavailable"),
+    );
+    await expect(service.getEligibility(provider.id)).resolves.toEqual({
+      eligible: false,
+      reason: "verification_unavailable",
     });
   });
 });

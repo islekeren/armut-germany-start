@@ -319,6 +319,10 @@ model Payment {
   stripeTransferId         String?       @unique
   stripeTransferReversalId String?       @unique
   checkoutAttempt          Int           @default(0)
+  activeAttemptId          String?
+  paidAttemptId            String?
+  reconciliationReason     String?
+  refundRequestedAt        DateTime?
   grossAmount              Int
   platformFeeAmount        Int
   providerAmount           Int
@@ -337,6 +341,9 @@ model Payment {
   booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   customer User     @relation("CustomerPayments", fields: [customerId], references: [id], onDelete: Cascade)
+  attempts PaymentAttempt[]
+  operations PaymentOperation[]
+  disputes PaymentDispute[]
 
   @@index([providerId])
   @@index([customerId])
@@ -348,6 +355,72 @@ model StripeWebhookEvent {
   type        String
   processedAt DateTime?
   createdAt   DateTime  @default(now())
+  payload     Json?
+  unresolved  Boolean   @default(false)
+  reconciliationReason String?
+  nextRunAt   DateTime  @default(now())
+  @@index([processedAt, nextRunAt])
+}
+
+model PaymentAttempt {
+  id                      String @id @default(uuid())
+  paymentId               String
+  sequence                Int
+  status                  String @default("creating")
+  grossAmount             Int
+  currency                String
+  payload                 Json?
+  stripeCheckoutSessionId String? @unique
+  stripePaymentIntentId   String? @unique
+  stripeChargeId          String? @unique
+  checkoutUrl             String?
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  failureConfirmed        Boolean @default(false)
+  refundedAt              DateTime?
+  expiresAt               DateTime?
+  leaseToken              String?
+  leaseUntil              DateTime?
+  firstCalledAt           DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  payment                 Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  @@unique([paymentId, sequence])
+  @@index([status, leaseUntil])
+}
+
+model PaymentOperation {
+  id            String @id @default(uuid())
+  paymentId     String
+  kind          String
+  status        String @default("pending")
+  payload       Json
+  idempotencyKey String @unique
+  externalId    String?
+  errorCode     String?
+  leaseToken    String?
+  leaseUntil    DateTime?
+  firstCalledAt DateTime?
+  nextRunAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  payment       Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  @@unique([paymentId, kind])
+  @@index([status, nextRunAt, leaseUntil])
+}
+
+model PaymentDispute {
+  id              String @id
+  paymentId       String
+  stripeChargeId  String?
+  stripePaymentIntentId String?
+  status          String
+  eventCreated    Int
+  closed          Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  payment         Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  @@index([paymentId])
 }
 
 // ==================== REVIEWS ====================

@@ -13,10 +13,13 @@ import {
   prisma,
   resetAndSeedDatabase,
 } from "./e2e-utils";
+import { PaymentOperationsService } from "../src/modules/payments/payment-operations.service";
 import { StripeService } from "../src/modules/payments/stripe.service";
 
 // Completion releases the provider share, so Stripe must never be reached.
 const stripeService = {
+  assertEnabled: jest.fn(),
+  getPaymentsMode: () => "sandbox",
   createTransfer: jest.fn(async () => ({ id: "tr_bookings_e2e" })),
   retrievePaymentIntent: jest.fn(),
   retrieveConnectedAccount: jest.fn(async () => ({})),
@@ -193,8 +196,15 @@ describe("Bookings (e2e)", () => {
         "completed",
       ).expect(200);
 
-      expect(completed.body.status).toBe("completed");
-      expect(completed.body.completedAt).toBeTruthy();
+      expect(completed.body.status).toBe("pending");
+      await app
+        .get(PaymentOperationsService)
+        .runOperation(completed.body.operationId);
+      const result = await prisma.booking.findUniqueOrThrow({
+        where: { id: booking!.id },
+      });
+      expect(result.status).toBe("completed");
+      expect(result.completedAt).toBeTruthy();
       expect(
         (
           await prisma.serviceRequest.findUniqueOrThrow({
@@ -216,7 +226,7 @@ describe("Bookings (e2e)", () => {
         bookingStatus: "confirmed",
       });
 
-      await setStatus(providerToken, booking!.id, "completed").expect(400);
+      await setStatus(providerToken, booking!.id, "completed").expect(403);
       await setStatus(providerToken, booking!.id, "pending").expect(400);
       await setStatus(providerToken, booking!.id, "bogus").expect(400);
     });

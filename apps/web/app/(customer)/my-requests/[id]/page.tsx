@@ -121,12 +121,16 @@ export default function RequestDetailPage() {
 
   const [request, setRequest] = useState<RequestViewModel | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [requestBooking, setRequestBooking] = useState<CustomerBooking | null>(null);
+  const [requestBooking, setRequestBooking] = useState<CustomerBooking | null>(
+    null,
+  );
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [isLoading, setIsLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
-  const [isAcceptingQuoteId, setIsAcceptingQuoteId] = useState<string | null>(null);
+  const [isAcceptingQuoteId, setIsAcceptingQuoteId] = useState<string | null>(
+    null,
+  );
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -161,7 +165,9 @@ export default function RequestDetailPage() {
       );
       setQuotes(quoteData);
       setRequestBooking(
-        bookingData.data.find((booking) => booking.quote?.request?.id === requestId) || null,
+        bookingData.data.find(
+          (booking) => booking.quote?.request?.id === requestId,
+        ) || null,
       );
     } catch (err) {
       console.error("Failed to load request details:", err);
@@ -184,9 +190,7 @@ export default function RequestDetailPage() {
       if (sortBy === "bestRating") {
         return (b.provider?.ratingAvg || 0) - (a.provider?.ratingAvg || 0);
       }
-      return (
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     return result;
@@ -219,6 +223,12 @@ export default function RequestDetailPage() {
     } catch (err) {
       console.error("Failed to accept quote:", err);
       setError(describeError(err, t("acceptError")));
+      // Refresh eligibility if readiness changed after this page was opened.
+      try {
+        setQuotes(await quotesApi.getByRequest(token, requestId));
+      } catch {
+        /* keep the last snapshot */
+      }
     } finally {
       setIsAcceptingQuoteId(null);
     }
@@ -330,7 +340,9 @@ export default function RequestDetailPage() {
         {acceptedQuote && (
           <div className="mb-6 flex flex-col gap-3 rounded-xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold text-blue-800">{t("bookingReadyTitle")}</div>
+              <div className="text-sm font-semibold text-blue-800">
+                {t("bookingReadyTitle")}
+              </div>
               <p className="text-sm text-blue-700">{t("bookingReadyText")}</p>
             </div>
             <button
@@ -427,7 +439,9 @@ export default function RequestDetailPage() {
                     <h3 className="mb-2 text-lg font-semibold">
                       {t("closeConfirmTitle")}
                     </h3>
-                    <p className="mb-6 text-muted">{t("closeConfirmMessage")}</p>
+                    <p className="mb-6 text-muted">
+                      {t("closeConfirmMessage")}
+                    </p>
                     <div className="flex gap-3">
                       <button
                         onClick={() => setShowCloseConfirm(false)}
@@ -462,7 +476,9 @@ export default function RequestDetailPage() {
               >
                 <option value="priceAsc">{t("sortOptions.priceAsc")}</option>
                 <option value="priceDesc">{t("sortOptions.priceDesc")}</option>
-                <option value="bestRating">{t("sortOptions.bestRating")}</option>
+                <option value="bestRating">
+                  {t("sortOptions.bestRating")}
+                </option>
                 <option value="newest">{t("sortOptions.newest")}</option>
               </select>
             </div>
@@ -481,21 +497,30 @@ export default function RequestDetailPage() {
                     quote.provider?.user.lastName || ""
                   }`.trim() ||
                   "–";
-                const providerContact = `${quote.provider?.user.firstName || ""} ${
-                  quote.provider?.user.lastName || ""
-                }`.trim();
+                const providerContact =
+                  `${quote.provider?.user.firstName || ""} ${
+                    quote.provider?.user.lastName || ""
+                  }`.trim();
                 const dateLocale = locale.startsWith("de") ? "de-DE" : "en-US";
-                const createdAt = new Date(quote.createdAt).toLocaleString(dateLocale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                });
-                const validUntil = new Date(quote.validUntil).toLocaleDateString(dateLocale);
+                const createdAt = new Date(quote.createdAt).toLocaleString(
+                  dateLocale,
+                  {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  },
+                );
+                const validUntil = new Date(
+                  quote.validUntil,
+                ).toLocaleDateString(dateLocale);
                 const isExpired =
                   quote.status === "expired" ||
                   (quote.status === "pending" &&
                     new Date(quote.validUntil).getTime() < Date.now());
                 const displayStatus = isExpired ? "expired" : quote.status;
-                const canAccept = quote.status === "pending" && !isExpired;
+                const canAccept =
+                  quote.status === "pending" &&
+                  !isExpired &&
+                  quote.paymentEligibility?.eligible === true;
                 const memberSinceYear = quote.provider?.createdAt
                   ? new Date(quote.provider.createdAt).getFullYear()
                   : null;
@@ -506,7 +531,9 @@ export default function RequestDetailPage() {
                     key={quote.id}
                     onClick={() => setSelectedQuote(quote.id)}
                     className={`rounded-xl bg-white p-6 shadow-sm transition ${
-                      selectedQuote === quote.id ? "ring-2 ring-primary" : "hover:shadow-md"
+                      selectedQuote === quote.id
+                        ? "ring-2 ring-primary"
+                        : "hover:shadow-md"
                     }`}
                   >
                     <div className="flex flex-col gap-4 sm:flex-row">
@@ -516,14 +543,17 @@ export default function RequestDetailPage() {
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold">{providerName}</h3>
-                          <p className="text-sm text-muted">{providerContact}</p>
+                          <p className="text-sm text-muted">
+                            {providerContact}
+                          </p>
                           <div className="mt-1 flex items-center gap-2 text-sm">
                             <span className="text-yellow-500">★</span>
                             <span className="font-medium">
                               {quote.provider?.ratingAvg?.toFixed(1) || "-"}
                             </span>
                             <span className="text-muted">
-                              ({quote.provider?.totalReviews || 0} {t("reviews")})
+                              ({quote.provider?.totalReviews || 0}{" "}
+                              {t("reviews")})
                             </span>
                           </div>
                           {memberSinceYear && (
@@ -535,8 +565,12 @@ export default function RequestDetailPage() {
                       </div>
 
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">{formatEuroAmount(quote.price, locale)}</div>
-                        <div className="text-sm text-muted">{t("fixedPrice")}</div>
+                        <div className="text-2xl font-bold text-primary">
+                          {formatEuroAmount(quote.price, locale)}
+                        </div>
+                        <div className="text-sm text-muted">
+                          {t("fixedPrice")}
+                        </div>
                       </div>
                     </div>
 
@@ -548,6 +582,20 @@ export default function RequestDetailPage() {
                       <div className="text-sm text-muted">
                         {t("validUntil")} {validUntil} • {createdAt}
                       </div>
+                      {quote.status === "pending" &&
+                        quote.paymentEligibility?.eligible !== true && (
+                          <p className="mb-3 text-sm text-muted">
+                            {t(
+                              quote.paymentEligibility?.reason ===
+                                "verification_unavailable"
+                                ? "paymentVerificationUnavailable"
+                                : quote.paymentEligibility?.reason ===
+                                    "payments_disabled"
+                                  ? "paymentsUnavailable"
+                                  : "paymentVerificationIncomplete",
+                            )}
+                          </p>
+                        )}
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleSendMessage(quote)}
@@ -564,7 +612,8 @@ export default function RequestDetailPage() {
                                 : undefined
                           }
                           disabled={
-                            isAcceptingQuoteId === quote.id || (!canAccept && !canBook)
+                            isAcceptingQuoteId === quote.id ||
+                            (!canAccept && !canBook)
                           }
                           className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-60"
                         >

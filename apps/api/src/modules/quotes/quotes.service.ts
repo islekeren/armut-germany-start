@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateQuoteDto, UpdateQuoteDto } from "./dto/quote.dto";
+import { StripeConnectService } from "../payments/stripe-connect.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
@@ -13,6 +14,7 @@ export class QuotesService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    private readonly stripeConnect: StripeConnectService,
   ) {}
 
   async create(userId: string, createQuoteDto: CreateQuoteDto) {
@@ -30,7 +32,9 @@ export class QuotesService {
     }
 
     if (new Date(createQuoteDto.validUntil).getTime() <= Date.now()) {
-      throw new BadRequestException("Quote validity date must be in the future");
+      throw new BadRequestException(
+        "Quote validity date must be in the future",
+      );
     }
 
     // Check if request exists and is open
@@ -69,7 +73,12 @@ export class QuotesService {
       },
       include: {
         provider: {
-          include: {
+          select: {
+            id: true,
+            companyName: true,
+            ratingAvg: true,
+            totalReviews: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
@@ -131,15 +140,22 @@ export class QuotesService {
         : false);
 
     if (!hasAccess) {
-      throw new ForbiddenException("Not authorized to view quotes for this request");
+      throw new ForbiddenException(
+        "Not authorized to view quotes for this request",
+      );
     }
 
-    return this.prisma.quote.findMany({
+    const quotes = await this.prisma.quote.findMany({
       where: { requestId },
       orderBy: { createdAt: "desc" },
       include: {
         provider: {
-          include: {
+          select: {
+            id: true,
+            companyName: true,
+            ratingAvg: true,
+            totalReviews: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
@@ -152,6 +168,15 @@ export class QuotesService {
         },
       },
     });
+    if (request.customerId !== userId) return quotes;
+    return Promise.all(
+      quotes.map(async (quote) => ({
+        ...quote,
+        paymentEligibility: await this.stripeConnect.getEligibility(
+          quote.providerId,
+        ),
+      })),
+    );
   }
 
   async findByProvider(userId: string) {
@@ -189,7 +214,12 @@ export class QuotesService {
       orderBy: { createdAt: "desc" },
       include: {
         provider: {
-          include: {
+          select: {
+            id: true,
+            companyName: true,
+            ratingAvg: true,
+            totalReviews: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
@@ -324,7 +354,9 @@ export class QuotesService {
       updateQuoteDto.validUntil &&
       new Date(updateQuoteDto.validUntil).getTime() <= Date.now()
     ) {
-      throw new BadRequestException("Quote validity date must be in the future");
+      throw new BadRequestException(
+        "Quote validity date must be in the future",
+      );
     }
 
     return this.prisma.quote.update({
@@ -368,28 +400,9 @@ export class QuotesService {
         throw new BadRequestException("Request is no longer open");
       }
 
-      // Payment is part of every booking, so an offer from a provider who
-      // cannot receive Stripe transfers is not acceptable yet.
-      const quoteProvider = await this.prisma.provider.findUnique({
-        where: { id: quote.providerId },
-        select: {
-          userId: true,
-          stripeAccountId: true,
-          stripeOnboardingStatus: true,
-          stripeTransfersEnabled: true,
-          stripePayoutsEnabled: true,
-        },
-      });
-      if (
-        !quoteProvider?.stripeAccountId ||
-        quoteProvider.stripeOnboardingStatus !== "ready" ||
-        !quoteProvider.stripeTransfersEnabled ||
-        !quoteProvider.stripePayoutsEnabled
-      ) {
-        throw new BadRequestException(
-          "Provider is not ready to receive payments yet",
-        );
-      }
+      const quoteProvider = await this.stripeConnect.ensureEligible(
+        quote.providerId,
+      );
 
       await this.prisma.$transaction([
         // Update this quote to accepted

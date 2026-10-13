@@ -409,7 +409,17 @@ export class BookingsService {
       throw new ForbiddenException("Not authorized to view this booking");
     }
 
-    return booking;
+    if (booking.payment) {
+      const state = await this.paymentsService.getBookingPaymentState(
+        booking.payment.id,
+      );
+      return {
+        ...booking,
+        paymentsAvailable: this.paymentsService.isEnabled(),
+        payment: { ...booking.payment, ...state },
+      };
+    }
+    return { ...booking, paymentsAvailable: this.paymentsService.isEnabled() };
   }
 
   async updateStatus(id: string, userId: string, status: string) {
@@ -430,6 +440,12 @@ export class BookingsService {
 
     if (!isProvider && !isCustomer) {
       throw new ForbiddenException("Not authorized to update this booking");
+    }
+
+    if (status === "completed") {
+      if (!isCustomer)
+        throw new ForbiddenException("Only customer can confirm completion");
+      return this.paymentsService.requestCompletion(userId, id);
     }
 
     // Validate status transitions
@@ -462,31 +478,8 @@ export class BookingsService {
       throw new ForbiddenException("Only provider can update to this status");
     }
 
-    // Customer approves final completion
-    if (status === "completed") {
-      if (!isCustomer) {
-        throw new ForbiddenException("Only customer can confirm completion");
-      }
-      if (booking.status !== "completion_pending") {
-        throw new BadRequestException(
-          "Booking must be marked as completion pending before customer confirmation",
-        );
-      }
-
-      await this.paymentsService.releaseProviderFunds(booking.id);
-    }
-
     const previousStatus = booking.status;
     const updateData: any = { status };
-    if (status === "completed") {
-      updateData.completedAt = new Date();
-
-      // Update request status
-      await this.prisma.serviceRequest.update({
-        where: { id: booking.quote.requestId },
-        data: { status: "completed" },
-      });
-    }
 
     if (status === "cancelled") {
       // Give the customer a way forward: reopen the request so new quotes can

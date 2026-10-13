@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   OnModuleInit,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Stripe from "stripe";
@@ -22,9 +23,39 @@ export class StripeService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
-    if (this.configService.get<string>("NODE_ENV") !== "test") {
-      this.validateConfiguration();
-    }
+    const mode = this.getPaymentsMode();
+    if (mode !== "disabled") this.validateConfiguration();
+  }
+
+  getPaymentsMode(): "disabled" | "sandbox" | "live" {
+    const mode = this.configService.get<string>("PAYMENTS_MODE") ?? "disabled";
+    if (!["disabled", "sandbox", "live"].includes(mode))
+      throw new InternalServerErrorException(
+        "PAYMENTS_MODE must be disabled, sandbox or live",
+      );
+    return mode as "disabled" | "sandbox" | "live";
+  }
+
+  assertEnabled() {
+    if (this.getPaymentsMode() === "disabled")
+      throw new ServiceUnavailableException({
+        code: "payments_disabled",
+        message: "Payments are currently unavailable",
+      });
+  }
+
+  assertEventMode(event: { livemode: boolean }) {
+    this.assertEnabled();
+    if (event.livemode !== (this.getPaymentsMode() === "live"))
+      throw new InternalServerErrorException(
+        "Stripe event mode does not match PAYMENTS_MODE",
+      );
+  }
+
+  private assertObjectMode<T>(object: T): T {
+    const livemode = (object as { livemode?: boolean }).livemode;
+    if (typeof livemode === "boolean") this.assertEventMode({ livemode });
+    return object;
   }
 
   private required(name: string) {
@@ -45,7 +76,9 @@ export class StripeService implements OnModuleInit {
 
     try {
       const parsed = new URL(value.replace("{bookingId}", "demo-booking"));
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
+      if (this.getPaymentsMode() === "live" && parsed.protocol !== "https:")
+        throw new Error();
     } catch {
       throw new InternalServerErrorException(`${name} must be a valid URL`);
     }
@@ -54,15 +87,33 @@ export class StripeService implements OnModuleInit {
   }
 
   private validateConfiguration() {
+    this.assertEnabled();
+    const mode = this.getPaymentsMode();
+    if (
+      mode === "live" &&
+      this.configService.get("STRIPE_LIVE_ENABLED") !== "true"
+    )
+      throw new InternalServerErrorException(
+        "Live payments require STRIPE_LIVE_ENABLED=true",
+      );
+    const suffix = mode === "live" ? "live_" : "test_";
     const secretKey = this.required("STRIPE_SECRET_KEY");
     if (
-      !secretKey.startsWith("sk_test_") &&
-      !secretKey.startsWith("rk_test_")
-    ) {
+      !secretKey.startsWith(`sk_${suffix}`) &&
+      !secretKey.startsWith(`rk_${suffix}`)
+    )
       throw new InternalServerErrorException(
-        "Only Stripe test-mode secret or restricted keys are allowed",
+        "Stripe key mode does not match PAYMENTS_MODE",
       );
-    }
+    const publicKey = this.configService
+      .get<string>("STRIPE_PUBLISHABLE_KEY")
+      ?.trim();
+    if (publicKey && !publicKey.startsWith(`pk_${suffix}`))
+      throw new InternalServerErrorException(
+        "Stripe publishable key mode mismatch",
+      );
+    if (this.required("STRIPE_WEBHOOK_MODE") !== mode)
+      throw new InternalServerErrorException("Stripe webhook mode mismatch");
 
     const webhookSecret = this.required("STRIPE_WEBHOOK_SECRET");
     if (!webhookSecret.startsWith("whsec_")) {
@@ -79,16 +130,10 @@ export class StripeService implements OnModuleInit {
   }
 
   private get stripe() {
+    this.assertEnabled();
     if (!this.stripeClient) {
+      this.validateConfiguration();
       const secretKey = this.required("STRIPE_SECRET_KEY");
-      if (
-        !secretKey.startsWith("sk_test_") &&
-        !secretKey.startsWith("rk_test_")
-      ) {
-        throw new InternalServerErrorException(
-          "Only Stripe test-mode secret or restricted keys are allowed",
-        );
-      }
       this.stripeClient = new Stripe(secretKey, {
         apiVersion: "2026-07-29.dahlia" as Stripe.LatestApiVersion,
         appInfo: { name: "Armut Germany", version: "0.1.0" },
@@ -98,7 +143,8 @@ export class StripeService implements OnModuleInit {
   }
 
   getCommissionRate() {
-    const raw = this.configService.get<string>("PLATFORM_COMMISSION_RATE") ?? "0.15";
+    const raw =
+      this.configService.get<string>("PLATFORM_COMMISSION_RATE") ?? "0.15";
     const rate = Number(raw);
     if (!Number.isFinite(rate) || rate <= 0 || rate >= 1) {
       throw new InternalServerErrorException(
@@ -130,33 +176,35 @@ export class StripeService implements OnModuleInit {
       provider.companyName?.trim() ||
       `${provider.user.firstName} ${provider.user.lastName}`.trim();
 
-    return this.stripe.v2.core.accounts.create(
-      {
-        contact_email: provider.user.email,
-        display_name: displayName,
-        dashboard: "express",
-        identity: { country: "de" },
-        defaults: {
-          currency: "eur",
-          locales: ["de-DE"],
-          responsibilities: {
-            fees_collector: "application",
-            losses_collector: "application",
+    return this.assertObjectMode(
+      await this.stripe.v2.core.accounts.create(
+        {
+          contact_email: provider.user.email,
+          display_name: displayName,
+          dashboard: "express",
+          identity: { country: "de" },
+          defaults: {
+            currency: "eur",
+            locales: ["de-DE"],
+            responsibilities: {
+              fees_collector: "application",
+              losses_collector: "application",
+            },
           },
-        },
-        configuration: {
-          recipient: {
-            capabilities: {
-              stripe_balance: {
-                stripe_transfers: { requested: true },
+          configuration: {
+            recipient: {
+              capabilities: {
+                stripe_balance: {
+                  stripe_transfers: { requested: true },
+                },
               },
             },
           },
+          include: ["configuration.recipient", "requirements"],
+          metadata: { providerId: provider.id },
         },
-        include: ["configuration.recipient", "requirements"],
-        metadata: { providerId: provider.id },
-      },
-      { idempotencyKey: `provider-account:${provider.id}` },
+        { idempotencyKey: `provider-account:${provider.id}` },
+      ),
     );
   }
 
@@ -179,9 +227,11 @@ export class StripeService implements OnModuleInit {
   }
 
   async retrieveConnectedAccount(accountId: string) {
-    return this.stripe.v2.core.accounts.retrieve(accountId, {
-      include: ["configuration.recipient", "requirements"],
-    });
+    return this.assertObjectMode(
+      await this.stripe.v2.core.accounts.retrieve(accountId, {
+        include: ["configuration.recipient", "requirements"],
+      }),
+    );
   }
 
   toAccountSnapshot(account: Stripe.V2.Core.Account): StripeAccountSnapshot {
@@ -196,10 +246,10 @@ export class StripeService implements OnModuleInit {
     const payoutsEnabled = payoutStatus === "active";
     const onboardingStatus =
       transfersEnabled && payoutsEnabled && requirementsDue.length === 0
-      ? "ready"
-      : transferStatus === "restricted" || transferStatus === "unsupported"
-        ? "restricted"
-        : "pending";
+        ? "ready"
+        : transferStatus === "restricted" || transferStatus === "unsupported"
+          ? "restricted"
+          : "pending";
 
     return {
       accountId: account.id,
@@ -212,29 +262,39 @@ export class StripeService implements OnModuleInit {
   }
 
   async retrieveCheckoutSession(sessionId: string) {
-    return this.stripe.checkout.sessions.retrieve(sessionId);
+    return this.assertObjectMode(
+      await this.stripe.checkout.sessions.retrieve(sessionId),
+    );
   }
 
   async expireCheckoutSession(sessionId: string) {
-    return this.stripe.checkout.sessions.expire(sessionId);
+    return this.assertObjectMode(
+      await this.stripe.checkout.sessions.expire(sessionId),
+    );
   }
 
   async createCheckoutSession(
     params: Stripe.Checkout.SessionCreateParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.checkout.sessions.create(params, { idempotencyKey });
+    return this.assertObjectMode(
+      await this.stripe.checkout.sessions.create(params, { idempotencyKey }),
+    );
   }
 
   async retrievePaymentIntent(paymentIntentId: string) {
-    return this.stripe.paymentIntents.retrieve(paymentIntentId);
+    return this.assertObjectMode(
+      await this.stripe.paymentIntents.retrieve(paymentIntentId),
+    );
   }
 
   async createTransfer(
     params: Stripe.TransferCreateParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.transfers.create(params, { idempotencyKey });
+    return this.assertObjectMode(
+      await this.stripe.transfers.create(params, { idempotencyKey }),
+    );
   }
 
   async reverseTransfer(
@@ -242,13 +302,20 @@ export class StripeService implements OnModuleInit {
     params: Stripe.TransferCreateReversalParams,
     idempotencyKey: string,
   ) {
-    return this.stripe.transfers.createReversal(transferId, params, {
-      idempotencyKey,
-    });
+    return this.assertObjectMode(
+      await this.stripe.transfers.createReversal(transferId, params, {
+        idempotencyKey,
+      }),
+    );
   }
 
-  async createRefund(params: Stripe.RefundCreateParams, idempotencyKey: string) {
-    return this.stripe.refunds.create(params, { idempotencyKey });
+  async createRefund(
+    params: Stripe.RefundCreateParams,
+    idempotencyKey: string,
+  ) {
+    return this.assertObjectMode(
+      await this.stripe.refunds.create(params, { idempotencyKey }),
+    );
   }
 
   async createExpressDashboardLoginLink(accountId: string) {
