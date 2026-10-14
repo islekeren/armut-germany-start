@@ -19,8 +19,8 @@ async function bootstrap() {
 
   // Swagger setup
   const config = new DocumentBuilder()
-    .setTitle("Armut Germany API")
-    .setDescription("API documentation for Armut Germany backend")
+    .setTitle("Machma API")
+    .setDescription("API documentation for Machma backend")
     .setVersion("1.0")
     .addBearerAuth()
     .build();

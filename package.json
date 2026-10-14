@@ -1,5 +1,5 @@
 {
-  "name": "armut-germany",
+  "name": "machma",
   "private": true,
   "scripts": {
     "build": "turbo run build",

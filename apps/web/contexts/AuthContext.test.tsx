@@ -47,9 +47,9 @@ describe("AuthProvider", () => {
   });
 
   it("hydrates the auth state from storage and refreshes the current user", async () => {
-    localStorage.setItem("armut_access_token", "stored-access");
-    localStorage.setItem("armut_refresh_token", "stored-refresh");
-    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    localStorage.setItem("machma_access_token", "stored-access");
+    localStorage.setItem("machma_refresh_token", "stored-refresh");
+    localStorage.setItem("machma_user", JSON.stringify(baseUser));
     vi.spyOn(authApi, "getMe").mockResolvedValue(baseUser);
 
     renderWithProvider();
@@ -71,9 +71,9 @@ describe("AuthProvider", () => {
       user: refreshedUser,
     };
 
-    localStorage.setItem("armut_access_token", "stale-access");
-    localStorage.setItem("armut_refresh_token", "refresh-token");
-    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    localStorage.setItem("machma_access_token", "stale-access");
+    localStorage.setItem("machma_refresh_token", "refresh-token");
+    localStorage.setItem("machma_user", JSON.stringify(baseUser));
     vi.spyOn(authApi, "getMe").mockRejectedValue(new Error("expired"));
     vi.spyOn(authApi, "refreshToken").mockResolvedValue(refreshPayload);
 
@@ -84,14 +84,14 @@ describe("AuthProvider", () => {
     );
 
     expect(authApi.refreshToken).toHaveBeenCalledWith("refresh-token");
-    expect(localStorage.getItem("armut_access_token")).toBe("fresh-access");
-    expect(localStorage.getItem("armut_refresh_token")).toBe("fresh-refresh");
+    expect(localStorage.getItem("machma_access_token")).toBe("fresh-access");
+    expect(localStorage.getItem("machma_refresh_token")).toBe("fresh-refresh");
   });
 
   it("keeps the session when the session check is rate limited", async () => {
-    localStorage.setItem("armut_access_token", "stored-access");
-    localStorage.setItem("armut_refresh_token", "stored-refresh");
-    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    localStorage.setItem("machma_access_token", "stored-access");
+    localStorage.setItem("machma_refresh_token", "stored-refresh");
+    localStorage.setItem("machma_user", JSON.stringify(baseUser));
     const rateLimited = new ApiError("Too Many Requests", {
       status: 429,
       code: "http",
@@ -107,13 +107,13 @@ describe("AuthProvider", () => {
 
     expect(authApi.refreshToken).not.toHaveBeenCalled();
     expect(screen.getByTestId("authenticated")).toHaveTextContent("true");
-    expect(localStorage.getItem("armut_access_token")).toBe("stored-access");
+    expect(localStorage.getItem("machma_access_token")).toBe("stored-access");
   });
 
   it("clears local auth state when logout fails remotely", async () => {
-    localStorage.setItem("armut_access_token", "stored-access");
-    localStorage.setItem("armut_refresh_token", "stored-refresh");
-    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    localStorage.setItem("machma_access_token", "stored-access");
+    localStorage.setItem("machma_refresh_token", "stored-refresh");
+    localStorage.setItem("machma_user", JSON.stringify(baseUser));
     vi.spyOn(authApi, "getMe").mockResolvedValue(baseUser);
     vi.spyOn(authApi, "logout").mockRejectedValue(new Error("network"));
 
@@ -129,8 +129,8 @@ describe("AuthProvider", () => {
       expect(screen.getByTestId("authenticated")).toHaveTextContent("false"),
     );
 
-    expect(localStorage.getItem("armut_access_token")).toBeNull();
-    expect(localStorage.getItem("armut_refresh_token")).toBeNull();
-    expect(localStorage.getItem("armut_user")).toBeNull();
+    expect(localStorage.getItem("machma_access_token")).toBeNull();
+    expect(localStorage.getItem("machma_refresh_token")).toBeNull();
+    expect(localStorage.getItem("machma_user")).toBeNull();
   });
 });

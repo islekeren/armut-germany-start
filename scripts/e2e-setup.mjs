@@ -12,10 +12,10 @@ const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 const databases = {
   api:
     process.env.E2E_API_DATABASE_URL ||
-    "postgresql://postgres:postgres@127.0.0.1:5433/armut_e2e_api",
+    "postgresql://postgres:postgres@127.0.0.1:5433/machma_e2e_api",
   web:
     process.env.E2E_WEB_DATABASE_URL ||
-    "postgresql://postgres:postgres@127.0.0.1:5433/armut_e2e_web",
+    "postgresql://postgres:postgres@127.0.0.1:5433/machma_e2e_web",
 };
 
 execFileSync(npx, ["prisma", "generate"], { cwd: apiDir, stdio: "inherit" });

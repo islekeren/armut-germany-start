@@ -1,25 +1,25 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: armut-postgres
+    container_name: machma-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: armut
-      POSTGRES_PASSWORD: armut123
-      POSTGRES_DB: armut_db
+      POSTGRES_USER: machma
+      POSTGRES_PASSWORD: machma123
+      POSTGRES_DB: machma_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U armut -d armut_db"]
+      test: ["CMD-SHELL", "pg_isready -U machma -d machma_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: armut-redis
+    container_name: machma-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -35,7 +35,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: armut-api
+    container_name: machma-api
     restart: unless-stopped
     depends_on:
       postgres:
@@ -43,7 +43,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://armut:armut123@postgres:5432/armut_db?schema=public
+      DATABASE_URL: postgresql://machma:machma123@postgres:5432/machma_db?schema=public
       JWT_SECRET: local-docker-access-secret
       JWT_REFRESH_SECRET: local-docker-refresh-secret
       PORT: 4000
@@ -73,7 +73,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: armut-web
+    container_name: machma-web
     restart: unless-stopped
     depends_on:
       api:

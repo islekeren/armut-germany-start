@@ -63,7 +63,7 @@ function renderPage(locale = "en") {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  localStorage.setItem("armut_access_token", "token");
+  localStorage.setItem("machma_access_token", "token");
   vi.mocked(getCategories).mockResolvedValue([category]);
   vi.mocked(serviceApi.list).mockResolvedValue([owned]);
 });

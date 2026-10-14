@@ -60,7 +60,7 @@ async function upsertProviderProfile(
     update: {
       slug: `${baseSlug}-${providerId.slice(0, 6)}`,
       headline: "Trusted local professional",
-      bio: "Reliable service provider with verified customer reviews on Armut.",
+      bio: "Reliable service provider with verified customer reviews on machma.",
       city: "Berlin",
       postalCode: "10115",
       phoneVisible: true,
@@ -72,7 +72,7 @@ async function upsertProviderProfile(
       providerId,
       slug: `${baseSlug}-${providerId.slice(0, 6)}`,
       headline: "Trusted local professional",
-      bio: "Reliable service provider with verified customer reviews on Armut.",
+      bio: "Reliable service provider with verified customer reviews on machma.",
       city: "Berlin",
       postalCode: "10115",
       phoneVisible: true,

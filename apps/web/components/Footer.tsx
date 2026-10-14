@@ -10,13 +10,13 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-start justify-between gap-4 text-left md:flex-row md:items-center">
           <div className="flex items-center">
-            <span className="text-xl font-extrabold tracking-tight">Elf</span>
+            <span className="text-xl font-extrabold tracking-tight">Machma</span>
           </div>
           <p className="max-w-2xl text-sm text-white/70 sm:text-base">{t("footer.description")}</p>
         </div>
         <div className="mt-6 border-t-2 border-white/20 pt-6 text-left text-sm text-white/70 sm:text-center sm:text-base">
           <p>
-            &copy; {new Date().getFullYear()} Elf Germany.{" "}
+            &copy; {new Date().getFullYear()} Machma.{" "}
             {t("common.allRightsReserved")}
           </p>
         </div>

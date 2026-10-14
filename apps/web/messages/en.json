@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "title": "Elf Germany - Find the Best Service Providers",
-    "description": "Elf Germany connects you with qualified professionals for cleaning, moving, renovation and more. Get free quotes from verified providers.",
+    "title": "Machma - Find the Best Service Providers",
+    "description": "Machma connects you with qualified professionals for cleaning, moving, renovation and more. Get free quotes from verified providers.",
     "keywords": "service providers, tradespeople, cleaning, moving, renovation, Germany",
     "ogDescription": "Connect with qualified professionals for all your service needs."
   },
@@ -383,7 +383,7 @@
     "postalCode": "Postal code"
   },
   "cta": {
-    "providerTitle": "Grow your business with Elf",
+    "providerTitle": "Grow your business with Machma",
     "providerSubtitle": "Join thousands of providers and get matched with new customers in your area.",
     "registerNow": "Register now",
     "readyToStart": "Ready to Get Started?",
@@ -392,7 +392,7 @@
   },
   "howItWorks": {
     "title": "How It Works",
-    "pageTitle": "How Elf Germany Works",
+    "pageTitle": "How Machma Works",
     "pageSubtitle": "Find qualified professionals in just a few simple steps. Free, fast, and secure.",
     "step1": {
       "title": "Submit Request",
@@ -452,7 +452,7 @@
   "faq": {
     "title": "Frequently Asked Questions",
     "q1": {
-      "question": "How much does it cost to use Elf?",
+      "question": "How much does it cost to use Machma?",
       "answer": "It's completely free for customers! You can submit requests, receive quotes, and communicate with providers at no cost. You only pay the provider for the service once you decide to book."
     },
     "q2": {
@@ -486,7 +486,7 @@
     "privacy": "Privacy Policy"
   },
   "becomeProvider": {
-    "title": "Become a Service Provider on Elf",
+    "title": "Become a Service Provider on Machma",
     "subtitle": "Reach thousands of potential customers in your area and grow your business.",
     "registerNow": "Register Now",
     "howItWorks": "How It Works",

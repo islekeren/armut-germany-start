@@ -145,7 +145,7 @@ export default function ProviderProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("armut_access_token");
+        const token = localStorage.getItem("machma_access_token");
         if (!token) return;
 
         const [profileData, reviewsData] = await Promise.all([
@@ -194,7 +194,7 @@ export default function ProviderProfilePage() {
     setSaveStatus("idle");
 
     try {
-      const token = localStorage.getItem("armut_access_token");
+      const token = localStorage.getItem("machma_access_token");
       if (!token) {
         setSaveStatus("error");
         return;

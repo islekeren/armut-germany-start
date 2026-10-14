@@ -51,7 +51,7 @@ export class UploadsService {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    this.bucket = configService.get("S3_BUCKET") || "armut-uploads";
+    this.bucket = configService.get("S3_BUCKET") || "machma-uploads";
     this.privateBucket = configService.get("S3_PRIVATE_BUCKET") || "";
     this.publicUrl = configService.get("S3_PUBLIC_URL") || "";
     this.s3Client = new S3Client({

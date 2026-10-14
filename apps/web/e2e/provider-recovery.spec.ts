@@ -254,7 +254,7 @@ test("a lost successful profile response can be retried without duplicate servic
   await page.unroute("**/api/providers");
   // Re-send the same creation request: the server returns the existing profile.
   const token = await page.evaluate(() =>
-    localStorage.getItem("armut_access_token"),
+    localStorage.getItem("machma_access_token"),
   );
   const retry = await page.request.post(`${API_URL}/api/providers`, {
     headers: { Authorization: `Bearer ${token}` },
