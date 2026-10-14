@@ -174,10 +174,9 @@ export class UploadsService {
     folder: UploadFolder,
     userId: string,
   ): Promise<UploadResult[]> {
-    const results: UploadResult[] = [];
-    for (const file of files)
-      results.push(await this.uploadFile(file, folder, userId));
-    return results;
+    return Promise.all(
+      files.map((file) => this.uploadFile(file, folder, userId)),
+    );
   }
 
   private async publish(
