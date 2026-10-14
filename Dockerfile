@@ -17,3 +17,7 @@ RUN npm ci
 COPY . .
 
 RUN npm --workspace=api run db:generate
+
+RUN npm --workspace=api run build
+
+CMD ["npm", "run", "start:prod", "--workspace=api"]

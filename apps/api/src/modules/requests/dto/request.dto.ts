@@ -8,6 +8,7 @@ import {
   Min,
   ValidateIf,
   IsNotEmpty,
+  Matches,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -31,9 +32,11 @@ export class CreateRequestDto {
   requestBranch?: string;
 
   @IsString()
+  @Matches(/\S/u, { message: "title must contain non-whitespace characters" })
   title: string;
 
   @IsString()
+  @Matches(/\S/u, { message: "description must contain non-whitespace characters" })
   description: string;
 
   @IsString()

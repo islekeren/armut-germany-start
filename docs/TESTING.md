@@ -264,3 +264,7 @@ responses and endpoint throttles. Socket tests also cover revoked senders and
 recipients. `password-recovery.spec.ts` drives both locales through the local
 mailbox, reset/reuse/expiry states and sign-in after reset. Playwright always uses
 local mail capture; it never dispatches SMTP email. See [AUTH_RECOVERY.md](./AUTH_RECOVERY.md).
+
+### Upload security regressions
+
+`npm run test:unit --workspace=api -- --runInBand uploads upload-content upload-references` covers content parsing/re-encoding, private authorization, bounded reads and Multer ingestion limits. `npm run test:e2e --workspace=api -- uploads authorization` adds PostgreSQL/S3 mock finalization, replay and concurrent quota checks. The mock does not prove real bucket ACLs or expiry; see [UPLOAD_SECURITY.md](./UPLOAD_SECURITY.md) for deployment checks.

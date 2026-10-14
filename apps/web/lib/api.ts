@@ -337,6 +337,29 @@ export interface ProviderService {
   };
 }
 
+export interface ManagedProviderService extends ProviderService {
+  providerId: string;
+  isActive: boolean;
+  images: string[];
+}
+
+export interface ServiceData {
+  categoryId: string;
+  title: string;
+  description: string;
+  priceType: ProviderService["priceType"];
+  priceMin?: number | null;
+  priceMax?: number | null;
+  isActive?: boolean;
+}
+
+export const serviceApi = {
+  list: (token: string) => apiRequest<ManagedProviderService[]>("/services", { token, cache: "no-store" }),
+  create: (token: string, data: ServiceData) => apiRequest<ManagedProviderService>("/services", { token, method: "POST", body: JSON.stringify(data) }),
+  update: (token: string, id: string, data: Partial<ServiceData>) => apiRequest<ManagedProviderService>(`/services/${id}`, { token, method: "PATCH", body: JSON.stringify(data) }),
+  remove: (token: string, id: string) => apiRequest<ManagedProviderService>(`/services/${id}`, { token, method: "DELETE" }),
+};
+
 export interface PublicProvider {
   id: string;
   userId: string;
@@ -1491,7 +1514,7 @@ export const uploadsApi = {
     token: string,
     data: { folder: UploadFolder; filename: string; contentType: string },
   ) =>
-    apiRequest<{ uploadUrl: string; key: string; publicUrl: string }>(
+    apiRequest<{ uploadUrl: string; key: string; expiresIn: number }>(
       "/uploads/presigned",
       {
         method: "POST",
@@ -1499,6 +1522,17 @@ export const uploadsApi = {
         token,
       },
     ),
+
+  // Private uploads return keys; resolve a short-lived URL only when opening.
+  getPrivateReadUrl: (token: string, key: string) =>
+    apiRequest<{ url: string; expiresIn: number }>(
+      `/uploads/read/${encodeURIComponent(key)}`, { token },
+    ),
+
+  finalizeUpload: (token: string, key: string) =>
+    apiRequest<UploadResult>("/uploads/finalize", {
+      method: "POST", body: JSON.stringify({ key }), token,
+    }),
 
   deleteFile: (token: string, key: string) =>
     apiRequest<{ success: boolean }>(`/uploads/${encodeURIComponent(key)}`, {

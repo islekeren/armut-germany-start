@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { IsEnum, IsNotEmpty, IsString, MaxLength } from "class-validator";
 import { UploadFolder } from "../uploads.service";
 
 export class PresignedUploadDto {
@@ -7,6 +7,7 @@ export class PresignedUploadDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(255)
   filename: string;
 
   @IsString()

@@ -1,3 +1,5 @@
+import { assertOwnedUploads } from "../uploads/upload-references";
+import { UploadFolder } from "../uploads/upload-policy";
 import {
   Injectable,
   NotFoundException,
@@ -210,6 +212,8 @@ export class ProvidersService {
     if (!user || user.userType !== "provider") {
       throw new ForbiddenException("User must be registered as a provider");
     }
+
+    await assertOwnedUploads(this.prisma, userId, createProviderDto.documents, UploadFolder.DOCUMENTS);
 
     // An account can retry onboarding after a lost response, possibly having
     // edited the form first. Never create a second provider or duplicate its
@@ -676,6 +680,8 @@ export class ProvidersService {
     if (provider.userId !== userId) {
       throw new ForbiddenException("Not authorized to update this provider");
     }
+
+    await assertOwnedUploads(this.prisma, userId, updateProviderDto.documents, UploadFolder.DOCUMENTS);
 
     return this.prisma.provider.update({
       where: { id },

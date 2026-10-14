@@ -204,3 +204,7 @@ requires SMTP_HOST/PORT/SECURE/USER/PASSWORD and a verified EMAIL_FROM. Read
 [AUTH_RECOVERY.md](./AUTH_RECOVERY.md) for mailbox preview, beta release gates,
 session migration, revocation and retention. Do not deploy mixed API versions:
 legacy JWTs are rejected and all existing users must sign in again.
+
+### Private uploads
+
+`S3_PRIVATE_BUCKET` must be separate from the public bucket and deny anonymous access. Missing configuration disables private uploads and all presigned uploads. See [UPLOAD_SECURITY.md](./UPLOAD_SECURITY.md) for lifecycle, legacy-object migration, quota and client contract requirements. Apply the UploadAsset migration before rolling out this code.

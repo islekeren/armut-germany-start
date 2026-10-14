@@ -170,16 +170,17 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - `apps/web/vercel.json`: Next.js hosting config (Vercel Root Directory `apps/web`)
 - `docs/OBSERVABILITY.md`: private-data-safe logs, correlation IDs and incident triage
 - `render.yaml`: API service definition for Render
-- `Dockerfile`: incomplete Node build-image scaffold; it is not yet a runnable production image
+- `Dockerfile`: Node API image with Prisma generation, NestJS compilation and a production start command
 
 ## Current Product Notes
 
 - Quote acceptance does not auto-create a booking. The frontend redirects the customer to `/bookings/new` after accepting a quote.
 - Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
-- Provider `services` and `finances` are placeholders on `main`; the payment feature branch replaces `finances` with Stripe Connect test-mode onboarding and Express Dashboard access.
+- Providers manage services, categories, pricing, and active status at `/dashboard/services`. Only active services appear on public profiles and participate in category matching.
+- Provider `finances` is a placeholder on `main`; the payment feature branch replaces it with Stripe Connect test-mode onboarding and Express Dashboard access.
 - The payment feature branch uses separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
 - The Stripe payment work is synchronized with `origin/main` in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), but it is not released and remains blocked by payment-safety work.
-- `ServicesModule` and `ReviewsModule` are still empty backend shells.
+- `ServicesModule` exposes authenticated provider-owned CRUD at `/api/services`; `ReviewsModule` is still an empty backend shell.
 - Notifications are now a real API module and frontend page.
 
 ## Documentation Index
@@ -206,7 +207,7 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - The upload env names now match between `apps/api/.env.example` and `UploadsService`.
 - Selected production topology: Railway API + Vercel web, with `main` as the release source. Hosting domains, dashboard gates and branch protection still require external verification; see [DEPLOYMENT.md](./docs/DEPLOYMENT.md).
 - Railway pre-deploy runs migrations only. Demo seeding is blocked outside explicit development/test runtimes; existing hosted databases still require a check for previously seeded accounts.
-- The checked-in `Dockerfile` has no final build, runtime command, or production stage and should not yet be treated as a deployable image.
+- The checked-in `Dockerfile` builds and starts the API. Railway owns pre-deploy migrations and readiness checks; the image currently retains build dependencies.
 
 ## Recommended Branch Policy
 
