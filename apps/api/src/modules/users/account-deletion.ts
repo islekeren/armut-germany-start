@@ -98,6 +98,7 @@ export async function anonymizeUserAccount(
         ]
       : []),
     prisma.notification.deleteMany({ where: { userId } }),
+    prisma.pushToken.deleteMany({ where: { userId } }),
     prisma.user.update({
       where: { id: userId },
       data: {

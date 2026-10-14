@@ -152,3 +152,22 @@ export const authApi = {
       token,
     }),
 };
+
+export const notificationsApi = {
+  registerPushToken: (
+    token: string,
+    data: { token: string; platform: "ios" | "android" },
+  ) =>
+    apiRequest<void>("/notifications/push-token", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+
+  unregisterPushToken: (token: string, expoPushToken: string) =>
+    apiRequest<void>("/notifications/push-token", {
+      method: "DELETE",
+      token,
+      body: JSON.stringify({ token: expoPushToken }),
+    }),
+};

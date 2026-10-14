@@ -40,6 +40,36 @@ export function isInternalWebUrl(url: string) {
   }
 }
 
+/**
+ * Maps a push notification's data payload (the notification `type` plus
+ * the backend's metadata: bookingId, requestId, audience, ...) to the web
+ * path to open. Mirrors apps/api's NotificationsService payloads; keep in
+ * sync when a new notification type is added there.
+ */
+export function resolveNotificationPath(
+  data: Record<string, unknown>,
+): string | null {
+  const bookingId = typeof data.bookingId === "string" ? data.bookingId : undefined;
+  if (bookingId) {
+    return `/bookings/${bookingId}`;
+  }
+
+  const type = typeof data.type === "string" ? data.type : undefined;
+  if (type === "quote_accepted") {
+    return "/dashboard/offers";
+  }
+
+  const requestId = typeof data.requestId === "string" ? data.requestId : undefined;
+  if (requestId) {
+    const audience = data.audience === "provider" ? "provider" : "customer";
+    return audience === "provider"
+      ? `/dashboard/requests/${requestId}`
+      : `/my-requests/${requestId}`;
+  }
+
+  return null;
+}
+
 export function buildAuthSyncScript(session: StoredSession) {
   return `
     (function () {

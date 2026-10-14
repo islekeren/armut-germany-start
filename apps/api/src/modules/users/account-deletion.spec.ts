@@ -11,6 +11,7 @@ describe("anonymizeUserAccount", () => {
     providerProfile: { updateMany: jest.fn() },
     provider: { update: jest.fn() },
     notification: { deleteMany: jest.fn() },
+    pushToken: { deleteMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -64,6 +65,9 @@ describe("anonymizeUserAccount", () => {
     );
     expect(prisma.provider.update).not.toHaveBeenCalled();
     expect(prisma.notification.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "u1" },
+    });
+    expect(prisma.pushToken.deleteMany).toHaveBeenCalledWith({
       where: { userId: "u1" },
     });
   });

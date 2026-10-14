@@ -3,6 +3,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { NotificationsService } from "./notifications.service";
+import { PushNotificationsService } from "./push-notifications.service";
 
 describe("NotificationsService", () => {
   const prisma = {
@@ -15,12 +16,18 @@ describe("NotificationsService", () => {
       updateMany: jest.fn(),
     },
   };
+  const pushNotifications = {
+    notifyUser: jest.fn().mockResolvedValue(undefined),
+  };
 
   let service: NotificationsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new NotificationsService(prisma as any);
+    service = new NotificationsService(
+      prisma as any,
+      pushNotifications as unknown as PushNotificationsService,
+    );
   });
 
   it("lists notifications with unread filtering and a bounded limit", async () => {
@@ -72,6 +79,25 @@ describe("NotificationsService", () => {
 
     await expect(service.markAllAsRead("user-1")).resolves.toEqual({
       updated: 4,
+    });
+  });
+
+  it("creates the notification row and fans out a push with the same content", async () => {
+    prisma.notification.create.mockResolvedValue({ id: "n1" });
+
+    await expect(
+      service.create("user-1", {
+        type: "quote_received",
+        title: "New offer received",
+        message: 'You received a new offer for "Clean the house".',
+        metadata: { requestId: "r1" },
+      }),
+    ).resolves.toEqual({ id: "n1" });
+
+    expect(pushNotifications.notifyUser).toHaveBeenCalledWith("user-1", {
+      title: "New offer received",
+      body: 'You received a new offer for "Clean the house".',
+      data: { type: "quote_received", requestId: "r1" },
     });
   });
 });

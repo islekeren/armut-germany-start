@@ -1,5 +1,12 @@
 import * as SecureStore from "expo-secure-store";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   authApi,
   type LoginData,
@@ -7,6 +14,7 @@ import {
   type RegisterData,
   type User,
 } from "../lib/api";
+import { clearPushTokenForSession, syncPushTokenForSession } from "../lib/push";
 
 const ACCESS_TOKEN_KEY = "armut_mobile_access_token";
 const REFRESH_TOKEN_KEY = "armut_mobile_refresh_token";
@@ -105,16 +113,26 @@ async function loadSession() {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<StoredSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const sessionRef = useRef<StoredSession | null>(null);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   async function persistSession(nextSession: StoredSession | null) {
     if (!nextSession) {
+      const previousAccessToken = sessionRef.current?.accessToken;
       await clearSessionStorage();
       setSession(null);
+      if (previousAccessToken) {
+        void clearPushTokenForSession(previousAccessToken);
+      }
       return;
     }
 
     await saveSession(nextSession);
     setSession(nextSession);
+    void syncPushTokenForSession(nextSession.accessToken);
   }
 
   useEffect(() => {

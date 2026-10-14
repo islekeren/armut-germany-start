@@ -5,6 +5,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { PushNotificationsService } from "./push-notifications.service";
 
 type NotificationOperation =
   | "quote_accepted"
@@ -26,7 +27,10 @@ type NotificationPayload = {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private pushNotifications: PushNotificationsService,
+  ) {}
 
   /** Use only for notification side effects after the primary mutation succeeds. */
   async bestEffort(
@@ -59,7 +63,7 @@ export class NotificationsService {
     },
   ) {
     const prisma = this.prisma as any;
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId,
         type: payload.type,
@@ -68,6 +72,14 @@ export class NotificationsService {
         metadata: payload.metadata ?? undefined,
       },
     });
+
+    await this.pushNotifications.notifyUser(userId, {
+      title: payload.title,
+      body: payload.message,
+      data: { type: payload.type, ...payload.metadata },
+    });
+
+    return notification;
   }
 
   async list(userId: string, onlyUnread?: boolean, limit = 100) {

@@ -22,9 +22,10 @@ describe("RequestsService", () => {
       findUnique: jest.fn(),
     },
   };
-  const notificationsService = Object.assign(new NotificationsService(prisma as any), {
-    create: jest.fn(),
-  });
+  const notificationsService = Object.assign(
+    new NotificationsService(prisma as any, {} as any),
+    { create: jest.fn() },
+  );
 
   let service: RequestsService;
 

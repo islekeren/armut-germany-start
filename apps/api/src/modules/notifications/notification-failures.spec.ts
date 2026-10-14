@@ -36,7 +36,9 @@ describe("best-effort mutation notifications", () => {
         .fn()
         .mockImplementation(async (tasks) => Promise.all(tasks)),
     };
-    notifications = new NotificationsService(db);
+    notifications = new NotificationsService(db, {
+      notifyUser: jest.fn().mockResolvedValue(undefined),
+    } as any);
     warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
   });
   afterEach(() => warn.mockRestore());
