@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Linking, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import type { WebViewErrorEvent } from "react-native-webview/lib/WebViewTypes";
+import { WebViewError } from "../../src/components/WebViewError";
 import {
   buildAuthSyncScript,
   getAuthScreenForPath,
@@ -24,6 +26,7 @@ export default function WebScreen() {
   const webViewRef = useRef<WebView>(null);
   const hasBootstrappedAuthRef = useRef(false);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const currentPath =
     getSingleParam(params.path) ||
     getDefaultWebPath(session?.user.userType ?? "customer");
@@ -50,6 +53,10 @@ export default function WebScreen() {
     hasBootstrappedAuthRef.current = false;
     webViewRef.current?.injectJavaScript(authSyncScript);
   }, [authSyncScript]);
+
+  useEffect(() => {
+    setHasLoadError(false);
+  }, [initialUrl]);
 
   useFocusEffect(
     useCallback(() => {
@@ -126,6 +133,16 @@ export default function WebScreen() {
     }
   }
 
+  function handleLoadError(event: WebViewErrorEvent) {
+    if (!event.nativeEvent.canGoBack) {
+      setHasLoadError(true);
+    }
+  }
+
+  function handleRetry() {
+    setHasLoadError(false);
+  }
+
   function handleShouldStartLoad(request: { url: string }) {
     if (!isInternalWebUrl(request.url)) {
       void Linking.openURL(request.url);
@@ -145,6 +162,14 @@ export default function WebScreen() {
     return true;
   }
 
+  if (hasLoadError) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <WebViewError onRetry={handleRetry} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <WebView
@@ -154,6 +179,7 @@ export default function WebScreen() {
         domStorageEnabled
         injectedJavaScriptBeforeContentLoaded={authSyncScript}
         javaScriptEnabled
+        onError={handleLoadError}
         onLoadEnd={syncAuthIntoWebView}
         onMessage={handleMessage}
         onNavigationStateChange={(navigationState) => {
