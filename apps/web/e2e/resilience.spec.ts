@@ -53,10 +53,10 @@ test.describe("API failure handling", () => {
 
   test("an expired session sends the user back to login", async ({ page }) => {
     await page.addInitScript(() => {
-      localStorage.setItem("armut_access_token", "expired.token.value");
-      localStorage.setItem("armut_refresh_token", "expired.refresh.value");
+      localStorage.setItem("machma_access_token", "expired.token.value");
+      localStorage.setItem("machma_refresh_token", "expired.refresh.value");
       localStorage.setItem(
-        "armut_user",
+        "machma_user",
         JSON.stringify({
           id: "gone",
           email: "gone@e2e.test",

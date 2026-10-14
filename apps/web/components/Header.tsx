@@ -186,7 +186,7 @@ export function Header() {
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex items-center justify-between gap-3">
           <Link href={logoHref} className="flex shrink-0 items-center gap-2">
-            <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Elf</span>
+            <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Machma</span>
           </Link>
 
           <nav className="hidden min-w-0 items-center gap-5 md:flex">

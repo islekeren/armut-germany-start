@@ -55,7 +55,7 @@ export default function ProviderDashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const token = localStorage.getItem("armut_access_token");
+        const token = localStorage.getItem("machma_access_token");
         if (token) {
           const [dashboardData, unreadMessagesData, unreadNotificationsData, quoteData] = await Promise.all([
             providerApi.getDashboard(token),
@@ -141,7 +141,7 @@ export default function ProviderDashboard() {
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-xl font-bold text-primary sm:text-2xl">Elf</span>
+              <span className="text-xl font-bold text-primary sm:text-2xl">Machma</span>
               <span className="text-sm text-muted">Pro</span>
             </Link>
             <div className="flex items-center gap-2 sm:gap-4">

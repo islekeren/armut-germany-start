@@ -1,10 +1,10 @@
-# Armut Germany
+# Machma
 
 Audited against the current checkout on September 11, 2026.
 
 ## Overview
 
-This repository is a Turborepo monorepo for an Armut-style services marketplace.
+This repository is a Turborepo monorepo for the Machma services marketplace.
 
 Active application workspaces:
 

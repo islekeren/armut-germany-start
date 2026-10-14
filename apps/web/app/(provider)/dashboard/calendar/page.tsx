@@ -36,7 +36,7 @@ export default function CalendarPage() {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const token = localStorage.getItem("armut_access_token");
+        const token = localStorage.getItem("machma_access_token");
         if (token) {
           const month = currentDate.getMonth() + 1;
           const year = currentDate.getFullYear();

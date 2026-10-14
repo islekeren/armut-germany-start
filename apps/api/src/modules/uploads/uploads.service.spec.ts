@@ -46,7 +46,7 @@ describe("UploadsService", () => {
           S3_REGION: "auto",
           S3_ACCESS_KEY_ID: "ak",
           S3_SECRET_ACCESS_KEY: "sk",
-          S3_BUCKET: "armut-test",
+          S3_BUCKET: "machma-test",
           S3_PRIVATE_BUCKET: privateBucket,
           S3_PUBLIC_URL: publicUrl,
         };
@@ -326,7 +326,7 @@ describe("UploadsService", () => {
     );
     expect(sendSpy).toHaveBeenCalledTimes(1);
     expect(result.url).toBe(
-      `https://armut-test.s3.amazonaws.com/profiles/user-1/${mockUuid}.png`,
+      `https://machma-test.s3.amazonaws.com/profiles/user-1/${mockUuid}.png`,
     );
   });
 });

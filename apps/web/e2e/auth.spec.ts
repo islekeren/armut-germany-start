@@ -133,7 +133,7 @@ test.describe("authentication", () => {
     await page.goto("/my-requests");
     await expect(page).toHaveURL(/\/login/);
     const token = await page.evaluate(() =>
-      localStorage.getItem("armut_access_token"),
+      localStorage.getItem("machma_access_token"),
     );
     expect(token).toBeNull();
   });
