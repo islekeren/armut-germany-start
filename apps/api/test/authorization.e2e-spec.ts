@@ -77,6 +77,8 @@ const PROTECTED_ROUTES: Route[] = [
   ["post", "/api/uploads/request"],
   ["post", "/api/uploads/message"],
   ["post", "/api/uploads/presigned"],
+  ["post", "/api/uploads/finalize"],
+  ["get", "/api/uploads/read/some-key"],
   ["delete", "/api/uploads/some-key"],
   ["get", "/api/users/profile"],
   ["put", "/api/users/profile"],

@@ -195,3 +195,7 @@ Repo-specific note:
 4. Run Prisma generate, migrate, and seed in `apps/api`
 5. Start the repo with `npm run dev`
 6. Verify `http://localhost:3000` and `http://localhost:4000/api/docs`
+
+### Private uploads
+
+`S3_PRIVATE_BUCKET` must be separate from the public bucket and deny anonymous access. Missing configuration disables private uploads and all presigned uploads. See [UPLOAD_SECURITY.md](./UPLOAD_SECURITY.md) for lifecycle, legacy-object migration, quota and client contract requirements. Apply the UploadAsset migration before rolling out this code.
