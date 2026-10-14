@@ -27,11 +27,6 @@ describe("BookingsService", () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
-    review: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-    },
     conversation: {
       findFirst: jest.fn(),
       create: jest.fn(),
@@ -482,122 +477,6 @@ describe("BookingsService", () => {
         id: "b1",
         status: "pending",
       });
-    });
-  });
-
-  describe("createReview", () => {
-    it("validates booking state and updates provider rating", async () => {
-      prisma.booking.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: "b1",
-          customerId: "other",
-          status: "completed",
-          providerId: "p1",
-          provider: { userId: "provider-user" },
-          review: null,
-        })
-        .mockResolvedValueOnce({
-          id: "b1",
-          customerId: "customer-1",
-          status: "confirmed",
-          providerId: "p1",
-          provider: { userId: "provider-user" },
-          review: null,
-        })
-        .mockResolvedValueOnce({
-          id: "b1",
-          customerId: "customer-1",
-          status: "completed",
-          providerId: "p1",
-          provider: { userId: "provider-user" },
-          review: { id: "r-existing" },
-        })
-        .mockResolvedValueOnce({
-          id: "b1",
-          customerId: "customer-1",
-          status: "completed",
-          providerId: "p1",
-          provider: { userId: "provider-user" },
-          review: null,
-        });
-      prisma.review.create.mockResolvedValue({ id: "r1", rating: 5 });
-      prisma.review.findMany.mockResolvedValue([{ rating: 4 }, { rating: 5 }]);
-      prisma.provider.update.mockResolvedValue({ id: "p1", ratingAvg: 4.5 });
-
-      await expect(
-        service.createReview("b1", "customer-1", {
-          rating: 5,
-          comment: "Great",
-        } as any),
-      ).rejects.toThrow(NotFoundException);
-      await expect(
-        service.createReview("b1", "customer-1", {
-          rating: 5,
-          comment: "Great",
-        } as any),
-      ).rejects.toThrow(ForbiddenException);
-      await expect(
-        service.createReview("b1", "customer-1", {
-          rating: 5,
-          comment: "Great",
-        } as any),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.createReview("b1", "customer-1", {
-          rating: 5,
-          comment: "Great",
-        } as any),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.createReview("b1", "customer-1", {
-          rating: 5,
-          comment: "Great",
-        } as any),
-      ).resolves.toEqual({ id: "r1", rating: 5 });
-      expect(prisma.provider.update).toHaveBeenCalledWith({
-        where: { id: "p1" },
-        data: { ratingAvg: 4.5, totalReviews: 2 },
-      });
-    });
-  });
-
-  describe("addProviderReply", () => {
-    it("validates provider ownership and review presence", async () => {
-      prisma.booking.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: "b1",
-          provider: { userId: "other-provider" },
-          review: { id: "r1" },
-        })
-        .mockResolvedValueOnce({
-          id: "b1",
-          provider: { userId: "provider-user" },
-          review: null,
-        })
-        .mockResolvedValueOnce({
-          id: "b1",
-          provider: { userId: "provider-user" },
-          review: { id: "r1" },
-        });
-      prisma.review.update.mockResolvedValue({
-        id: "r1",
-        providerReply: "Thanks",
-      });
-
-      await expect(
-        service.addProviderReply("b1", "provider-user", "Thanks"),
-      ).rejects.toThrow(NotFoundException);
-      await expect(
-        service.addProviderReply("b1", "provider-user", "Thanks"),
-      ).rejects.toThrow(ForbiddenException);
-      await expect(
-        service.addProviderReply("b1", "provider-user", "Thanks"),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.addProviderReply("b1", "provider-user", "Thanks"),
-      ).resolves.toEqual({ id: "r1", providerReply: "Thanks" });
     });
   });
 

@@ -14,8 +14,6 @@ describe("ProvidersController", () => {
     getDashboard: jest.fn(),
     getRequests: jest.fn(),
     getBookings: jest.fn(),
-    getReviews: jest.fn(),
-    replyToReview: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
     approve: jest.fn(),
@@ -84,30 +82,6 @@ describe("ProvidersController", () => {
       data: [],
     });
     expect(providersService.getBookings).toHaveBeenCalledWith("u1", query);
-  });
-
-  it("gets own reviews", async () => {
-    const req = { user: { id: "u1" } };
-    const query: any = { limit: 10 };
-    providersService.getReviews.mockResolvedValue({ data: [] });
-    await expect(controller.getMyReviews(req, query)).resolves.toEqual({
-      data: [],
-    });
-    expect(providersService.getReviews).toHaveBeenCalledWith("u1", query);
-  });
-
-  it("replies to review", async () => {
-    const req = { user: { id: "u1" } };
-    providersService.replyToReview.mockResolvedValue({ success: true });
-    await expect(
-      controller.replyToReview(req, "rev1", { reply: "Thanks!" } as any),
-    ).resolves.toEqual({ success: true });
-    expect(providersService.replyToReview).toHaveBeenCalledWith(
-      "u1",
-      "rev1",
-      "Thanks!",
-      undefined,
-    );
   });
 
   it("gets provider by id", async () => {

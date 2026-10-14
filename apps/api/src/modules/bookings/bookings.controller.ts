@@ -14,8 +14,6 @@ import { BookingsService } from "./bookings.service";
 import {
   CreateBookingDto,
   UpdateBookingDto,
-  CreateReviewDto,
-  ProviderReplyDto,
   BookingQueryDto,
   RescheduleBookingDto,
 } from "./dto/booking.dto";
@@ -82,31 +80,6 @@ export class BookingsController {
       id,
       req.user.id,
       rescheduleDto.scheduledDate,
-    );
-  }
-
-  @Post(":id/review")
-  @UseGuards(JwtAuthGuard)
-  createReview(
-    @Param("id") id: string,
-    @Req() req: any,
-    @Body() createReviewDto: CreateReviewDto
-  ) {
-    return this.bookingsService.createReview(id, req.user.id, createReviewDto);
-  }
-
-  @Post(":id/reply")
-  @UseGuards(JwtAuthGuard)
-  addProviderReply(
-    @Param("id") id: string,
-    @Req() req: any,
-    @Body() replyDto: ProviderReplyDto
-  ) {
-    return this.bookingsService.addProviderReply(
-      id,
-      req.user.id,
-      replyDto.reply,
-      replyDto.replyImages,
     );
   }
 }

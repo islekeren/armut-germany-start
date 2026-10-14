@@ -19,8 +19,6 @@ import {
   ProviderQueryDto,
   ProviderRequestsQueryDto,
   ProviderBookingsQueryDto,
-  ProviderReviewsQueryDto,
-  ReplyToReviewDto,
 } from "./dto/provider.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "../admin/admin.guard";
@@ -74,27 +72,6 @@ export class ProvidersController {
   @UseGuards(JwtAuthGuard)
   getMyBookings(@Req() req: any, @Query() query: ProviderBookingsQueryDto) {
     return this.providersService.getBookings(req.user.id, query);
-  }
-
-  @Get("me/reviews")
-  @UseGuards(JwtAuthGuard)
-  getMyReviews(@Req() req: any, @Query() query: ProviderReviewsQueryDto) {
-    return this.providersService.getReviews(req.user.id, query);
-  }
-
-  @Post("me/reviews/:reviewId/reply")
-  @UseGuards(JwtAuthGuard)
-  replyToReview(
-    @Req() req: any,
-    @Param("reviewId") reviewId: string,
-    @Body() body: ReplyToReviewDto,
-  ) {
-    return this.providersService.replyToReview(
-      req.user.id,
-      reviewId,
-      body.reply,
-      body.replyImages,
-    );
   }
 
   @Put("me/profile")

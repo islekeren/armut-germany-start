@@ -9,8 +9,6 @@ describe("BookingsController", () => {
     findOne: jest.fn(),
     updateStatus: jest.fn(),
     reschedule: jest.fn(),
-    createReview: jest.fn(),
-    addProviderReply: jest.fn(),
   };
 
   let controller: BookingsController;
@@ -100,30 +98,6 @@ describe("BookingsController", () => {
       "b1",
       "u1",
       "2026-02-24T12:00:00.000Z",
-    );
-  });
-
-  it("creates booking review", async () => {
-    const req = { user: { id: "u1" } };
-    const dto: any = { rating: 5, comment: "Great" };
-    bookingsService.createReview.mockResolvedValue({ id: "rev1" });
-    await expect(controller.createReview("b1", req, dto)).resolves.toEqual({
-      id: "rev1",
-    });
-    expect(bookingsService.createReview).toHaveBeenCalledWith("b1", "u1", dto);
-  });
-
-  it("adds provider reply", async () => {
-    const req = { user: { id: "u1" } };
-    bookingsService.addProviderReply.mockResolvedValue({ id: "rev1" });
-    await expect(
-      controller.addProviderReply("b1", req, { reply: "Thanks" } as any),
-    ).resolves.toEqual({ id: "rev1" });
-    expect(bookingsService.addProviderReply).toHaveBeenCalledWith(
-      "b1",
-      "u1",
-      "Thanks",
-      undefined,
     );
   });
 });

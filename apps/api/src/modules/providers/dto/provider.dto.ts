@@ -342,26 +342,3 @@ export class ProviderBookingsQueryDto {
   status?: string;
 }
 
-export class ProviderReviewsQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  limit?: number;
-}
-
-export class ReplyToReviewDto {
-  @IsString()
-  reply: string;
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  replyImages?: string[];
-}

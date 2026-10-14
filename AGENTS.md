@@ -154,7 +154,7 @@ Do not opportunistically fix these unless the task requires it:
 - dormant `apps/mobile` scaffolding
 - root Expo-based `tsconfig.json`
 - remaining API lint warnings
-- placeholder `ServicesModule` and `ReviewsModule`
+- placeholder `ServicesModule`
 - placeholder provider `services` and `finances` pages
 - placeholder deploy jobs in GitHub Actions
 

@@ -86,7 +86,6 @@ Environment caveat:
 ## Known Gaps
 
 - `ServicesModule` is still an empty shell
-- `ReviewsModule` is still an empty shell
 - a `Payment` model exists in Prisma, but no payments module was found
 - upload env names in `.env.example` match the names expected by `UploadsService`
 

@@ -8,7 +8,6 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import {
   CreateBookingDto,
   UpdateBookingDto,
-  CreateReviewDto,
   BookingQueryDto,
 } from "./dto/booking.dto";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -19,14 +18,6 @@ export class BookingsService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
   ) {}
-
-  private sanitizeImages(images?: string[]) {
-    if (!images?.length) return [];
-    return images
-      .map((image) => image.trim())
-      .filter(Boolean)
-      .slice(0, 10);
-  }
 
   private async notifyCustomerCompletionRequested(booking: {
     customerId: string;
@@ -661,100 +652,6 @@ export class BookingsService {
       data: {
         scheduledDate: new Date(scheduledDate),
         status: "pending", // Needs re-confirmation
-      },
-    });
-  }
-
-  async createReview(
-    bookingId: string,
-    userId: string,
-    createReviewDto: CreateReviewDto,
-  ) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: {
-        provider: true,
-        review: true,
-      },
-    });
-
-    if (!booking) {
-      throw new NotFoundException("Booking not found");
-    }
-
-    if (booking.customerId !== userId) {
-      throw new ForbiddenException("Only customer can review");
-    }
-
-    if (booking.status !== "completed") {
-      throw new BadRequestException("Can only review completed bookings");
-    }
-
-    if (booking.review) {
-      throw new BadRequestException("Review already exists");
-    }
-
-    const review = await this.prisma.review.create({
-      data: {
-        bookingId,
-        reviewerId: userId,
-        revieweeId: booking.provider.userId,
-        rating: createReviewDto.rating,
-        comment: createReviewDto.comment,
-        images: this.sanitizeImages(createReviewDto.images),
-      },
-    });
-
-    // Update provider rating
-    const reviews = await this.prisma.review.findMany({
-      where: { revieweeId: booking.provider.userId },
-    });
-
-    const avgRating =
-      reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-
-    await this.prisma.provider.update({
-      where: { id: booking.providerId },
-      data: {
-        ratingAvg: avgRating,
-        totalReviews: reviews.length,
-      },
-    });
-
-    return review;
-  }
-
-  async addProviderReply(
-    bookingId: string,
-    userId: string,
-    reply: string,
-    replyImages?: string[],
-  ) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: {
-        provider: true,
-        review: true,
-      },
-    });
-
-    if (!booking) {
-      throw new NotFoundException("Booking not found");
-    }
-
-    if (booking.provider.userId !== userId) {
-      throw new ForbiddenException("Only provider can reply");
-    }
-
-    if (!booking.review) {
-      throw new BadRequestException("No review to reply to");
-    }
-
-    return this.prisma.review.update({
-      where: { id: booking.review.id },
-      data: {
-        providerReply: reply,
-        providerReplyImages: this.sanitizeImages(replyImages),
       },
     });
   }
