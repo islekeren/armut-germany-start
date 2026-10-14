@@ -1504,7 +1504,7 @@ export const uploadsApi = {
     token: string,
     data: { folder: UploadFolder; filename: string; contentType: string },
   ) =>
-    apiRequest<{ uploadUrl: string; key: string; publicUrl: string }>(
+    apiRequest<{ uploadUrl: string; key: string; expiresIn: number }>(
       "/uploads/presigned",
       {
         method: "POST",
@@ -1512,6 +1512,17 @@ export const uploadsApi = {
         token,
       },
     ),
+
+  // Private uploads return keys; resolve a short-lived URL only when opening.
+  getPrivateReadUrl: (token: string, key: string) =>
+    apiRequest<{ url: string; expiresIn: number }>(
+      `/uploads/read/${encodeURIComponent(key)}`, { token },
+    ),
+
+  finalizeUpload: (token: string, key: string) =>
+    apiRequest<UploadResult>("/uploads/finalize", {
+      method: "POST", body: JSON.stringify({ key }), token,
+    }),
 
   deleteFile: (token: string, key: string) =>
     apiRequest<{ success: boolean }>(`/uploads/${encodeURIComponent(key)}`, {

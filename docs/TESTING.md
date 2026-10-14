@@ -254,3 +254,7 @@ When you finish a task, report validation in two parts:
 Run `node --test scripts/verify-release.test.mjs scripts/mirror-deployment.test.mjs` for 11 checks using real temporary Git remotes and HTTP servers: exact release commits, DB readiness, deadlines, credential-free URLs, stale main runs, divergence and non-force mirror pushes. CI runs these before lint. The current production-build browser smoke run passes all 10 tagged tests.
 
 API observability regressions cover correlation IDs, safe route-template logs, failed database readiness, sanitized startup/runtime errors, telemetry validation/rate limits and CORS headers. Web tests cover request/refresh/retry correlation, safe best-effort telemetry, deduplication, SSR logs and route-boundary retry behavior. Hosting dashboard settings and live production smoke checks are separate from local tests.
+
+### Upload security regressions
+
+`npm run test:unit --workspace=api -- --runInBand uploads upload-content upload-references` covers content parsing/re-encoding, private authorization, bounded reads and Multer ingestion limits. `npm run test:e2e --workspace=api -- uploads authorization` adds PostgreSQL/S3 mock finalization, replay and concurrent quota checks. The mock does not prove real bucket ACLs or expiry; see [UPLOAD_SECURITY.md](./UPLOAD_SECURITY.md) for deployment checks.
