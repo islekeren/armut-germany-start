@@ -33,7 +33,8 @@ Do not overwrite unrelated user changes.
 - `authorization.e2e-spec.ts` fails when a new controller route is not added to its route tables; that is intentional
 - web `lint` and `build` pass
 - web `check-types` generates Next.js route types before running TypeScript and passes in the audited checkout
-- `apps/mobile` is not an active npm workspace even though the folder exists
+- `apps/mobile` is a real npm workspace (Expo Router, WebView-wrapping `apps/web`); `lint` and `check-types` pass, there is no `build`/`test` script yet
+- mobile work lives on `claude/zen-gauss-tazw97`; confirm what has actually landed on `main` before assuming any of it is released
 
 ## What To Read First By Task Type
 
@@ -76,6 +77,17 @@ Read:
 - `apps/web/components/messages/MessagesWorkspace.tsx`
 - relevant pages in `apps/web/app/.../messages/...`
 - `apps/web/app/notifications/page.tsx`
+- if the change touches push: `apps/api/src/modules/notifications/push-notifications.service.ts` and `apps/mobile/src/lib/push.ts`/`routing.ts#resolveNotificationPath` (kept in sync by hand, not by a shared type)
+
+### Mobile task
+
+Read:
+
+- `apps/mobile/app/(app)/web.tsx` (the WebView screen) and `apps/mobile/app/(auth)/*` (native auth)
+- `apps/mobile/src/providers/SessionProvider.tsx`
+- `apps/mobile/src/lib/routing.ts` and `src/lib/api.ts`
+- `apps/web/lib/native-bridge.ts` and `apps/web/components/NativeWebViewBridge.tsx` if the task touches the auth bridge, since it is two-sided
+- `apps/mobile/app.json`/`eas.json` if the task touches build config, credentials, or env
 
 ## Planning Rules
 
@@ -105,15 +117,18 @@ Treat these areas as high-risk:
 - `apps/api/src/modules/messages/*`
 - `apps/api/src/modules/uploads/*`
 - `apps/api/src/modules/notifications/*`
+- `apps/mobile/src/providers/SessionProvider.tsx` and `apps/mobile/app/(app)/web.tsx`: the native/WebView auth bridge
+- `apps/web/contexts/AuthContext.tsx`: also drives the mobile auth bridge now (`apps/web/lib/native-bridge.ts`); a token-storage key or event-shape change there breaks mobile sign-in silently unless the mobile side changes too
 
 ## Assumptions You Must Not Silently Change
 
 - accepted quotes still require a separate booking-creation step
 - API routes live under `/api`
-- auth tokens are stored in browser `localStorage`
-- the frontend messaging UI is not fully socket-driven yet
+- auth tokens are stored in browser `localStorage` (web) or `expo-secure-store` (mobile), never shared storage between the two
+- the frontend messaging UI is not fully socket-driven yet, and new messages do not yet trigger a mobile push
 - uploads are meant for S3-compatible storage, and the example credential names now match `UploadsService`
 - the repo does not encode a real production deployment topology
+- `apps/mobile` is a WebView wrapper, not a native rewrite — the ARM-30 native-vs-WebView decision is made; do not restart that debate or build native screens for flows the WebView already covers
 
 If your task changes any of those, call it out explicitly.
 
@@ -130,6 +145,7 @@ Default guidance:
 - routing or bootstrap change in API: add `npm run test:e2e -- --watchman=false`
 - user-facing flow change: add `cd apps/web && npm run test:e2e:smoke` (or the full `npm run test:e2e`)
 - e2e suites need `npm run test:e2e:services:up && npm run test:e2e:setup` first
+- mobile-only: `cd apps/mobile && npm run lint && npm run check-types` (no `build`/`test` script; push notification changes need an EAS development build to verify, not Expo Go)
 - cross-cutting change: `npm run lint && npm run build && npm run check-types`
 
 Environment caveat:
@@ -146,17 +162,18 @@ Stop and ask when:
 - a schema change requires guessing business rules
 - deployment behavior needs to change beyond the placeholder CI jobs
 - the repo and outside-of-repo deployment reality disagree
+- the mobile app's name, icon, bundle identifier, or store listing needs deciding (`app.json` currently says "Workify Germany" while the rest of the repo says "Armut Germany")
 
 ## When To Avoid Cleanup
 
 Do not opportunistically fix these unless the task requires it:
 
-- dormant `apps/mobile` scaffolding
-- root Expo-based `tsconfig.json`
+- root Expo-based `tsconfig.json` (redundant now that `apps/mobile` has its own, but harmless)
 - remaining API lint warnings
 - placeholder `ServicesModule` and `ReviewsModule`
 - placeholder provider `services` and `finances` pages
 - placeholder deploy jobs in GitHub Actions
+- the mobile app's missing icon/splash, store credentials, and app name decision — these need a human choice, not opportunistic code cleanup
 
 ## Reporting Template
 

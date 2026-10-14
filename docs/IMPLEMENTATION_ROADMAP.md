@@ -92,9 +92,16 @@ Each item should add focused regression coverage before moving to the next share
 
 ## Phase 7: Mobile Direction
 
-1. **ARM-30:** decide native versus WebView only after the beta web flows and APIs are stable. Record the decision, migration cost, ownership, and supported feature boundary before reviving `apps/mobile`.
+**ARM-30 is decided:** WebView, not native. `apps/mobile` (on `claude/zen-gauss-tazw97`) is a thin Expo Router shell — native login/register and session storage, a `WebView` around `apps/web` for everything else, a two-way auth bridge (`apps/web/lib/native-bridge.ts` ↔ `apps/mobile/src/providers/SessionProvider.tsx`), Expo push notifications for quote/booking/request events, and a native offline/connection-error screen. Supported feature boundary: anything already on `apps/web` is available through the WebView for free; native code is limited to auth, push, and session handoff.
 
-Mobile scaffolding should not distract from production web reliability.
+Remaining before release:
+
+1. App icon/splash and a final app name decision (`app.json` currently says "Workify Germany").
+2. EAS submit credentials (App Store Connect / Play Console) and push credentials (APNs key, FCM project) — without these, push notifications will not deliver from a production/EAS build.
+3. Universal Links/App Links, so a Stripe Checkout/Connect redirect returns to the app instead of leaving the user in the system browser. Not urgent before payments (ARM-33) ships.
+4. Push for new chat messages — messaging bypasses `NotificationsService` via its own Socket.IO gateway, so this needs its own design, not just a hook into the existing push fan-out.
+
+None of this should distract from production web reliability (Phases 1-3), but it no longer needs a decision — it needs the above execution.
 
 ## Issue Hygiene
 

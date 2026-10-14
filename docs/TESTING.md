@@ -120,7 +120,11 @@ Root and API lint now exit successfully. API lint still reports 9 warnings in ca
 
 ### Root Expo TypeScript configuration warning
 
-The root `tsconfig.json` still extends `expo/tsconfig.base` even though `apps/mobile` is not an active npm workspace. Unit tests pass, but tooling can emit a warning while loading the root config. Treat that as known scaffolding debt, not a failed test.
+The root `tsconfig.json` still extends `expo/tsconfig.base`, duplicating what `apps/mobile`'s own `tsconfig.json` already does; nothing actually reads the root one. Unit tests pass, but tooling can emit a warning while loading the root config. Treat that as harmless redundancy, not a failed test.
+
+### Mobile validation
+
+`apps/mobile` has no `test` or `build` script. `cd apps/mobile && npm run lint && npm run check-types` is the full automated check; both pass as of this audit. There is no e2e/Playwright coverage for the mobile app yet. Manual verification of push notifications needs an EAS development build — Expo Go has not supported remote push since SDK 53.
 
 ### Web generated types
 

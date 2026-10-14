@@ -63,6 +63,7 @@ cp apps/api/.env.example apps/api/.env
 | `STRIPE_CHECKOUT_SUCCESS_URL` | Required for payments in the feature branch | must contain `{bookingId}`                                                                |
 | `STRIPE_CHECKOUT_CANCEL_URL`  | Required for payments in the feature branch | must contain `{bookingId}`                                                                |
 | `PLATFORM_COMMISSION_RATE`    | Optional for payments in the feature branch | defaults to `0.15`; must be between 0 and 1                                               |
+| `EXPO_ACCESS_TOKEN`           | Optional                                    | authenticates outbound calls to Expo's push API; requests send unauthenticated without it |
 
 Authentication configuration is validated before the API starts. Both JWT secrets are required in every environment and must have no surrounding whitespace. Unless `NODE_ENV` is explicitly `development` or `test`, the secrets must differ and each must be at least 32 characters; common placeholder prefixes and repeated-character values are rejected. Generate independent random secrets and store them in the hosting secret manager. There are no built-in fallback secrets.
 
@@ -136,21 +137,35 @@ Observed behavior:
 
 The current web `check-types` command runs `next typegen` before `tsc --noEmit`, and it passes in this checkout. If a fresh checkout reports missing `.next/types` files, inspect stale generated state and preserve the exact error rather than assuming that build-first is an architectural requirement.
 
-## Mobile Stub
+## Mobile Environment
 
-Observed in the repo:
+Expected local file:
 
 - `apps/mobile/.env`
-- `apps/mobile/.expo`
-- `apps/mobile/expo-env.d.ts`
 
-Important:
+Bootstrap from:
 
-- there is no `apps/mobile/package.json`
-- the mobile folder is not an active npm workspace
-- there is no mobile `.env.example`
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
 
-Treat `apps/mobile` as dormant scaffolding unless the workspace is formalized.
+### Mobile variables
+
+| Variable                | Status      | Notes                                                                      |
+| ------------------------ | ----------- | --------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL`    | Recommended | API origin the native screens and the WebView's auth bridge call directly         |
+| `EXPO_PUBLIC_WEB_URL`    | Recommended | the web app the `(app)/web` screen's WebView loads                                |
+
+Recommended local values:
+
+```bash
+EXPO_PUBLIC_API_URL="http://localhost:4000"
+EXPO_PUBLIC_WEB_URL="http://localhost:3000"
+```
+
+EAS build profiles (`apps/mobile/eas.json`) hardcode the preview/production values of both variables to the Railway API and the current Vercel preview web URL; update those if either hosting target changes.
+
+Not yet configured: EAS submit credentials (App Store Connect / Play Console), push credentials (an APNs key and FCM project) needed for `expo-notifications` to deliver in a production/EAS build, and an app icon/splash.
 
 ## Database Setup
 
@@ -185,7 +200,7 @@ Observed in `apps/api/src/app.setup.ts`:
 
 Repo-specific note:
 
-- `8081` appears to be a leftover mobile-oriented default even though the mobile workspace is dormant
+- `8081` is the default Metro bundler port Expo uses for its own dev server, not an API origin; it is unrelated to `apps/mobile` actually reaching the API (that goes through `EXPO_PUBLIC_API_URL`, not CORS, since native `fetch` calls do not send an `Origin` header)
 
 ## Setup Checklist
 
@@ -195,3 +210,4 @@ Repo-specific note:
 4. Run Prisma generate, migrate, and seed in `apps/api`
 5. Start the repo with `npm run dev`
 6. Verify `http://localhost:3000` and `http://localhost:4000/api/docs`
+7. Optional, mobile: copy `apps/mobile/.env.example` to `apps/mobile/.env`, then `npm run dev:mobile` from the repo root (Expo Go cannot receive push notifications since SDK 53; use an EAS development build to test that part)

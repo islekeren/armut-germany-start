@@ -10,6 +10,7 @@ Active application workspaces:
 
 - `apps/web`: Next.js 16 App Router frontend for public, customer, and provider flows
 - `apps/api`: NestJS 11 backend with Prisma, JWT auth, uploads, messaging, bookings, quotes, and notifications
+- `apps/mobile`: Expo Router mobile client; native login/register plus a WebView wrapping `apps/web`, with a two-way auth bridge and push notifications
 
 Supporting packages:
 
@@ -17,9 +18,14 @@ Supporting packages:
 - `packages/ui`: small component package scaffold; no direct app imports were found during this audit
 - `packages/eslint-config`, `packages/typescript-config`: shared tooling config
 
-Dormant workspace state:
+Mobile workspace state:
 
-- `apps/mobile` contains Expo leftovers (`.expo`, `.env`, `expo-env.d.ts`) but no `package.json`, so it is not an active npm workspace
+- `apps/mobile` is a real npm workspace (it has its own `package.json`) and passes `lint` and `check-types`
+- the WebView-vs-native direction has been chosen: a thin native shell (auth screens, push, session bridge) around the same web app, not a full native rewrite
+- still missing before store submission: app icon/splash, a final decision on the app name (`app.json` currently says "Workify Germany" while the rest of the repo says "Armut Germany"), and EAS build/submit credentials (Apple/Google developer accounts, APNs/FCM push credentials)
+- push notifications only cover quote/booking/request events today; new chat messages do not yet trigger a push (messaging uses its own Socket.IO gateway, not `NotificationsService`)
+- Stripe Checkout/Connect return URLs are not yet wired to Universal Links/App Links, so a payment redirect currently drops the user into the system browser instead of back into the app — not urgent while payments are still on the unmerged `codex/stripe-connect-payments` branch
+- `apps/mobile` was developed on `claude/zen-gauss-tazw97`; see that branch/PR for the current state before assuming anything below is merged into `main`
 
 ## Current Validation Snapshot
 
@@ -107,9 +113,9 @@ npm run db:migrate
 
 Important repo-specific notes:
 
-- `npm run dev` targets `web` and `api`
-- `npm run dev:all` currently resolves to the same active workspaces because there is no mobile npm workspace
-- `npm run dev:mobile` is stale until `apps/mobile` becomes a real workspace
+- `npm run dev` targets `web` and `api` only; it does not start the mobile app
+- `npm run dev:all` now also starts `apps/mobile` (`expo start`) alongside web and api, since mobile is a real workspace
+- `npm run dev:mobile` starts just the Expo dev server; set `EXPO_PUBLIC_API_URL`/`EXPO_PUBLIC_WEB_URL` first (see `apps/mobile/.env.example`)
 
 ## Seeded Accounts
 
@@ -162,6 +168,8 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - `apps/api/src/modules`: NestJS controllers and services by domain
 - `apps/api/prisma/schema.prisma`: database schema
 - `apps/api/prisma/seed.ts`: development seed data
+- `apps/mobile/app`: Expo Router native auth screens and the WebView screen
+- `apps/mobile/src/lib/routing.ts`: web URL helpers, the native/WebView auth-sync script, and push-notification deep-link resolution
 - `docker-compose.yml`: local Postgres and Redis only
 - `.github/workflows/ci.yml`: validation on `main` and `develop`
 - `.github/workflows/mirror-deployment.yml`: fast-forward compatibility mirror after successful main CI
@@ -180,7 +188,7 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - The payment feature branch uses separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
 - The Stripe payment work is synchronized with `origin/main` in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), but it is not released and remains blocked by payment-safety work.
 - `ServicesModule` and `ReviewsModule` are still empty backend shells.
-- Notifications are now a real API module and frontend page.
+- Notifications are now a real API module and frontend page, and also fan out as Expo push notifications to the mobile app (quote/booking/request events only, not yet new chat messages).
 
 ## Documentation Index
 
@@ -197,10 +205,11 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 - [IMPLEMENTATION_ROADMAP.md](./docs/IMPLEMENTATION_ROADMAP.md): ordered Linear implementation sequence and release gates
 - [apps/web/README.md](./apps/web/README.md): frontend-specific guide
 - [apps/api/README.md](./apps/api/README.md): backend-specific guide
+- [apps/mobile/README.md](./apps/mobile/README.md): mobile-specific guide
 
 ## Known Repository Quirks
 
-- The root `tsconfig.json` still extends Expo config even though there is no active mobile workspace.
+- The root `tsconfig.json` still extends Expo config, but nothing reads it: `apps/mobile` has its own `tsconfig.json` with the same `extends`. Harmless, but worth removing if it causes confusion.
 - API lint currently passes with 9 warnings rather than a warning-free baseline.
 - `apps/web` generates Next.js types before type-checking, but stale generated state can still make fresh-checkout failures worth investigating build-first.
 - The upload env names now match between `apps/api/.env.example` and `UploadsService`.
