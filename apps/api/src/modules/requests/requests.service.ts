@@ -550,6 +550,7 @@ export class RequestsService {
       where: { id: providerId },
       include: {
         services: {
+          where: { isActive: true },
           select: { categoryId: true },
         },
       },

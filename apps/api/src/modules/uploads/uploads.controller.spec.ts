@@ -123,7 +123,7 @@ describe("UploadsController", () => {
     uploadsService.getPresignedUploadUrl.mockResolvedValue({
       uploadUrl: "https://upload",
       key: "k5",
-      publicUrl: "https://public/k5",
+      expiresIn: 600,
     });
 
     await expect(
@@ -138,7 +138,7 @@ describe("UploadsController", () => {
     ).resolves.toEqual({
       uploadUrl: "https://upload",
       key: "k5",
-      publicUrl: "https://public/k5",
+      expiresIn: 600,
     });
     expect(uploadsService.getPresignedUploadUrl).toHaveBeenCalledWith(
       UploadFolder.DOCUMENTS,

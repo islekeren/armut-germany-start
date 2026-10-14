@@ -43,9 +43,28 @@ model User {
   conversations      ConversationParticipant[]
   notifications      Notification[]
   pushTokens         PushToken[]
+  uploads            UploadAsset[]
 
   @@index([email])
   @@index([userType])
+}
+
+// Object ownership and upload allowances. Account-deletion cleanup is separate.
+model UploadAsset {
+  id         String   @id
+  ownerId    String
+  folder     String
+  key        String   @unique
+  status     String   @default("pending")
+  size       Int
+  mimetype   String
+  filename   String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  owner      User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt])
+  @@index([status, expiresAt])
 }
 
 // ==================== PROVIDERS ====================

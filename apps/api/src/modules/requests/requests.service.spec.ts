@@ -605,6 +605,16 @@ describe("RequestsService", () => {
           }),
         }),
       );
+      expect(prisma.provider.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            services: {
+              where: { isActive: true },
+              select: { categoryId: true },
+            },
+          },
+        }),
+      );
       expect(result.data.map((request) => request.id)).toEqual(["near"]);
       expect(result.data[0]).not.toHaveProperty("lat");
       expect(result).toEqual({

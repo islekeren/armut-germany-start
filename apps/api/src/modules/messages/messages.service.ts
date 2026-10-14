@@ -1,3 +1,5 @@
+import { assertOwnedUploads } from "../uploads/upload-references";
+import { UploadFolder } from "../uploads/upload-policy";
 import {
   BadRequestException,
   Injectable,
@@ -266,6 +268,8 @@ export class MessagesService {
     if (!isParticipant) {
       throw new ForbiddenException("Not a participant of this conversation");
     }
+
+    await assertOwnedUploads(this.prisma, userId, dto.attachments, UploadFolder.MESSAGES);
 
     // Create message and update conversation
     const [message] = await this.prisma.$transaction([

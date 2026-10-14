@@ -7,6 +7,7 @@ process.env.DATABASE_URL ||=
 process.env.S3_ENDPOINT ||= "http://127.0.0.1:9190";
 process.env.S3_REGION ||= "us-east-1";
 process.env.S3_BUCKET ||= "armut-e2e-uploads";
+process.env.S3_PRIVATE_BUCKET ||= "armut-e2e-private";
 process.env.S3_ACCESS_KEY_ID ||= "e2e-access-key";
 process.env.S3_SECRET_ACCESS_KEY ||= "e2e-secret-key";
 process.env.S3_FORCE_PATH_STYLE ||= "true";
