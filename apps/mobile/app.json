@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Workify Germany",
+    "slug": "workify-germany-mobile",
+    "scheme": "workify-germany",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android", "web"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.workify.germany.mobile.pro",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.workify.germany.mobile.pro"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ebc2df01-d43e-44fe-ae97-bf91e45a96d4"
+      }
+    },
+    "owner": "islekeren"
+  }
+}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale, getTranslations } from 'next-intl/server';
 import { AuthProvider } from "@/contexts";
+import { NativeWebViewBridge } from "@/components/NativeWebViewBridge";
 
 const outfit = localFont({
   src: "./fonts/OutfitVariable.ttf",
@@ -56,6 +57,7 @@ export default async function RootLayout({
       >
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
+            <NativeWebViewBridge />
             {children}
           </AuthProvider>
         </NextIntlClientProvider>

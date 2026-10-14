@@ -64,6 +64,12 @@ export default function ProviderOnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const onboardingMode = searchParams.get("mode");
+  const isCompletingExistingProvider = onboardingMode === "complete-profile";
+  const shouldSkipAccountCreation =
+    isCompletingExistingProvider &&
+    isAuthenticated &&
+    user?.userType === "provider";
 
   const [formData, setFormData] = useState<ProviderOnboardingData>({
     categories: [],
@@ -157,16 +163,21 @@ export default function ProviderOnboardingPage() {
     const firstName = searchParams.get("firstName");
     const lastName = searchParams.get("lastName");
     const email = searchParams.get("email");
+    const phone = shouldSkipAccountCreation ? user?.phone ?? "" : "";
 
-    if (firstName || lastName || email) {
+    if (firstName || lastName || email || shouldSkipAccountCreation) {
       setFormData((prev) => ({
         ...prev,
-        firstName: firstName ?? prev.firstName,
-        lastName: lastName ?? prev.lastName,
-        email: email ?? prev.email,
+        firstName:
+          firstName ?? (shouldSkipAccountCreation ? user?.firstName : undefined) ?? prev.firstName,
+        lastName:
+          lastName ?? (shouldSkipAccountCreation ? user?.lastName : undefined) ?? prev.lastName,
+        email:
+          email ?? (shouldSkipAccountCreation ? user?.email : undefined) ?? prev.email,
+        phone: phone || prev.phone,
       }));
     }
-  }, [searchParams]);
+  }, [searchParams, shouldSkipAccountCreation, user]);
 
   const progressPercent = Math.round(((currentStep + 1) / steps.length) * 100);
   const normalizedSearch = serviceSearch.trim().toLowerCase();
