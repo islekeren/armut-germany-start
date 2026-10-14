@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertBanner, Header, MessagesWorkspace } from "@/components";
@@ -27,6 +27,11 @@ export default function MessagesPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(
     null
   );
+  // A null selection after initialization means the user returned to the list.
+  const selectionInitialization = useRef<{ query: string | null; initialized: boolean }>({
+    query: null,
+    initialized: false,
+  });
   const [newMessage, setNewMessage] = useState("");
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -90,17 +95,20 @@ export default function MessagesPage() {
       setConversations(data);
 
       const queryConversationId = searchParams.get("conversation");
+      const previous = selectionInitialization.current;
+      const initialize = !previous.initialized || previous.query !== queryConversationId;
+      selectionInitialization.current = {
+        query: queryConversationId,
+        initialized: previous.initialized || data.length > 0,
+      };
       setSelectedConversationId((currentId) => {
-        if (queryConversationId && data.some((item) => item.id === queryConversationId)) {
+        if (initialize && queryConversationId && data.some((item) => item.id === queryConversationId)) {
           return queryConversationId;
         }
-
         if (currentId && data.some((item) => item.id === currentId)) {
           return currentId;
         }
-
-        const firstConversation = data[0];
-        return firstConversation ? firstConversation.id : null;
+        return initialize ? data[0]?.id ?? null : null;
       });
     } catch (err) {
       console.error("Failed to load conversations:", err);

@@ -318,6 +318,8 @@
     "describeYourNeed": "Describe your need",
     "moreDetailsBetterOffers": "The more details you provide, the better offers you'll receive.",
     "requestTitle": "Title",
+    "titleRequired": "Enter a title for your request.",
+    "descriptionRequired": "Describe what you need help with.",
     "requestTitlePlaceholder": "e.g., Deep cleaning for 3-room apartment",
     "description": "Description",
     "descriptionPlaceholder": "Describe your request in detail. What exactly do you need? Are there any special requirements?",

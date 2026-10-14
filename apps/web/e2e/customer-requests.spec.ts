@@ -6,6 +6,7 @@ import {
   createUser,
   db,
   disconnectDb,
+  PASSWORD,
 } from "./support/data";
 import { expect, test } from "./support/test";
 
@@ -59,6 +60,77 @@ test.describe("customer requests", () => {
       postalCode: "10115",
       requestBranch: "home-cleaning",
     });
+  });
+
+  for (const locale of ["en", "de"]) {
+    test(`rejects empty and whitespace request details in ${locale} @smoke`, async ({
+      page,
+    }) => {
+      await page
+        .context()
+        .addCookies([
+          { name: "locale", value: locale, url: "http://localhost:3000" },
+        ]);
+      await page.goto("/create-request?q=Home%20Cleaning");
+      const title = page.locator("input[required]").first();
+      const description = page.locator("textarea[required]");
+      const next = page.getByRole("button", {
+        name: locale === "en" ? "Next" : "Weiter",
+        exact: true,
+      });
+      for (const blank of ["", "   "]) {
+        await title.fill(blank);
+        await description.fill(blank);
+        await next.click();
+        await expect(title).toHaveAttribute("aria-invalid", "true");
+        await expect(description).toHaveAttribute("aria-invalid", "true");
+        await expect(page.locator("#request-title-error")).toHaveText(
+          locale === "en"
+            ? "Enter a title for your request."
+            : "Gib einen Titel für deine Anfrage ein.",
+        );
+        await expect(page.locator("#request-description-error")).toHaveText(
+          locale === "en"
+            ? "Describe what you need help with."
+            : "Beschreibe, wobei du Hilfe benötigst.",
+        );
+      }
+      await title.fill("Cleaning needed");
+      await next.click();
+      await expect(title).toHaveAttribute("aria-invalid", "false");
+      await expect(description).toHaveAttribute("aria-invalid", "true");
+    });
+  }
+
+  test("guest request survives login and restored draft submission @smoke", async ({
+    page,
+  }) => {
+    const customer = await createUser({ label: "draft" });
+    const title = `Guest cleaning ${Date.now()}`;
+    await page.goto("/create-request?q=Home%20Cleaning");
+    await page
+      .getByPlaceholder("e.g., Deep cleaning for 3-room apartment")
+      .fill(title);
+    await page.locator("textarea").fill("Clean the kitchen and living room.");
+    await page.getByPlaceholder("e.g., 10115").fill("10115");
+    await page.getByPlaceholder("e.g., Berlin").fill("Berlin");
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Submit Request" }).click();
+    await expect(page).toHaveURL(/\/login\?redirect=/);
+    await page.locator('form input[type="email"]').fill(customer.email);
+    await page.locator('form input[type="password"]').fill(PASSWORD);
+    await page.getByRole("button", { name: "Log in", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Review your request" }),
+    ).toBeVisible();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Submit Request" }).click();
+    await expect(page).toHaveURL(/\/my-requests$/);
+    expect(
+      await db().serviceRequest.count({
+        where: { customerId: customer.id, title },
+      }),
+    ).toBe(1);
   });
 
   test("lists requests by status tab and keeps the tab in the URL", async ({
