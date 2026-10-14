@@ -21,6 +21,10 @@ const ID = "00000000-0000-0000-0000-000000000000";
 // Every route behind JwtAuthGuard. Keep in sync with the controllers; a new
 // protected route that is missing here is not covered by the 401 check.
 const PROTECTED_ROUTES: Route[] = [
+  ["get", "/api/services"],
+  ["post", "/api/services"],
+  ["patch", `/api/services/${ID}`],
+  ["delete", `/api/services/${ID}`],
   ["post", "/api/auth/change-password"],
   ["post", "/api/auth/logout"],
   ["get", "/api/auth/me"],

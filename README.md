@@ -176,10 +176,11 @@ Postcode coordinates come from [GeoNames](https://www.geonames.org/) under [CC B
 
 - Quote acceptance does not auto-create a booking. The frontend redirects the customer to `/bookings/new` after accepting a quote.
 - Public routes such as `/help`, `/pricing`, `/success-stories`, `/privacy`, and `/terms` currently resolve to generic coming-soon pages.
-- Provider `services` and `finances` are placeholders on `main`; the payment feature branch replaces `finances` with Stripe Connect test-mode onboarding and Express Dashboard access.
+- Providers manage services, categories, pricing, and active status at `/dashboard/services`. Only active services appear on public profiles and participate in category matching.
+- Provider `finances` is a placeholder on `main`; the payment feature branch replaces it with Stripe Connect test-mode onboarding and Express Dashboard access.
 - The payment feature branch uses separate charges and transfers: the platform collects the payment and releases the provider share after customer-confirmed completion.
 - The Stripe payment work is synchronized with `origin/main` in draft PR [#8](https://github.com/islekeren/armut-germany-start/pull/8), but it is not released and remains blocked by payment-safety work.
-- `ServicesModule` and `ReviewsModule` are still empty backend shells.
+- `ServicesModule` exposes authenticated provider-owned CRUD at `/api/services`; `ReviewsModule` is still an empty backend shell.
 - Notifications are now a real API module and frontend page.
 
 ## Documentation Index
