@@ -7,8 +7,12 @@ import { ForgotPasswordDto, ResetPasswordDto } from "./dto/auth.dto";
 import { RecoveryEmailService } from "./recovery-email.service";
 
 const GENERIC_RESPONSE = { message: "If an account exists, a password reset email will be sent." };
+// Existing accounts do extra DB work (cooldown update + token insert) that unknown
+// addresses skip; floor the response time so that difference can't be timed.
+const FORGOT_PASSWORD_FLOOR_MS = 200;
 const invalidReset = () => new BadRequestException("Invalid or expired reset link");
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 @Injectable()
 export class PasswordRecoveryService implements OnModuleDestroy {
@@ -19,6 +23,7 @@ export class PasswordRecoveryService implements OnModuleDestroy {
   async forgotPassword(dto: ForgotPasswordDto) {
     // One policy for all addresses; disabled delivery never persists an unusable token.
     if (!this.email.enabled) return GENERIC_RESPONSE;
+    const startedAt = Date.now();
     const token = randomBytes(32).toString("base64url");
     const now = new Date();
     try {
@@ -50,6 +55,8 @@ export class PasswordRecoveryService implements OnModuleDestroy {
       // Never log exceptions: SMTP errors may contain recipients or raw message bodies.
       this.logger.warn("Password recovery request could not be completed");
     }
+    const remaining = FORGOT_PASSWORD_FLOOR_MS - (Date.now() - startedAt);
+    if (remaining > 0) await sleep(remaining);
     return GENERIC_RESPONSE;
   }
 
