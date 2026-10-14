@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ApiError,
   authApi,
   type LoginData,
   type LoginResponse,
@@ -60,6 +61,10 @@ export type WebBridgeMessage =
     };
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
+
+function isUnauthorizedError(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "http" && error.status === 401;
+}
 
 function buildStoredSession(response: LoginResponse): StoredSession {
   return {
@@ -155,10 +160,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             await persistSession({ ...storedSession, user });
           }
           return;
-        } catch {
-          const refreshed = await authApi.refreshToken(storedSession.refreshToken);
-          if (isMounted) {
-            await persistSession(buildStoredSession(refreshed));
+        } catch (error) {
+          if (!isUnauthorizedError(error)) {
+            // A transient failure (offline, 5xx, rate limited) does not mean
+            // the credentials are invalid: keep the stored session so the
+            // user is not logged out by a startup network blip.
+            if (isMounted) {
+              setSession(storedSession);
+            }
+            return;
+          }
+
+          try {
+            const refreshed = await authApi.refreshToken(storedSession.refreshToken);
+            if (isMounted) {
+              await persistSession(buildStoredSession(refreshed));
+            }
+          } catch (refreshError) {
+            if (!isUnauthorizedError(refreshError)) {
+              if (isMounted) {
+                setSession(storedSession);
+              }
+              return;
+            }
+            throw refreshError;
           }
         }
       } catch {

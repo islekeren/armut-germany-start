@@ -609,6 +609,7 @@ export class BookingsService {
               requestTitle,
               previousStatus,
               cancelledBy: actorLabel,
+              audience: "customer",
             },
           }),
         );
@@ -625,6 +626,7 @@ export class BookingsService {
               requestTitle,
               previousStatus,
               cancelledBy: actorLabel,
+              audience: "provider",
             },
           }),
         );

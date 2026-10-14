@@ -430,6 +430,7 @@ describe("BookingsService", () => {
           requestTitle: "Window cleaning",
           previousStatus: "confirmed",
           cancelledBy: "customer",
+          audience: "customer",
         },
       });
       expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
@@ -442,6 +443,7 @@ describe("BookingsService", () => {
           requestTitle: "Window cleaning",
           previousStatus: "confirmed",
           cancelledBy: "customer",
+          audience: "provider",
         },
       });
     });

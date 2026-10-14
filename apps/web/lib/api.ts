@@ -1,4 +1,5 @@
 import { getErrorOperation, reportClientError, validRequestId, type ErrorOperation } from "./observability";
+import { emitAuthStateMessage } from "./native-bridge";
 
 const DEFAULT_API_ORIGIN = "http://localhost:4000";
 const API_UNAVAILABLE_MESSAGE =
@@ -192,6 +193,12 @@ export async function apiRequest<T>(
           localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken);
           localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken);
           localStorage.setItem(USER_KEY, JSON.stringify(refreshed.user));
+          emitAuthStateMessage({
+            isAuthenticated: true,
+            accessToken: refreshed.accessToken,
+            refreshToken: refreshed.refreshToken,
+            user: refreshed.user,
+          });
 
           const retryHeaders = new Headers(headers);
           retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
@@ -207,6 +214,12 @@ export async function apiRequest<T>(
           localStorage.removeItem(ACCESS_TOKEN_KEY);
           localStorage.removeItem(REFRESH_TOKEN_KEY);
           localStorage.removeItem(USER_KEY);
+          emitAuthStateMessage({
+            isAuthenticated: false,
+            accessToken: null,
+            refreshToken: null,
+            user: null,
+          });
           // Preserve the protected request's unauthorized response.
         } else {
           // Rate limits and server failures do not invalidate the session.

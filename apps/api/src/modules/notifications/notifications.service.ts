@@ -73,7 +73,9 @@ export class NotificationsService {
       },
     });
 
-    await this.pushNotifications.notifyUser(userId, {
+    // Detached: notifyUser never throws, but it can take up to a few
+    // seconds per device-token chunk, and the caller must not wait on it.
+    void this.pushNotifications.notifyUser(userId, {
       title: payload.title,
       body: payload.message,
       data: { type: payload.type, ...payload.metadata },
