@@ -47,7 +47,7 @@ Observed fallback pages:
 - Auth tokens are stored in `localStorage`
 - The frontend supports customer bookings, messages, notifications, and request management
 - Provider `orders`, `calendar`, `profile`, `reviews`, `messages`, and `requests` have real route implementations
-- Provider `services` and `finances` routes are placeholders on `main`; the payment feature branch adds Stripe Connect onboarding, status refresh, and Express Dashboard access to `finances`
+- Provider `/dashboard/services` manages services, active categories, pricing, and visibility through `/api/services`. The `finances` route is a placeholder on `main`; the payment feature branch adds Stripe Connect onboarding, status refresh, and Express Dashboard access to `finances`
 
 ## Backend
 
@@ -79,7 +79,7 @@ Observed in `apps/api/src/app.module.ts`:
 
 Important nuance:
 
-- `ServicesModule` and `ReviewsModule` are currently empty shells
+- `ServicesModule` handles provider-owned CRUD; `ReviewsModule` is currently an empty shell
 - `NotificationsModule` is active and used by request, quote, and booking flows
 
 ### API surface
@@ -89,6 +89,7 @@ Observed controller groups:
 - `/api/auth`
 - `/api/users`
 - `/api/providers`
+- `/api/services`
 - `/api/categories`
 - `/api/requests`
 - `/api/quotes`
@@ -322,3 +323,24 @@ Regression evidence lives in `providers.e2e-spec.ts` (including parent/child,
 sibling, inactive, empty and radius access), `quotes.e2e-spec.ts` (awaiting booking
 and all four active booking states), `bookings.e2e-spec.ts` (pending transition
 restrictions), and `apps/web/e2e/provider-recovery.spec.ts` (browser recovery flows).
+
+## Provider service management
+
+`GET /api/services` lists all services owned by the authenticated provider,
+including inactive services. `POST /api/services`, `PATCH /api/services/:id`,
+and `DELETE /api/services/:id` create, update, and remove services. These routes
+require JWT authentication and a provider account with a provider profile.
+Mutations resolve ownership from the authenticated user; foreign and missing
+service IDs return 404. Client-supplied provider IDs and images are not writable.
+
+Creation and category changes require an active leaf category. Reactivation
+also revalidates the category; a provider can deactivate or delete a service
+whose category has been retired. Pricing supports `fixed`, `hourly`, and `quote`,
+with optional nonnegative bounds. Explicit `null` clears a bound; omitted bounds
+on partial updates preserve stored values. The merged minimum cannot exceed
+the merged maximum. No schema migration is needed.
+
+Public profiles, category search, and provider request feeds query the current
+active services directly. Service updates do not change existing quotes or bookings.
+The dashboard shows localized English/German fields, mutation feedback, a
+retryable initial load, and a confirmation before deletion.

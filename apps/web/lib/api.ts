@@ -337,6 +337,29 @@ export interface ProviderService {
   };
 }
 
+export interface ManagedProviderService extends ProviderService {
+  providerId: string;
+  isActive: boolean;
+  images: string[];
+}
+
+export interface ServiceData {
+  categoryId: string;
+  title: string;
+  description: string;
+  priceType: ProviderService["priceType"];
+  priceMin?: number | null;
+  priceMax?: number | null;
+  isActive?: boolean;
+}
+
+export const serviceApi = {
+  list: (token: string) => apiRequest<ManagedProviderService[]>("/services", { token, cache: "no-store" }),
+  create: (token: string, data: ServiceData) => apiRequest<ManagedProviderService>("/services", { token, method: "POST", body: JSON.stringify(data) }),
+  update: (token: string, id: string, data: Partial<ServiceData>) => apiRequest<ManagedProviderService>(`/services/${id}`, { token, method: "PATCH", body: JSON.stringify(data) }),
+  remove: (token: string, id: string) => apiRequest<ManagedProviderService>(`/services/${id}`, { token, method: "DELETE" }),
+};
+
 export interface PublicProvider {
   id: string;
   userId: string;
