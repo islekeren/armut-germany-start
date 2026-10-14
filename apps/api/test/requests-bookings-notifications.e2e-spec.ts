@@ -28,6 +28,41 @@ describe("Requests, bookings, and notifications (e2e)", () => {
     await closeTestApp(app);
   });
 
+  it.each([
+    ["title", ""],
+    ["title", " \t\n "],
+    ["description", ""],
+    ["description", " \t\n "],
+  ])("rejects blank %s (%j) before persistence", async (field, value) => {
+    const { user } = await createUserFixture({
+      email: "blank-request@example.com",
+    });
+    const auth = await loginAs(app, user.email);
+    const response = await request(app.getHttpServer())
+      .post("/api/requests")
+      .set("Authorization", `Bearer ${auth.accessToken}`)
+      .send({
+        categoryId: "home-cleaning",
+        title: "Clean my apartment",
+        description: "Please clean the kitchen and living room.",
+        address: "Torstrasse 1",
+        city: "Berlin",
+        postalCode: "10115",
+        lat: 52.52,
+        lng: 13.405,
+        [field]: value,
+      })
+      .expect(400);
+    expect(response.body.message).toEqual(
+      expect.arrayContaining([expect.stringContaining(field)]),
+    );
+    const mine = await request(app.getHttpServer())
+      .get("/api/requests/my")
+      .set("Authorization", `Bearer ${auth.accessToken}`)
+      .expect(200);
+    expect(mine.body).toEqual([]);
+  });
+
   it("walks a stable request to booking flow and exposes notification endpoints", async () => {
     const { user: customer } = await createUserFixture({
       email: "customer-flow@example.com",

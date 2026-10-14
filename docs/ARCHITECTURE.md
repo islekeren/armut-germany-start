@@ -150,6 +150,8 @@ Note:
 
 ### Request to quote to booking
 
+- Request creation rejects empty or whitespace-only titles/descriptions at the API boundary. The wizard validates these fields before review and submission, including restored guest drafts, with German and English field errors.
+
 Observed behavior:
 
 1. customer creates a service request
@@ -192,6 +194,8 @@ Known reliability work before production use:
 - avoid coupling booking-completion HTTP latency to a synchronous provider transfer
 
 ### Messaging
+
+- Initial conversation selection honors `?conversation=`; subsequent REST polls preserve user selection, including returning to the mobile list, on customer and provider pages.
 
 - backend supports REST and a Socket.IO gateway
 - current frontend messaging UI uses REST-driven flows and refresh patterns

@@ -321,6 +321,8 @@
     "describeYourNeed": "Beschreiben Sie Ihren Bedarf",
     "moreDetailsBetterOffers": "Je mehr Details Sie angeben, desto bessere Angebote erhalten Sie.",
     "requestTitle": "Titel",
+    "titleRequired": "Gib einen Titel für deine Anfrage ein.",
+    "descriptionRequired": "Beschreibe, wobei du Hilfe benötigst.",
     "requestTitlePlaceholder": "z.B. Grundreinigung für 3-Zimmer-Wohnung",
     "description": "Beschreibung",
     "descriptionPlaceholder": "Beschreiben Sie Ihre Anfrage im Detail. Was genau brauchen Sie? Gibt es besondere Anforderungen?",

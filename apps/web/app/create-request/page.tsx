@@ -148,6 +148,7 @@ export default function CreateRequestPage() {
     budgetMax: "",
     images: [] as File[],
   });
+  const [detailErrors, setDetailErrors] = useState({ title: false, description: false });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restoredDraft, setRestoredDraft] = useState<RequestDraft | null>(
@@ -370,6 +371,11 @@ export default function CreateRequestPage() {
       return;
     }
 
+    if (!validateDetails()) {
+      setStep(2);
+      return;
+    }
+
     // Check if user is authenticated
     if (!isAuthenticated) {
       writeRequestDraft({
@@ -467,7 +473,19 @@ export default function CreateRequestPage() {
     }
   };
 
-  const nextStep = () => setStep((s) => Math.min(s + 1, 3));
+  const validateDetails = () => {
+    const errors = {
+      title: !formData.title.trim(),
+      description: !formData.description.trim(),
+    };
+    setDetailErrors(errors);
+    return !errors.title && !errors.description;
+  };
+
+  const nextStep = () => {
+    if (step === 2 && !validateDetails()) return;
+    setStep((s) => Math.min(s + 1, 3));
+  };
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
   if (authLoading) {
@@ -648,11 +666,14 @@ export default function CreateRequestPage() {
 
               <div className="space-y-6">
                 <div>
-                  <FormLabel size="base">
+                  <FormLabel size="base" htmlFor="request-title">
                     {t("createRequest.requestTitle")}
                   </FormLabel>
                   <FormInput
                     type="text"
+                    id="request-title"
+                    aria-invalid={detailErrors.title}
+                    aria-describedby={detailErrors.title ? "request-title-error" : undefined}
                     value={formData.title}
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
@@ -661,13 +682,21 @@ export default function CreateRequestPage() {
                     accent="primary"
                     required
                   />
+                  {detailErrors.title && (
+                    <p id="request-title-error" role="alert" className="mt-2 text-sm text-red-700">
+                      {t("createRequest.titleRequired")}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <FormLabel size="base">
+                  <FormLabel size="base" htmlFor="request-description">
                     {t("createRequest.description")}
                   </FormLabel>
                   <FormTextarea
+                    id="request-description"
+                    aria-invalid={detailErrors.description}
+                    aria-describedby={detailErrors.description ? "request-description-error" : undefined}
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
@@ -677,6 +706,11 @@ export default function CreateRequestPage() {
                     accent="primary"
                     required
                   />
+                  {detailErrors.description && (
+                    <p id="request-description-error" role="alert" className="mt-2 text-sm text-red-700">
+                      {t("createRequest.descriptionRequired")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
