@@ -3,6 +3,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 const EXPO_PUSH_CHUNK_SIZE = 100;
+const EXPO_PUSH_TIMEOUT_MS = 5000;
 
 type ExpoPushMessage = {
   to: string;
@@ -94,6 +95,12 @@ export class PushNotificationsService {
         sound: "default",
       }));
 
+      const controller = new AbortController();
+      const timeout = setTimeout(
+        () => controller.abort(),
+        EXPO_PUSH_TIMEOUT_MS,
+      );
+
       try {
         const response = await fetch(EXPO_PUSH_ENDPOINT, {
           method: "POST",
@@ -104,6 +111,7 @@ export class PushNotificationsService {
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           body: JSON.stringify(messages),
+          signal: controller.signal,
         });
 
         const result = (await response.json().catch(() => null)) as {
@@ -118,6 +126,8 @@ export class PushNotificationsService {
             reason: error instanceof Error ? error.message : "unknown",
           }),
         );
+      } finally {
+        clearTimeout(timeout);
       }
     }
   }

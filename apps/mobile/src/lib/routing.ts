@@ -51,7 +51,12 @@ export function resolveNotificationPath(
 ): string | null {
   const bookingId = typeof data.bookingId === "string" ? data.bookingId : undefined;
   if (bookingId) {
-    return `/bookings/${bookingId}`;
+    // Booking detail pages are split by audience: /bookings/[id] is the
+    // customer-only route (its layout bounces any other user type away),
+    // providers see the same booking through the orders list instead.
+    return data.audience === "provider"
+      ? `/dashboard/orders?booking=${bookingId}`
+      : `/bookings/${bookingId}`;
   }
 
   const type = typeof data.type === "string" ? data.type : undefined;
