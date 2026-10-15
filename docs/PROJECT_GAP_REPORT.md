@@ -63,9 +63,18 @@ It is a repo-grounded gap report based on:
 - Resolved October 13, 2026: the checked-in `Dockerfile` generates Prisma, compiles the API and defines its production start command.
 - No checked-in frontend deployment config defines the production web release path.
 - GitHub Actions deploy jobs are placeholders only.
-- `apps/mobile` is still dormant scaffolding rather than a real workspace.
-- the root `tsconfig.json` still extends Expo config even though the mobile workspace is not active.
+- the root `tsconfig.json` still extends Expo config even though `apps/mobile` has its own separate `tsconfig.json`; nothing reads the root one.
 - auth and socket configuration must not rely on fallback JWT secrets in production.
+
+### 4a. Mobile gaps
+
+`apps/mobile` (developed on `claude/zen-gauss-tazw97`) is now a real workspace — native auth, a WebView around `apps/web`, a two-way auth bridge, push notifications for quote/booking/request events, and a native offline/connection-error screen. Remaining before it can ship:
+
+- no app icon/splash, and no final decision on the app name (`app.json` says "Workify Germany", the rest of the repo says "Armut Germany")
+- no EAS submit credentials (App Store Connect / Play Console), and no APNs/FCM push credentials, so push notifications will not deliver from a production/EAS build yet
+- Stripe Checkout/Connect redirects are not wired to Universal Links/App Links; a payment would currently return the user to the system browser instead of the app (not urgent while payments are still on the unmerged `codex/stripe-connect-payments` branch)
+- new chat messages do not trigger a push; messaging bypasses `NotificationsService` via its own Socket.IO gateway
+- Expo Go cannot test push notifications (dropped in SDK 53); an EAS development build is needed
 
 ### 5. Shared-package gaps
 
@@ -104,7 +113,7 @@ It is a repo-grounded gap report based on:
 ### 4. Product follow-through
 
 - Complete review moderation boundaries, provider calendar actions, route consolidation, and frontend realtime messaging.
-- Make the native-versus-WebView mobile decision only after the beta web flow is stable.
+- `apps/mobile`: the WebView direction is chosen and built (see 4a above); remaining work is store readiness (icon/branding/EAS credentials), Universal Links/App Links, and push for new messages.
 
 See [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md) for the ordered Linear implementation sequence and release gates.
 

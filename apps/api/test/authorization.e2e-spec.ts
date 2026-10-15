@@ -49,6 +49,8 @@ const PROTECTED_ROUTES: Route[] = [
   ["get", "/api/notifications/unread-count"],
   ["post", `/api/notifications/${ID}/read`],
   ["post", "/api/notifications/read-all"],
+  ["post", "/api/notifications/push-token"],
+  ["delete", "/api/notifications/push-token"],
   ["post", "/api/providers"],
   ["get", "/api/providers/me"],
   ["get", "/api/providers/me/stats"],

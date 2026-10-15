@@ -42,9 +42,10 @@ describe("BookingsService", () => {
     },
     $transaction: jest.fn(),
   };
-  const notificationsService = Object.assign(new NotificationsService(prisma as any), {
-    create: jest.fn(),
-  });
+  const notificationsService = Object.assign(
+    new NotificationsService(prisma as any, {} as any),
+    { create: jest.fn() },
+  );
 
   let service: BookingsService;
 
@@ -429,6 +430,7 @@ describe("BookingsService", () => {
           requestTitle: "Window cleaning",
           previousStatus: "confirmed",
           cancelledBy: "customer",
+          audience: "customer",
         },
       });
       expect(notificationsService.create).toHaveBeenNthCalledWith(2, "provider-user", {
@@ -441,6 +443,7 @@ describe("BookingsService", () => {
           requestTitle: "Window cleaning",
           previousStatus: "confirmed",
           cancelledBy: "customer",
+          audience: "provider",
         },
       });
     });

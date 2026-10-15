@@ -7,12 +7,19 @@ describe("NotificationsController", () => {
     markAsRead: jest.fn(),
     markAllAsRead: jest.fn(),
   };
+  const pushNotificationsService = {
+    registerToken: jest.fn(),
+    unregisterToken: jest.fn(),
+  };
 
   let controller: NotificationsController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new NotificationsController(notificationsService as any);
+    controller = new NotificationsController(
+      notificationsService as any,
+      pushNotificationsService as any,
+    );
   });
 
   it("lists notifications for the current user", async () => {
@@ -39,5 +46,29 @@ describe("NotificationsController", () => {
     await expect(
       controller.markAllAsRead({ user: { id: "user-1" } }),
     ).resolves.toEqual({ updated: 2 });
+  });
+
+  it("registers and unregisters a push token for the current user", async () => {
+    pushNotificationsService.registerToken.mockResolvedValue(undefined);
+    pushNotificationsService.unregisterToken.mockResolvedValue(undefined);
+
+    await controller.registerPushToken(
+      { user: { id: "user-1" } },
+      { token: "expo-token", platform: "ios" },
+    );
+    expect(pushNotificationsService.registerToken).toHaveBeenCalledWith(
+      "user-1",
+      "expo-token",
+      "ios",
+    );
+
+    await controller.unregisterPushToken(
+      { user: { id: "user-1" } },
+      { token: "expo-token" },
+    );
+    expect(pushNotificationsService.unregisterToken).toHaveBeenCalledWith(
+      "user-1",
+      "expo-token",
+    );
   });
 });

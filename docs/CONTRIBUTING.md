@@ -6,7 +6,7 @@ Updated for the repository state audited on September 11, 2026.
 
 This repo benefits from small, explicit changes.
 
-The codebase mixes production-facing flows, dormant scaffolding, and a few known tooling gaps. The safest contribution style is:
+The codebase mixes production-facing flows, a few known tooling gaps, and `apps/mobile`, which is active but pre-release (no app icon/store credentials yet). The safest contribution style is:
 
 1. inspect the exact files involved
 2. make the smallest change that solves the problem
@@ -58,6 +58,13 @@ See [ENVIRONMENT.md](./ENVIRONMENT.md) for the full env contract and configurati
 - Update Prisma schema, migrations, and seed data together when persistence changes
 - Treat quote, booking, message, provider, upload, and notification flows as high-impact areas
 
+### Mobile
+
+- `apps/mobile` wraps `apps/web` in a WebView for everything except auth and push; do not duplicate web screens natively unless the task says otherwise
+- the auth bridge is two-sided: a mobile-side change to `src/lib/routing.ts#buildAuthSyncScript` or the `WebBridgeMessage` shape in `src/providers/SessionProvider.tsx` needs a matching change in `apps/web/lib/native-bridge.ts` and `apps/web/contexts/AuthContext.tsx`, and vice versa
+- `src/lib/routing.ts#resolveNotificationPath` maps push notification metadata to a web path by hand; keep it in sync when `apps/api`'s `NotificationsService` adds a notification type or changes its metadata shape
+- do not assume Expo Go can test push notifications; it cannot since SDK 53. Use an EAS development build
+
 ### Shared packages
 
 - Be careful changing `packages/shared`
@@ -98,6 +105,16 @@ cd apps/api
 npm run test:e2e -- --watchman=false
 ```
 
+### Mobile-only changes
+
+```bash
+cd apps/mobile
+npm run lint
+npm run check-types
+```
+
+Mobile has no `build` or `test` script (Expo apps build through `eas build`, and there is no test suite yet); manual verification needs an Expo dev client or EAS build, not Expo Go, if the change touches push notifications.
+
 ### Cross-cutting changes
 
 ```bash
@@ -110,8 +127,7 @@ Then add the relevant app-level checks.
 
 ## Current Quirks To Avoid “Cleaning Up” Accidentally
 
-- `apps/mobile` is not an active workspace, even though the folder exists
-- the root `tsconfig.json` still extends Expo config
+- the root `tsconfig.json` still extends Expo config even though `apps/mobile` has its own, separate `tsconfig.json`
 - API lint currently reports 9 warnings
 - provider `services` and `finances` pages are placeholder experiences
 - `ServicesModule` and `ReviewsModule` are empty backend shells

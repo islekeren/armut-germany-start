@@ -4,12 +4,13 @@ Audited against the current checkout on September 11, 2026.
 
 ## System Shape
 
-This repository is a Turborepo monorepo with two active apps:
+This repository is a Turborepo monorepo with three active apps:
 
 - `apps/web`: Next.js 16 frontend
 - `apps/api`: NestJS 11 backend
+- `apps/mobile`: Expo Router mobile client (see [Mobile](#mobile) below)
 
-There are also support packages in `packages/*` and a dormant `apps/mobile` folder that is not an active npm workspace.
+There are also support packages in `packages/*`.
 
 ## Frontend
 
@@ -48,6 +49,17 @@ Observed fallback pages:
 - The frontend supports customer bookings, messages, notifications, and request management
 - Provider `orders`, `calendar`, `profile`, `reviews`, `messages`, and `requests` have real route implementations
 - Provider `/dashboard/services` manages services, active categories, pricing, and visibility through `/api/services`. The `finances` route is a placeholder on `main`; the payment feature branch adds Stripe Connect onboarding, status refresh, and Express Dashboard access to `finances`
+
+## Mobile
+
+`apps/mobile` is an Expo Router app. The native-versus-WebView decision (ARM-30) has been made: it is a thin native shell wrapping `apps/web`, not a native rewrite.
+
+- `app/(auth)/login.tsx` / `register.tsx`: native screens that call `apps/api` directly (`src/lib/api.ts`), independent of the web app's own auth pages
+- `app/(app)/web.tsx`: the single screen for authenticated use; a `react-native-webview` `WebView` pointed at `EXPO_PUBLIC_WEB_URL`, with a native fallback screen (`src/components/WebViewError.tsx`) when it fails to load
+- `src/providers/SessionProvider.tsx`: holds the session in `expo-secure-store` (not `localStorage`, unlike web) and exposes `signIn`/`registerAccount`/`signOut`/`syncSessionFromWeb`
+- **Auth bridge** (native ↔ WebView): on load, native injects the session into the WebView's `localStorage` (`src/lib/routing.ts#buildAuthSyncScript`) under the same keys `apps/web/contexts/AuthContext.tsx` uses. The web app posts `auth-state`/`route-change` messages back via `window.ReactNativeWebView.postMessage` (`apps/web/lib/native-bridge.ts`, `apps/web/components/NativeWebViewBridge.tsx`), which the WebView screen's `onMessage` handler turns back into `SessionProvider` updates. If the web app reports the user logged out, the native app signs out locally and returns to the native login screen.
+- **Push notifications**: `src/lib/push.ts` registers the device's Expo push token with the API (`POST /api/notifications/push-token`) on sign-in and session restore, and unregisters it on sign-out. The API's `NotificationsService.create()` fans every notification it already writes (quote/booking/request events) out through `PushNotificationsService` to Expo's push API. Tapping a notification deep-links into the WebView via `src/lib/routing.ts#resolveNotificationPath`, which maps the notification's `type`/metadata to a web path (kept in sync by hand with `apps/api`'s notification payloads). New chat messages do not push yet; messaging bypasses `NotificationsService` via its own Socket.IO gateway.
+- Not yet wired: Universal Links/App Links, so a Stripe Checkout/Connect redirect opens in the system browser and does not return to the app; app icon/splash; EAS submit credentials; a final app name decision (`app.json` says "Workify Germany", everything else says "Armut Germany")
 
 ## Backend
 
@@ -278,6 +290,8 @@ Treat these files and areas as high-risk:
 - `apps/api/src/modules/messages/*`
 - `apps/api/src/modules/uploads/*`
 - `apps/api/src/modules/notifications/*`
+- `apps/mobile/src/providers/SessionProvider.tsx` and `apps/mobile/app/(app)/web.tsx`: the native/WebView auth bridge
+- `apps/web/contexts/AuthContext.tsx` also now emits `auth-state`/`route-change` events for the mobile bridge (`apps/web/lib/native-bridge.ts`); changing its token-storage keys or event shape breaks mobile sign-in without a mobile-side code change
 
 These areas connect multiple user flows and small changes can create wide regressions.
 

@@ -1,11 +1,29 @@
-import { Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { NotificationsService } from "./notifications.service";
+import { PushNotificationsService } from "./push-notifications.service";
+import {
+  RegisterPushTokenDto,
+  UnregisterPushTokenDto,
+} from "./dto/push-token.dto";
 
 @Controller("notifications")
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly pushNotificationsService: PushNotificationsService,
+  ) {}
 
   @Get()
   list(
@@ -33,6 +51,23 @@ export class NotificationsController {
   @Post("read-all")
   markAllAsRead(@Req() req: any) {
     return this.notificationsService.markAllAsRead(req.user.id);
+  }
+
+  @Post("push-token")
+  registerPushToken(@Req() req: any, @Body() body: RegisterPushTokenDto) {
+    return this.pushNotificationsService.registerToken(
+      req.user.id,
+      body.token,
+      body.platform,
+    );
+  }
+
+  @Delete("push-token")
+  unregisterPushToken(@Req() req: any, @Body() body: UnregisterPushTokenDto) {
+    return this.pushNotificationsService.unregisterToken(
+      req.user.id,
+      body.token,
+    );
   }
 }
 
