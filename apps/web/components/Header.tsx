@@ -17,6 +17,7 @@ export function Header() {
   const t = useTranslations();
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [logoutError, setLogoutError] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -154,10 +155,13 @@ export function Header() {
   }, [showMobileMenu]);
 
   const handleLogout = async () => {
-    await logout();
-    setShowDropdown(false);
-    setShowMobileMenu(false);
-    window.location.href = "/";
+    setLogoutError(false);
+    try {
+      await logout();
+      setShowDropdown(false);
+      setShowMobileMenu(false);
+      window.location.href = "/";
+    } catch { setLogoutError(true); }
   };
 
   useEffect(() => {
@@ -183,6 +187,7 @@ export function Header() {
 
   return (
     <header className="relative z-50 bg-primary text-white">
+      {logoutError ? <p role="alert" className="bg-error px-4 py-3 text-center text-white">{t("auth.logoutError")}</p> : null}
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex items-center justify-between gap-3">
           <Link href={logoHref} className="flex shrink-0 items-center gap-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "./AuthContext";
@@ -15,7 +16,8 @@ const baseUser: User = {
 };
 
 function AuthProbe() {
-  const { isAuthenticated, isLoading, logout, refreshAuth, user } = useAuth();
+  const { isAuthenticated, isLoading, logout, refreshAuth, changePassword, clearSession, user } = useAuth();
+  const [error, setError] = useState("");
 
   return (
     <div>
@@ -25,9 +27,12 @@ function AuthProbe() {
       <button type="button" onClick={() => void refreshAuth()}>
         refresh
       </button>
-      <button type="button" onClick={() => void logout()}>
+      <button type="button" onClick={() => void logout().catch(() => setError("logout failed"))}>
         logout
       </button>
+      <button type="button" onClick={() => void changePassword({ currentPassword: "old-password", newPassword: "new-password" })}>change password</button>
+      <button type="button" onClick={clearSession}>clear session</button>
+      <p>{error}</p>
     </div>
   );
 }
@@ -110,7 +115,7 @@ describe("AuthProvider", () => {
     expect(localStorage.getItem("armut_access_token")).toBe("stored-access");
   });
 
-  it("clears local auth state when logout fails remotely", async () => {
+  it("retains credentials so remote logout can be retried after a network failure", async () => {
     localStorage.setItem("armut_access_token", "stored-access");
     localStorage.setItem("armut_refresh_token", "stored-refresh");
     localStorage.setItem("armut_user", JSON.stringify(baseUser));
@@ -125,12 +130,37 @@ describe("AuthProvider", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "logout" }));
 
-    await waitFor(() =>
-      expect(screen.getByTestId("authenticated")).toHaveTextContent("false"),
-    );
+    await screen.findByText("logout failed");
+    expect(screen.getByTestId("authenticated")).toHaveTextContent("true");
+    expect(localStorage.getItem("armut_refresh_token")).toBe("stored-refresh");
+  });
 
+  it("clears the current device after a successful password change", async () => {
+    localStorage.setItem("armut_access_token", "stored-access");
+    localStorage.setItem("armut_refresh_token", "stored-refresh");
+    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    vi.spyOn(authApi, "getMe").mockResolvedValue(baseUser);
+    vi.spyOn(authApi, "changePassword").mockResolvedValue({ message: "ok" });
+    renderWithProvider();
+    await waitFor(() => expect(screen.getByTestId("authenticated")).toHaveTextContent("true"));
+    fireEvent.click(screen.getByRole("button", { name: "change password" }));
+    await waitFor(() => expect(screen.getByTestId("authenticated")).toHaveTextContent("false"));
     expect(localStorage.getItem("armut_access_token")).toBeNull();
     expect(localStorage.getItem("armut_refresh_token")).toBeNull();
+  });
+
+  it("does not restore authentication from a stale in-flight session check", async () => {
+    localStorage.setItem("armut_access_token", "stored-access");
+    localStorage.setItem("armut_refresh_token", "stored-refresh");
+    localStorage.setItem("armut_user", JSON.stringify(baseUser));
+    let finish!: (user: User) => void;
+    vi.spyOn(authApi, "getMe").mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    renderWithProvider();
+    await waitFor(() => expect(screen.getByTestId("authenticated")).toHaveTextContent("true"));
+    fireEvent.click(screen.getByRole("button", { name: "clear session" }));
+    finish(baseUser);
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+    expect(screen.getByTestId("authenticated")).toHaveTextContent("false");
     expect(localStorage.getItem("armut_user")).toBeNull();
   });
 });

@@ -8,6 +8,8 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
 import { UsersService } from "../users/users.service";
+import { SessionService } from "./session.service";
+import { accountEvents } from "../../common/security/account-events";
 import { RegisterDto, LoginDto, ChangePasswordDto } from "./dto/auth.dto";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { sanitizeUserResponse } from "../../common/security";
@@ -20,7 +22,8 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private sessions: SessionService
   ) {
     this.authSecrets = getAuthSecrets(configService);
   }
@@ -38,7 +41,7 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    const tokens = await this.generateTokens(user.id);
+    const tokens = await this.startSession(user.id, 0);
 
     return {
       user: sanitizeUserResponse(user),
@@ -60,7 +63,7 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const tokens = await this.generateTokens(user.id);
+    const tokens = await this.startSession(user.id, user.authVersion);
 
     return {
       user: sanitizeUserResponse(user),
@@ -75,12 +78,10 @@ export class AuthService {
         algorithms: ["HS256"],
       });
 
-      const user = await this.usersService.findById(payload.sub);
-      if (!user) {
-        throw new UnauthorizedException("Invalid refresh token");
-      }
-
-      const tokens = await this.generateTokens(user.id);
+      if (payload.type !== "refresh") throw new UnauthorizedException();
+      const session = await this.sessions.validate(payload.sub, payload.sid);
+      const user = session.user;
+      const tokens = await this.generateTokens(user.id, session.id, session.expiresAt);
 
       return {
         user: sanitizeUserResponse(user),
@@ -107,17 +108,21 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.updateMany({
+        where: { id: userId, deletedAt: null, authVersion: user.authVersion },
+        data: { password: hashedPassword, authVersion: { increment: 1 } },
+      });
+      if (updated.count !== 1) throw new UnauthorizedException();
+      await tx.passwordResetToken.deleteMany({ where: { userId } });
     });
+    accountEvents.emit("sessionsRevoked", userId);
 
     return { message: "Password changed successfully" };
   }
 
-  async logout(userId: string) {
-    // For stateless JWT, we just return success
-    // In production, you might want to blacklist the token
+  async logout(userId: string, sessionId: string) {
+    await this.sessions.revoke(userId, sessionId);
     return { message: "Logged out successfully" };
   }
 
@@ -129,19 +134,26 @@ export class AuthService {
     return sanitizeUserResponse(user);
   }
 
-  private async generateTokens(userId: string) {
+  private async startSession(userId: string, authVersion: number) {
+    const session = await this.sessions.create(userId, authVersion);
+    return this.generateTokens(userId, session.id, session.expiresAt);
+  }
+
+  private async generateTokens(userId: string, sessionId: string, expiresAt: Date) {
+    const remaining = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+    if (remaining <= 0) throw new UnauthorizedException();
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
-        { sub: userId },
+        { sub: userId, sid: sessionId, type: "access" },
         {
-          expiresIn: "15m",
+          expiresIn: Math.min(900, remaining),
           secret: this.authSecrets.accessSecret,
         }
       ),
       this.jwtService.signAsync(
-        { sub: userId },
+        { sub: userId, sid: sessionId, type: "refresh" },
         {
-          expiresIn: "7d",
+          expiresIn: remaining,
           secret: this.authSecrets.refreshSecret,
         }
       ),

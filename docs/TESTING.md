@@ -255,6 +255,16 @@ Run `node --test scripts/verify-release.test.mjs scripts/mirror-deployment.test.
 
 API observability regressions cover correlation IDs, safe route-template logs, failed database readiness, sanitized startup/runtime errors, telemetry validation/rate limits and CORS headers. Web tests cover request/refresh/retry correlation, safe best-effort telemetry, deduplication, SSR logs and route-boundary retry behavior. Hosting dashboard settings and live production smoke checks are separate from local tests.
 
+
+### Password recovery and revocation
+
+`auth-recovery.e2e-spec.ts` exercises device logout, all-device password revocation,
+hashed/expired/single-use/sibling recovery tokens, concurrency, cooldowns, generic
+responses and endpoint throttles. Socket tests also cover revoked senders and
+recipients. `password-recovery.spec.ts` drives both locales through the local
+mailbox, reset/reuse/expiry states and sign-in after reset. Playwright always uses
+local mail capture; it never dispatches SMTP email. See [AUTH_RECOVERY.md](./AUTH_RECOVERY.md).
+
 ### Upload security regressions
 
 `npm run test:unit --workspace=api -- --runInBand uploads upload-content upload-references` covers content parsing/re-encoding, private authorization, bounded reads and Multer ingestion limits. `npm run test:e2e --workspace=api -- uploads authorization` adds PostgreSQL/S3 mock finalization, replay and concurrent quota checks. The mock does not prove real bucket ACLs or expiry; see [UPLOAD_SECURITY.md](./UPLOAD_SECURITY.md) for deployment checks.

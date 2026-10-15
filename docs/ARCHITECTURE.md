@@ -25,14 +25,14 @@ There are also support packages in `packages/*` and a dormant `apps/mobile` fold
 
 Observed route groups:
 
-- `(auth)`: `/login`, `/register`, `/provider-onboarding`
+- `(auth)`: `/login`, `/register`, `/provider-onboarding`, `/forgot-password`, `/reset-password`
 - `(customer)`: `/customer-dashboard`, `/my-requests`, `/bookings`, `/messages`, `/settings`
 - `(provider)`: `/dashboard`, `/dashboard/requests`, `/dashboard/offers`, `/dashboard/orders`, `/dashboard/calendar`, `/dashboard/listings`, `/dashboard/profile`, `/dashboard/reviews`, `/dashboard/messages`, `/dashboard/settings`, `/dashboard/services`, `/dashboard/finances`
 - public routes: `/`, `/categories`, `/category/[slug]`, `/find-providers`, `/providers/[id]`, `/create-request`, `/become-provider`, `/how-it-works`, `/requests`, `/notifications`
 
 Observed fallback pages:
 
-- `apps/web/app/[slug]/page.tsx` serves generic coming-soon states for `forgot-password`, `help`, `pricing`, `success-stories`, `imprint`, `privacy`, and `terms`
+- `apps/web/app/[slug]/page.tsx` serves generic coming-soon states for `help`, `pricing`, `success-stories`, `imprint`, `privacy`, and `terms`
 - `apps/web/app/(provider)/dashboard/[slug]/page.tsx` is a generic provider-dashboard coming-soon fallback for unmatched dashboard slugs
 
 ### Frontend boundaries
@@ -144,6 +144,10 @@ Key relationships:
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - frontend persists access and refresh tokens in `localStorage`
+- database AuthSession records enforce device logout and absolute seven-day expiry
+- password change/reset increment the user authentication version and revoke all sessions
+- `POST /api/auth/forgot-password` and `/reset-password` implement hashed, expiring, single-use recovery
+- HTTP and Socket.IO validate session/account status before authorization; see [AUTH_RECOVERY.md](./AUTH_RECOVERY.md)
 
 Note:
 
@@ -260,7 +264,7 @@ Known reliability work before production use:
 
 - Redis is available locally and in CI, but cache currently runs in memory
 - On `main`, Stripe env variables and a `Payment` model exist, but there is no payments module
-- SendGrid env variables exist, but no email integration was found
+- Recovery email supports development capture and configurable SMTP; no beta provider/domain is selected. See [AUTH_RECOVERY.md](./AUTH_RECOVERY.md).
 - Meilisearch dependency and env example exist, but no active search module was found
 - Google Maps env example exists, but no active Google Maps integration was found in current code
 

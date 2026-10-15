@@ -4,7 +4,6 @@ import { Footer, Header, PageContainer } from "@/components";
 import { ComingSoonState } from "@/components/ui/ComingSoonState";
 
 const PUBLIC_COMING_SOON_TITLES = {
-  "forgot-password": "auth.login.forgotPassword",
   help: "footer.help",
   pricing: "footer.pricing",
   "success-stories": "footer.successStories",

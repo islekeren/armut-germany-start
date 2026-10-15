@@ -123,6 +123,8 @@ const INTENTIONALLY_PUBLIC: Route[] = [
   ["post", "/api/auth/register"],
   ["post", "/api/auth/login"],
   ["post", "/api/auth/refresh"],
+  ["post", "/api/auth/forgot-password"],
+  ["post", "/api/auth/reset-password"],
   ["get", "/api/categories/:slug"],
   ["get", "/api/providers/:id/profile"],
   ["get", "/api/providers/:id"],

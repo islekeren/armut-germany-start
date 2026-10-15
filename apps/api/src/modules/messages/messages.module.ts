@@ -1,3 +1,4 @@
+import { AuthModule } from "../auth/auth.module";
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -10,6 +11,7 @@ import { getAuthSecrets } from "../../common/security/auth-config";
 @Module({
   imports: [
     UsersModule,
+    AuthModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

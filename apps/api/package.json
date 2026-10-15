@@ -21,7 +21,8 @@
     "db:studio": "prisma studio",
     "db:seed": "npx ts-node prisma/seed.ts",
     "admin:grant": "npx ts-node scripts/grant-admin.ts",
-    "geo:backfill": "npx ts-node scripts/backfill-geo.ts"
+    "geo:backfill": "npx ts-node scripts/backfill-geo.ts",
+    "email:preview": "node scripts/email-preview.mjs"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -53,6 +54,7 @@
     "ioredis": "^5.8.2",
     "meilisearch": "^0.54.0",
     "multer": "^2.0.2",
+    "nodemailer": "^10.1.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pdf-lib": "^1.17.1",
@@ -74,6 +76,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.15.3",
+    "@types/nodemailer": "^8.0.2",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.3",
     "ansis": "^4.2.0",

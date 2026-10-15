@@ -81,8 +81,6 @@ These payment variables describe the current `codex/stripe-connect-payments` che
 | `RATE_LIMIT_STRICT`      | Example only | not read by current throttle module              |
 | `RATE_LIMIT_RELAXED`     | Example only | not read by current throttle module              |
 | `REDIS_URL`              | Example only | cache is currently configured in memory          |
-| `SENDGRID_API_KEY`       | Example only | no email integration was found                   |
-| `EMAIL_FROM`             | Example only | no email integration was found                   |
 | `MEILISEARCH_HOST`       | Example only | no active search module was found                |
 | `MEILISEARCH_API_KEY`    | Example only | no active search module was found                |
 | `GOOGLE_MAPS_API_KEY`    | Example only | no active Google Maps integration was found      |
@@ -195,6 +193,17 @@ Repo-specific note:
 4. Run Prisma generate, migrate, and seed in `apps/api`
 5. Start the repo with `npm run dev`
 6. Verify `http://localhost:3000` and `http://localhost:4000/api/docs`
+
+
+### Password recovery email
+
+Recovery supports disabled (default), development-only local capture, and
+configurable SMTP delivery. No beta provider or sender domain has been selected.
+Set EMAIL_TRANSPORT, EMAIL_LOCAL_DIR and FRONTEND_URL for local testing; SMTP
+requires SMTP_HOST/PORT/SECURE/USER/PASSWORD and a verified EMAIL_FROM. Read
+[AUTH_RECOVERY.md](./AUTH_RECOVERY.md) for mailbox preview, beta release gates,
+session migration, revocation and retention. Do not deploy mixed API versions:
+legacy JWTs are rejected and all existing users must sign in again.
 
 ### Private uploads
 

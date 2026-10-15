@@ -2,6 +2,7 @@ import { type INestApplication } from "@nestjs/common";
 import { io, type Socket } from "socket.io-client";
 import { JwtService } from "@nestjs/jwt";
 import request from "supertest";
+import { createHash, randomBytes } from "node:crypto";
 import {
   closeTestApp,
   createConversationFixture,
@@ -113,6 +114,63 @@ describe("Messages gateway (e2e)", () => {
   }
 
   describe("connection auth", () => {
+
+    it("logout disconnects only the current device's sockets", async () => {
+      const first = await connectAs(aliceToken);
+      const otherLogin = await loginAs(app, "alice@example.com");
+      const second = await connectAs(otherLogin.accessToken);
+      await join(first); await join(second);
+      const disconnected = waitFor<string>(first, "disconnect");
+      await request(app.getHttpServer()).post("/api/auth/logout")
+        .auth(aliceToken, { type: "bearer" }).expect(201);
+      expect(await disconnected).toBe("io server disconnect");
+      expect(await join(second)).toEqual({ success: true });
+      const old = connect({ token: aliceToken });
+      expect(await waitFor<string>(old, "disconnect")).toBe("io server disconnect");
+    });
+
+    it.each(["change", "reset"])("password %s disconnects both devices and rejects old reconnects", async operation => {
+      const first = await connectAs(aliceToken);
+      const otherLogin = await loginAs(app, "alice@example.com");
+      const second = await connectAs(otherLogin.accessToken);
+      await join(first); await join(second);
+      const disconnected = [waitFor<string>(first, "disconnect"), waitFor<string>(second, "disconnect")];
+      if (operation === "change") {
+        await request(app.getHttpServer()).post("/api/auth/change-password")
+          .auth(aliceToken, { type: "bearer" })
+          .send({ currentPassword: "Password123!", newPassword: "NewPassword123!" }).expect(201);
+      } else {
+        const token = randomBytes(32).toString("base64url");
+        await prisma.passwordResetToken.create({ data: {
+          userId: aliceId, authVersion: 0, tokenHash: createHash("sha256").update(token).digest("hex"),
+          expiresAt: new Date(Date.now() + 60_000),
+        } });
+        await request(app.getHttpServer()).post("/api/auth/reset-password")
+          .send({ token, newPassword: "NewPassword123!" }).expect(201);
+      }
+      expect(await Promise.all(disconnected)).toEqual(["io server disconnect", "io server disconnect"]);
+      for (const token of [aliceToken, otherLogin.accessToken]) {
+        const old = connect({ token });
+        expect(await waitFor<string>(old, "disconnect")).toBe("io server disconnect");
+      }
+      const freshLogin = await loginAs(app, "alice@example.com", "NewPassword123!");
+      expect(await join(await connectAs(freshLogin.accessToken))).toEqual({ success: true });
+    });
+
+    it("does not deliver to a device revoked on another instance", async () => {
+      const alice = await connectAs(aliceToken);
+      const bob = await connectAs(bobToken);
+      await join(alice); await join(bob);
+      const jwt = new JwtService();
+      const claims = jwt.decode(aliceToken) as { sid: string };
+      await prisma.authSession.update({ where: { id: claims.sid }, data: { revokedAt: new Date() } });
+      const delivered = receivesWithin(alice, "newMessage");
+      const disconnected = waitFor<string>(alice, "disconnect");
+      expect((await bob.emitWithAck("sendMessage", { conversationId, content: "only live devices" })).success).toBe(true);
+      expect(await delivered).toBe(false);
+      expect(await disconnected).toBe("io server disconnect");
+    });
+
     it("rejects browser handshakes from an origin outside the HTTP allowlist", async () => {
       const socket = io(`${baseUrl}/messages`, {
         auth: { token: aliceToken }, transports: ["websocket"],
@@ -152,7 +210,8 @@ describe("Messages gateway (e2e)", () => {
 
     it("disconnects an idle socket when its access token expires", async () => {
       const jwt = new JwtService({ secret: process.env.JWT_SECRET });
-      const token = jwt.sign({ sub: aliceId }, { expiresIn: 2 });
+      const claims = jwt.decode(aliceToken) as { sub: string; sid: string; type: string };
+      const token = jwt.sign({ sub: claims.sub, sid: claims.sid, type: "access" }, { expiresIn: 2 });
       const socket = await connectAs(token);
       expect(await waitFor<string>(socket, "disconnect")).toBe("io server disconnect");
     });

@@ -2,6 +2,9 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { PasswordRecoveryService } from "./password-recovery.service";
+import { RecoveryEmailService } from "./recovery-email.service";
+import { SessionService } from "./session.service";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./jwt.strategy";
@@ -25,8 +28,8 @@ import { getAuthSecrets } from "../../common/security/auth-config";
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, SessionService, PasswordRecoveryService, RecoveryEmailService],
   controllers: [AuthController],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService, JwtModule, SessionService],
 })
 export class AuthModule {}

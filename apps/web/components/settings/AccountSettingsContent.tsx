@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts";
 import {
-  authApi,
   getStoredAccessToken,
   uploadsApi,
   usersApi,
@@ -33,7 +32,7 @@ interface AccountSettingsContentProps {
 }
 
 export function AccountSettingsContent({ role }: AccountSettingsContentProps) {
-  const { user, refreshAuth, logout } = useAuth();
+  const { user, refreshAuth, changePassword, clearSession } = useAuth();
   const tDelete = useTranslations("accountDeletion");
   const tS = useTranslations("accountSettings");
   const describeError = useApiErrorMessage();
@@ -190,7 +189,7 @@ export function AccountSettingsContent({ role }: AccountSettingsContentProps) {
         return;
       }
 
-      await authApi.changePassword(token, {
+      await changePassword({
         currentPassword,
         newPassword,
       });
@@ -200,7 +199,6 @@ export function AccountSettingsContent({ role }: AccountSettingsContentProps) {
       setConfirmPassword("");
       setPasswordMessage(tS("passwordChanged"));
     } catch (error) {
-      console.error("Failed to change password", error);
       setPasswordMessage(describeError(error, tS("passwordError")));
     } finally {
       setIsChangingPassword(false);
@@ -223,7 +221,7 @@ export function AccountSettingsContent({ role }: AccountSettingsContentProps) {
       }
 
       await usersApi.deleteProfile(token);
-      await logout();
+      clearSession();
       window.location.href = "/";
     } catch (error) {
       console.error("Failed to delete profile", error);

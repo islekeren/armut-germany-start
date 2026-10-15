@@ -5,6 +5,9 @@ import {
   IsEnum,
   IsBoolean,
   IsOptional,
+  IsIn,
+  Matches,
+  MaxLength,
 } from "class-validator";
 
 export enum UserType {
@@ -54,10 +57,16 @@ export class RefreshTokenDto {
 
 export class ForgotPasswordDto {
   @IsEmail()
+  @MaxLength(254)
   email: string;
+
+  @IsOptional()
+  @IsIn(["de", "en"])
+  locale?: "de" | "en";
 }
 
 export class ResetPasswordDto {
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
   @IsString()
   token: string;
 
