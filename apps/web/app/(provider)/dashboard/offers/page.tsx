@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { PanelCard, ProviderSubpageShell } from "@/components";
 import { getStoredAccessToken, quotesApi, type Quote } from "@/lib/api";
@@ -9,6 +10,7 @@ import { useApiErrorMessage } from "@/lib/api-errors";
 import { formatEuroAmount } from "@/lib/bookings";
 
 export default function ProviderOffersPage() {
+  const offerId = useSearchParams().get("offer");
   const tDashboard = useTranslations("provider.dashboard");
   const describeError = useApiErrorMessage();
   const tNavigation = useTranslations("provider.dashboard.navigation");
@@ -65,6 +67,17 @@ export default function ProviderOffersPage() {
       dateStyle: "medium",
     }).format(new Date(value));
 
+  useEffect(() => {
+    if (!offerId || !visibleOffers.some((offer) => offer.id === offerId))
+      return;
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(`offer-${offerId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [offerId, visibleOffers]);
+
   return (
     <ProviderSubpageShell
       title={tNavigation("pendingOffers")}
@@ -97,7 +110,8 @@ export default function ProviderOffersPage() {
               return (
                 <div
                   key={offer.id}
-                  className="rounded-lg border border-border p-4 transition hover:border-primary"
+                  id={`offer-${offer.id}`}
+                  className={`rounded-lg border p-4 transition hover:border-primary ${offer.id === offerId ? "border-primary ring-2 ring-primary/25" : "border-border"}`}
                 >
                   <div className="mb-2 flex items-start justify-between gap-3">
                     <div>

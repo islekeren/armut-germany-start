@@ -10,7 +10,10 @@ import {
   notificationsApi,
   type NotificationItem,
 } from "@/lib/api";
-import { getNotificationTemplate } from "@/lib/notifications";
+import {
+  getNotificationHref,
+  getNotificationTemplate,
+} from "@/lib/notifications";
 import { useApiErrorMessage } from "@/lib/api-errors";
 
 export default function NotificationsPage() {
@@ -18,7 +21,7 @@ export default function NotificationsPage() {
   const describeError = useApiErrorMessage();
   const locale = useLocale();
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +70,11 @@ export default function NotificationsPage() {
     } catch {
       // no-op
     }
+  };
+
+  const openNotification = async (item: NotificationItem) => {
+    if (!item.isRead) await markAsRead(item.id);
+    router.push(getNotificationHref(item, user?.userType));
   };
 
   const markAllAsRead = async () => {
@@ -142,8 +150,8 @@ export default function NotificationsPage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => markAsRead(item.id)}
-                  className={`w-full rounded-xl border p-4 text-left shadow-sm transition ${
+                  onClick={() => openNotification(item)}
+                  className={`w-full cursor-pointer rounded-xl border p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md ${
                     item.isRead
                       ? "border-border bg-white"
                       : "border-primary/30 bg-primary/5"

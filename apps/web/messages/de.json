@@ -609,13 +609,14 @@
       "filters": {
         "all": "Alle",
         "active": "Aktiv",
-        "booked": "Gebucht",
+        "booked": "Buchungen",
         "completed": "Abgeschlossen",
         "cancelled": "Abgebrochen"
       },
       "status": {
         "active": "Aktiv",
         "booked": "Gebucht",
+        "bookingRequired": "Buchung erforderlich",
         "completed": "Abgeschlossen",
         "cancelled": "Abgebrochen"
       },
@@ -623,6 +624,7 @@
       "quotes": "Angebote",
       "viewQuotes": "Angebote ansehen",
       "bookedWith": "Gebucht bei",
+      "acceptedProvider": "Angenommener Anbieter",
       "viewDetails": "Details ansehen",
       "manageBooking": "Buchung verwalten",
       "completeBooking": "Buchung abschließen",
@@ -693,6 +695,7 @@
         "tip3": "Achten Sie auf die Erfahrung des Dienstleisters"
       },
       "flexible": "Flexibel",
+      "budgetLabel": "Kundenbudget",
       "budgetRange": "{min}–{max} €",
       "budgetFrom": "ab {min} €",
       "budgetUpTo": "bis {max} €",
@@ -923,6 +926,7 @@
     },
     "requests": {
       "title": "Offene Anzeigen",
+      "back": "Zurück",
       "subtitle": "{count} Anzeigen in Ihrem Servicegebiet",
       "loading": "Wird geladen...",
       "loadError": "Anzeigen konnten nicht geladen werden",

@@ -41,6 +41,17 @@ export default function ProviderOrdersPage() {
       if (!token) return;
       const data = await providerApi.getBookings(token);
       setOrders(data);
+      const deepLinkedOrder = bookingId
+        ? data.find((item) => item.id === bookingId)
+        : null;
+      if (deepLinkedOrder) {
+        setTab(
+          deepLinkedOrder.status === "completed" ||
+            deepLinkedOrder.status === "cancelled"
+            ? "completed"
+            : "active",
+        );
+      }
       setSelectedOrder(
         (current) =>
           data.find((item) => item.id === (current?.id || bookingId)) || null,

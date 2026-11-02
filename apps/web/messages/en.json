@@ -606,13 +606,14 @@
       "filters": {
         "all": "All",
         "active": "Active",
-        "booked": "Booked",
+        "booked": "Bookings",
         "completed": "Completed",
         "cancelled": "Cancelled"
       },
       "status": {
         "active": "Active",
         "booked": "Booked",
+        "bookingRequired": "Booking required",
         "completed": "Completed",
         "cancelled": "Cancelled"
       },
@@ -620,6 +621,7 @@
       "quotes": "Quotes",
       "viewQuotes": "View Quotes",
       "bookedWith": "Booked with",
+      "acceptedProvider": "Accepted provider",
       "viewDetails": "View Details",
       "manageBooking": "Manage Booking",
       "completeBooking": "Complete Booking",
@@ -690,6 +692,7 @@
         "tip3": "Pay attention to the provider's experience"
       },
       "flexible": "Flexible",
+      "budgetLabel": "Customer budget",
       "budgetRange": "€{min}–{max}",
       "budgetFrom": "from €{min}",
       "budgetUpTo": "up to €{max}",
@@ -920,6 +923,7 @@
     },
     "requests": {
       "title": "Open Listings",
+      "back": "Back",
       "subtitle": "{count} listings in your service area",
       "loading": "Loading...",
       "loadError": "Failed to load listings",

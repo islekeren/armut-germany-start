@@ -408,7 +408,8 @@ export class RequestsService {
       throw new ForbiddenException("Not authorized to update this request");
     }
 
-    const taxonomyUpdate: { requestSector?: string; requestBranch?: string } = {};
+    const taxonomyUpdate: { requestSector?: string; requestBranch?: string } =
+      {};
     const taxonomyChanged =
       updateRequestDto.requestSector !== undefined ||
       updateRequestDto.requestBranch !== undefined;
@@ -416,16 +417,26 @@ export class RequestsService {
     if (taxonomyChanged) {
       // An omitted field keeps its value. Explicit null/empty must never be
       // treated as a request to fall back or clear an otherwise valid pair.
-      for (const value of [updateRequestDto.requestSector, updateRequestDto.requestBranch]) {
-        if (value !== undefined && (typeof value !== "string" || !value.trim())) {
-          throw new BadRequestException("Request taxonomy values must not be empty");
+      for (const value of [
+        updateRequestDto.requestSector,
+        updateRequestDto.requestBranch,
+      ]) {
+        if (
+          value !== undefined &&
+          (typeof value !== "string" || !value.trim())
+        ) {
+          throw new BadRequestException(
+            "Request taxonomy values must not be empty",
+          );
         }
       }
       const category = await this.prisma.category.findUnique({
         where: { id: request.categoryId },
       });
       if (!category) {
-        throw new BadRequestException("Category is not available in request taxonomy");
+        throw new BadRequestException(
+          "Category is not available in request taxonomy",
+        );
       }
       const resolved = this.validateTaxonomy(
         category.slug,
@@ -478,6 +489,7 @@ export class RequestsService {
       include: {
         quotes: {
           select: {
+            id: true,
             provider: {
               select: {
                 userId: true,
@@ -505,15 +517,15 @@ export class RequestsService {
       data: { status: "cancelled" },
     });
 
-    const providerUserIds: string[] = [];
+    const providerQuotes = new Map<string, string>();
     for (const quote of request.quotes ?? []) {
       const providerUserId = quote.provider?.userId;
       if (
         typeof providerUserId === "string" &&
         providerUserId.length > 0 &&
-        !providerUserIds.includes(providerUserId)
+        !providerQuotes.has(providerUserId)
       ) {
-        providerUserIds.push(providerUserId);
+        providerQuotes.set(providerUserId, quote.id);
       }
     }
 
@@ -528,13 +540,14 @@ export class RequestsService {
           audience: "customer",
         },
       }),
-      ...providerUserIds.map((providerUserId) =>
+      ...Array.from(providerQuotes.entries()).map(([providerUserId, quoteId]) =>
         this.notificationsService.createBestEffort(providerUserId, {
           type: "request_cancelled",
           title: "Request cancelled",
           message: `A customer cancelled the request "${request.title}".`,
           metadata: {
             requestId: request.id,
+            quoteId,
             requestTitle: request.title,
             audience: "provider",
           },

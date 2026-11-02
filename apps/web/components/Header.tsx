@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
 import { useAuth } from "@/contexts";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getStoredAccessToken, notificationsApi } from "@/lib/api";
+import { getStoredAccessToken, messagesApi, notificationsApi } from "@/lib/api";
 
 type NavLink = {
   href: string;
@@ -20,6 +20,7 @@ export function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const messagesHref =
     user?.userType === "provider" ? "/dashboard/messages" : "/messages";
@@ -94,7 +95,10 @@ export function Header() {
         { href: "/dashboard/profile", label: t("nav.profile") },
         { href: messagesHref, label: t("nav.messages") },
         { href: notificationsHref, label: t("nav.notifications") },
-        { href: "/dashboard/settings", label: t("provider.dashboard.navigation.settings") },
+        {
+          href: "/dashboard/settings",
+          label: t("provider.dashboard.navigation.settings"),
+        },
         { href: "/how-it-works", label: t("nav.howItWorks") },
       ];
     }
@@ -108,7 +112,10 @@ export function Header() {
         { href: "/bookings", label: t("nav.bookings") },
         { href: messagesHref, label: t("nav.messages") },
         { href: notificationsHref, label: t("nav.notifications") },
-        { href: "/settings", label: t("provider.dashboard.navigation.settings") },
+        {
+          href: "/settings",
+          label: t("provider.dashboard.navigation.settings"),
+        },
         { href: "/how-it-works", label: t("nav.howItWorks") },
       ];
     }
@@ -119,13 +126,7 @@ export function Header() {
       { href: "/login", label: t("common.login") },
       { href: "/register", label: t("common.register") },
     ];
-  }, [
-    isAuthenticated,
-    messagesHref,
-    notificationsHref,
-    t,
-    user?.userType,
-  ]);
+  }, [isAuthenticated, messagesHref, notificationsHref, t, user?.userType]);
 
   useEffect(() => {
     setShowMobileMenu(false);
@@ -134,7 +135,10 @@ export function Header() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     }
@@ -164,6 +168,7 @@ export function Header() {
     const loadUnread = async () => {
       if (!isAuthenticated) {
         setUnreadNotifications(0);
+        setUnreadMessages(0);
         return;
       }
 
@@ -171,14 +176,26 @@ export function Header() {
       if (!token) return;
 
       try {
-        const result = await notificationsApi.getUnreadCount(token);
-        setUnreadNotifications(result.unreadCount || 0);
+        const [notificationResult, messageResult] = await Promise.all([
+          notificationsApi.getUnreadCount(token),
+          messagesApi.getUnreadCount(token),
+        ]);
+        setUnreadNotifications(notificationResult.unreadCount || 0);
+        setUnreadMessages(messageResult.unreadCount || 0);
       } catch {
-        setUnreadNotifications(0);
+        // Keep the last known counts during a temporary network failure.
       }
     };
 
     loadUnread();
+
+    const refreshInterval = window.setInterval(loadUnread, 10_000);
+    window.addEventListener("focus", loadUnread);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", loadUnread);
+    };
   }, [isAuthenticated]);
 
   return (
@@ -186,7 +203,9 @@ export function Header() {
       <div className="mx-auto max-w-7xl border-b-4 border-amber-500 px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
         <div className="flex items-center justify-between gap-3">
           <Link href={logoHref} className="flex shrink-0 items-center gap-2">
-            <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">Machma</span>
+            <span className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+              Machma
+            </span>
           </Link>
 
           <nav className="hidden min-w-0 items-center gap-5 md:flex">
@@ -211,19 +230,24 @@ export function Header() {
                 <div className="hidden items-center gap-3 md:flex">
                   <Link
                     href={notificationsHref}
-                    className="relative inline-flex h-11 items-center gap-2 rounded-md border-2 border-amber-400 bg-white px-3 text-sm font-semibold uppercase tracking-wide text-primary hover:bg-amber-50"
+                    className={`relative inline-flex h-11 items-center gap-2 rounded-md border-2 border-amber-400 bg-white px-3 text-sm font-semibold uppercase tracking-wide text-primary hover:bg-amber-50 ${unreadNotifications > 0 ? "shadow-md shadow-amber-300/50" : ""}`}
                   >
                     <span>{t("nav.notifications")}</span>
                     {unreadNotifications > 0 && (
-                      <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs text-white">
-                        {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                      </span>
+                      <>
+                        <span className="absolute -bottom-1 left-1/2 h-1.5 w-12 -translate-x-1/2 animate-pulse rounded-full bg-amber-400" />
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs text-white">
+                          {unreadNotifications > 99
+                            ? "99+"
+                            : unreadNotifications}
+                        </span>
+                      </>
                     )}
                   </Link>
 
                   <Link
                     href={messagesHref}
-                    className="inline-flex h-11 items-center gap-2 rounded-md bg-amber-500 px-3 text-sm font-semibold uppercase tracking-wide text-white hover:bg-amber-600"
+                    className={`relative inline-flex h-11 items-center gap-2 rounded-md bg-amber-500 px-3 text-sm font-semibold uppercase tracking-wide text-white hover:bg-amber-600 ${unreadMessages > 0 ? "animate-pulse shadow-md shadow-amber-300/50" : ""}`}
                   >
                     <svg
                       className="h-4 w-4"
@@ -239,6 +263,11 @@ export function Header() {
                       />
                     </svg>
                     <span>{t("nav.messages")}</span>
+                    {unreadMessages > 0 && (
+                      <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-xs text-white">
+                        {unreadMessages > 99 ? "99+" : unreadMessages}
+                      </span>
+                    )}
                   </Link>
 
                   <div className="relative z-50" ref={dropdownRef}>
@@ -262,61 +291,112 @@ export function Header() {
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </button>
                     {showDropdown && (
                       <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border-2 border-amber-300 bg-white py-2 text-foreground">
                         <div className="border-b-2 border-amber-200 px-4 py-2">
-                          <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                          <p className="truncate text-xs text-muted">{user.email}</p>
+                          <p className="text-sm font-medium">
+                            {user.firstName} {user.lastName}
+                          </p>
+                          <p className="truncate text-xs text-muted">
+                            {user.email}
+                          </p>
                         </div>
                         {user.userType === "admin" ? (
-                          <Link href="/admin/providers" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                          <Link
+                            href="/admin/providers"
+                            className="block px-4 py-2 text-sm hover:bg-gray-100"
+                          >
                             {t("nav.adminProviders")}
                           </Link>
                         ) : user.userType === "provider" ? (
                           <>
-                            <Link href="/dashboard/listings" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/dashboard/listings"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.offers")}
                             </Link>
-                            <Link href="/dashboard" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/dashboard"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.dashboard")}
                             </Link>
-                            <Link href="/dashboard/profile" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/dashboard/profile"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.profile")}
                             </Link>
-                            <Link href="/notifications" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/notifications"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.notifications")}
                             </Link>
-                            <Link href="/dashboard/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/dashboard/settings"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("provider.dashboard.navigation.settings")}
                             </Link>
                           </>
                         ) : (
                           <>
-                            <Link href="/find-providers" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/find-providers"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.findProvider")}
                             </Link>
-                            <Link href="/requests" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/requests"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.requests")}
                             </Link>
-                            <Link href="/create-request" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/create-request"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.createRequest")}
                             </Link>
-                            <Link href="/my-requests" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/my-requests"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.myRequests")}
                             </Link>
-                            <Link href="/bookings" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/bookings"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.bookings")}
                             </Link>
-                            <Link href="/messages" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/messages"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.messages")}
                             </Link>
-                            <Link href="/notifications" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/notifications"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("nav.notifications")}
                             </Link>
-                            <Link href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                            <Link
+                              href="/settings"
+                              className="block px-4 py-2 text-sm hover:bg-gray-100"
+                            >
                               {t("provider.dashboard.navigation.settings")}
                             </Link>
                           </>
@@ -336,10 +416,16 @@ export function Header() {
                   onClick={() => setShowMobileMenu((prev) => !prev)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/30 text-white md:hidden"
                   aria-expanded={showMobileMenu}
-                  aria-label={showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")}
+                  aria-label={
+                    showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")
+                  }
                 >
                   {showMobileMenu ? (
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z"
@@ -347,7 +433,11 @@ export function Header() {
                       />
                     </svg>
                   ) : (
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M3 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1Zm0 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1Zm1 4a1 1 0 1 0 0 2h12a1 1 0 1 0 0-2H4Z"
@@ -360,7 +450,10 @@ export function Header() {
             ) : (
               <>
                 <div className="hidden items-center gap-3 md:flex">
-                  <Link href="/login" className="text-white/90 hover:text-amber-300">
+                  <Link
+                    href="/login"
+                    className="text-white/90 hover:text-amber-300"
+                  >
                     {t("common.login")}
                   </Link>
                   <Link
@@ -374,10 +467,16 @@ export function Header() {
                   onClick={() => setShowMobileMenu((prev) => !prev)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/30 text-white md:hidden"
                   aria-expanded={showMobileMenu}
-                  aria-label={showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")}
+                  aria-label={
+                    showMobileMenu ? t("nav.closeMenu") : t("nav.openMenu")
+                  }
                 >
                   {showMobileMenu ? (
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z"
@@ -385,7 +484,11 @@ export function Header() {
                       />
                     </svg>
                   ) : (
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M3 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1Zm0 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1Zm1 4a1 1 0 1 0 0 2h12a1 1 0 1 0 0-2H4Z"
@@ -410,7 +513,9 @@ export function Header() {
           <div className="fixed inset-x-0 top-[68px] z-50 max-h-[calc(100dvh-68px)] overflow-y-auto border-t border-border bg-white text-foreground shadow-xl md:hidden">
             {isAuthenticated && user ? (
               <div className="border-b border-border px-4 py-3">
-                <p className="font-semibold">{user.firstName} {user.lastName}</p>
+                <p className="font-semibold">
+                  {user.firstName} {user.lastName}
+                </p>
                 <p className="truncate text-sm text-muted">{user.email}</p>
               </div>
             ) : null}

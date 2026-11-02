@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts";
 import {
   getStoredAccessToken,
   isApiNotFoundError,
+  isTransientApiError,
   providerApi,
   type ProviderProfile,
 } from "@/lib/api";
@@ -44,6 +45,7 @@ export function useProviderOnboardingCheck(enabled: boolean) {
       return;
     }
     let cancelled = false;
+    let retryTimer: number | undefined;
     setStatus("checking");
     const token = getStoredAccessToken();
     if (!token) {
@@ -60,10 +62,18 @@ export function useProviderOnboardingCheck(enabled: boolean) {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        if (isTransientApiError(error) && retryCount < 3) {
+          retryTimer = window.setTimeout(
+            () => setRetryCount((value) => value + 1),
+            1500,
+          );
+          return;
+        }
         setStatus(isApiNotFoundError(error) ? "missing" : "error");
       });
     return () => {
       cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
     };
   }, [enabled, userId, retryCount]);
 

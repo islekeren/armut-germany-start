@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { PanelCard, ProviderSubpageShell } from "@/components";
@@ -30,7 +31,7 @@ export default function CalendarPage() {
   ];
 
   const [selectedDate, setSelectedDate] = useState<string | null>(
-    new Date().toISOString().split("T")[0] || null
+    new Date().toISOString().split("T")[0] || null,
   );
 
   useEffect(() => {
@@ -51,6 +52,14 @@ export default function CalendarPage() {
     };
 
     fetchBookings();
+
+    const refreshInterval = window.setInterval(fetchBookings, 10_000);
+    window.addEventListener("focus", fetchBookings);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", fetchBookings);
+    };
   }, [currentDate]);
 
   const getDaysInMonth = (date: Date) => {
@@ -72,7 +81,10 @@ export default function CalendarPage() {
   };
 
   const days = getDaysInMonth(currentDate);
-  const monthName = currentDate.toLocaleDateString(locale === "de" ? "de-DE" : "en-US", { month: "long", year: "numeric" });
+  const monthName = currentDate.toLocaleDateString(
+    locale === "de" ? "de-DE" : "en-US",
+    { month: "long", year: "numeric" },
+  );
 
   const getEventsForDate = (day: number | null) => {
     if (!day) return [];
@@ -85,11 +97,15 @@ export default function CalendarPage() {
     : [];
 
   const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+    );
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
+    );
   };
 
   const goToToday = () => {
@@ -99,8 +115,8 @@ export default function CalendarPage() {
   };
 
   const todayDay = new Date().getDate();
-  const isCurrentMonth = 
-    currentDate.getMonth() === new Date().getMonth() && 
+  const isCurrentMonth =
+    currentDate.getMonth() === new Date().getMonth() &&
     currentDate.getFullYear() === new Date().getFullYear();
 
   if (loading) {
@@ -133,148 +149,161 @@ export default function CalendarPage() {
       }
     >
       <div className="grid gap-8 lg:grid-cols-3">
-          {/* Calendar */}
-          <div className="lg:col-span-2">
-            <PanelCard>
-              <div className="mb-6 flex items-center justify-between">
-                <button 
-                  onClick={goToPreviousMonth}
-                  className="rounded-lg p-2 hover:bg-background"
-                >
-                  ←
-                </button>
-                <h2 className="text-xl font-semibold capitalize">{monthName}</h2>
-                <button 
-                  onClick={goToNextMonth}
-                  className="rounded-lg p-2 hover:bg-background"
-                >
-                  →
-                </button>
-              </div>
+        {/* Calendar */}
+        <div className="lg:col-span-2">
+          <PanelCard>
+            <div className="mb-6 flex items-center justify-between">
+              <button
+                onClick={goToPreviousMonth}
+                className="rounded-lg p-2 hover:bg-background"
+              >
+                ←
+              </button>
+              <h2 className="text-xl font-semibold capitalize">{monthName}</h2>
+              <button
+                onClick={goToNextMonth}
+                className="rounded-lg p-2 hover:bg-background"
+              >
+                →
+              </button>
+            </div>
 
-              <div className="grid grid-cols-7 gap-1">
-                {daysOfWeek.map((day) => (
+            <div className="grid grid-cols-7 gap-1">
+              {daysOfWeek.map((day) => (
+                <div
+                  key={day}
+                  className="py-2 text-center text-sm font-medium text-muted"
+                >
+                  {day}
+                </div>
+              ))}
+              {days.map((day, index) => {
+                const events = getEventsForDate(day);
+                const dateStr = day
+                  ? `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
+                  : null;
+                const isSelected = dateStr === selectedDate;
+                const isToday = isCurrentMonth && day === todayDay;
+
+                return (
                   <div
-                    key={day}
-                    className="py-2 text-center text-sm font-medium text-muted"
+                    key={index}
+                    onClick={() => dateStr && setSelectedDate(dateStr)}
+                    className={`min-h-24 cursor-pointer rounded-lg border p-2 transition ${
+                      day
+                        ? isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent hover:bg-background"
+                        : ""
+                    }`}
                   >
-                    {day}
+                    {day && (
+                      <>
+                        <div
+                          className={`mb-1 text-sm ${
+                            isToday
+                              ? "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white"
+                              : ""
+                          }`}
+                        >
+                          {day}
+                        </div>
+                        {events.map((event) => {
+                          const displayStatus = toBookingDisplayStatus(
+                            event.status,
+                          );
+                          return (
+                            <Link
+                              key={event.id}
+                              href={`/dashboard/orders?booking=${event.id}`}
+                              onClick={(clickEvent) =>
+                                clickEvent.stopPropagation()
+                              }
+                              className={`mb-1 truncate rounded px-1 py-0.5 text-xs ${getBookingDisplayStatusClass(displayStatus)}`}
+                            >
+                              {event.time} {event.title}
+                            </Link>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
-                ))}
-                {days.map((day, index) => {
-                  const events = getEventsForDate(day);
-                  const dateStr = day
-                    ? `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
-                    : null;
-                  const isSelected = dateStr === selectedDate;
-                  const isToday = isCurrentMonth && day === todayDay;
+                );
+              })}
+            </div>
+          </PanelCard>
+        </div>
 
+        {/* Selected Day Details */}
+        <aside>
+          <PanelCard className="sticky top-8">
+            <h3 className="mb-4 font-semibold">
+              {selectedDate
+                ? new Date(selectedDate).toLocaleDateString(locale, {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })
+                : t("selectDate")}
+            </h3>
+
+            {selectedEvents.length > 0 ? (
+              <div className="space-y-4">
+                {selectedEvents.map((event) => {
+                  const displayStatus = toBookingDisplayStatus(event.status);
                   return (
                     <div
-                      key={index}
-                      onClick={() => dateStr && setSelectedDate(dateStr)}
-                      className={`min-h-24 cursor-pointer rounded-lg border p-2 transition ${
-                        day
-                          ? isSelected
-                            ? "border-primary bg-primary/5"
-                            : "border-transparent hover:bg-background"
-                          : ""
-                      }`}
+                      key={event.id}
+                      className="rounded-lg border border-border p-4"
                     >
-                      {day && (
-                        <>
-                          <div
-                            className={`mb-1 text-sm ${
-                              isToday
-                                ? "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white"
-                                : ""
-                            }`}
-                          >
-                            {day}
-                          </div>
-                          {events.map((event) => {
-                            const displayStatus = toBookingDisplayStatus(event.status);
-                            return (
-                              <div
-                                key={event.id}
-                                className={`mb-1 truncate rounded px-1 py-0.5 text-xs ${getBookingDisplayStatusClass(displayStatus)}`}
-                              >
-                                {event.time} {event.title}
-                              </div>
-                            );
-                          })}
-                        </>
-                      )}
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium">{event.title}</h4>
+                          <p className="text-sm text-muted">{event.customer}</p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs ${getBookingDisplayStatusClass(displayStatus)}`}
+                        >
+                          {tOrderStatus(displayStatus)}
+                        </span>
+                      </div>
+                      <div className="mt-3 space-y-1 text-sm text-muted">
+                        <div>
+                          🕐 {event.time} {t("oclock")}
+                        </div>
+                        <div>📍 {event.address}</div>
+                        <div>
+                          💰 {formatEuroAmount(event.totalPrice, locale)}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <Link
+                          href={`/dashboard/orders?booking=${event.id}`}
+                          className="flex-1 rounded-lg border border-border py-2 text-center text-sm hover:bg-background"
+                        >
+                          {t("details")}
+                        </Link>
+                        <button className="flex-1 rounded-lg bg-primary py-2 text-sm text-white hover:bg-primary-dark">
+                          {t("message")}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            </PanelCard>
-          </div>
+            ) : (
+              <div className="py-8 text-center text-muted">
+                <div className="mb-2 text-4xl">📅</div>
+                <p>{t("noAppointments")}</p>
+              </div>
+            )}
 
-          {/* Selected Day Details */}
-          <aside>
-            <PanelCard className="sticky top-8">
-              <h3 className="mb-4 font-semibold">
-                {selectedDate
-                  ? new Date(selectedDate).toLocaleDateString(locale, {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                    })
-                  : t("selectDate")}
-              </h3>
-
-              {selectedEvents.length > 0 ? (
-                <div className="space-y-4">
-                  {selectedEvents.map((event) => {
-                    const displayStatus = toBookingDisplayStatus(event.status);
-                    return (
-                      <div
-                        key={event.id}
-                        className="rounded-lg border border-border p-4"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-medium">{event.title}</h4>
-                            <p className="text-sm text-muted">{event.customer}</p>
-                          </div>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs ${getBookingDisplayStatusClass(displayStatus)}`}
-                          >
-                            {tOrderStatus(displayStatus)}
-                          </span>
-                        </div>
-                        <div className="mt-3 space-y-1 text-sm text-muted">
-                          <div>🕐 {event.time} {t("oclock")}</div>
-                          <div>📍 {event.address}</div>
-                          <div>💰 {formatEuroAmount(event.totalPrice, locale)}</div>
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <button className="flex-1 rounded-lg border border-border py-2 text-sm hover:bg-background">
-                            {t("details")}
-                          </button>
-                          <button className="flex-1 rounded-lg bg-primary py-2 text-sm text-white hover:bg-primary-dark">
-                            {t("message")}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-8 text-center text-muted">
-                  <div className="mb-2 text-4xl">📅</div>
-                  <p>{t("noAppointments")}</p>
-                </div>
-              )}
-
-              <button className="mt-4 w-full rounded-lg border border-border py-2 text-sm hover:bg-background">
-                {t("addAppointment")}
-              </button>
-            </PanelCard>
-          </aside>
-        </div>
+            <button className="mt-4 w-full rounded-lg border border-border py-2 text-sm hover:bg-background">
+              {t("addAppointment")}
+            </button>
+          </PanelCard>
+        </aside>
+      </div>
     </ProviderSubpageShell>
   );
 }

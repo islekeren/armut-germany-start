@@ -9,6 +9,7 @@ interface ProviderSubpageShellProps {
   backLabel: string;
   backHref?: string;
   breadcrumbLabel?: string;
+  backOnly?: boolean;
   headerSlot?: ReactNode;
   children: ReactNode;
 }
@@ -18,6 +19,7 @@ export function ProviderSubpageShell({
   backLabel,
   backHref = "/dashboard",
   breadcrumbLabel,
+  backOnly = false,
   headerSlot,
   children,
 }: ProviderSubpageShellProps) {
@@ -26,15 +28,43 @@ export function ProviderSubpageShell({
       <Header />
 
       <PageContainer className="py-6 sm:py-8">
-        <nav className="mb-5 flex flex-wrap items-center gap-1 text-xs text-muted sm:mb-6 sm:text-sm">
-          <Link href={backHref} className="hover:text-primary">
-            {backLabel}
+        <nav
+          className={`mb-5 flex flex-wrap items-center gap-1 sm:mb-6 ${
+            backOnly ? "text-base" : "text-xs text-muted sm:text-sm"
+          }`}
+        >
+          <Link
+            href={backHref}
+            className={
+              backOnly
+                ? "inline-flex min-h-11 items-center gap-2 rounded-lg border-2 border-primary bg-white px-5 py-2.5 font-semibold text-primary shadow-sm transition hover:bg-primary hover:text-white hover:shadow-md"
+                : "hover:text-primary"
+            }
+          >
+            {backOnly ? (
+              <>
+                <span aria-hidden="true" className="text-xl leading-none">
+                  ←
+                </span>
+                {backLabel}
+              </>
+            ) : (
+              backLabel
+            )}
           </Link>
-          {" / "}
-          <span>{breadcrumbLabel || title}</span>
+          {!backOnly && (
+            <>
+              {" / "}
+              <span>{breadcrumbLabel || title}</span>
+            </>
+          )}
         </nav>
 
-        {headerSlot || <h1 className="mb-6 text-xl font-bold sm:mb-8 sm:text-2xl">{title}</h1>}
+        {headerSlot || (
+          <h1 className="mb-6 text-xl font-bold sm:mb-8 sm:text-2xl">
+            {title}
+          </h1>
+        )}
 
         <ProviderApprovalNotice className="mb-6" />
 
