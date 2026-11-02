@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AlertBanner,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/request-taxonomy";
 import { useApiErrorMessage } from "@/lib/api-errors";
 import { formatRelativeTime } from "@/lib/format";
+import { formatEuroAmount } from "@/lib/bookings";
 
 type DateFilter = "all" | "today" | "last7" | "thisMonth";
 type SortFilter = "newest" | "oldest" | "budgetAsc" | "budgetDesc";
@@ -37,11 +39,23 @@ function getBudgetValue(request: ProviderRequest) {
   return match ? Number(match[0]) : null;
 }
 
+function formatRequestBudget(request: ProviderRequest, locale: string) {
+  const hasMin = typeof request.budgetMin === "number";
+  const hasMax = typeof request.budgetMax === "number";
+
+  if (hasMin && hasMax) {
+    return `${formatEuroAmount(request.budgetMin!, locale)} – ${formatEuroAmount(request.budgetMax!, locale)}`;
+  }
+  if (hasMin) return formatEuroAmount(request.budgetMin!, locale);
+  if (hasMax) return formatEuroAmount(request.budgetMax!, locale);
+  return null;
+}
+
 export default function ListingsPage() {
+  const requestId = useSearchParams().get("request");
   const locale = useLocale();
   const t = useTranslations("provider.requests");
   const describeError = useApiErrorMessage();
-  const tNav = useTranslations("provider.dashboard.navigation");
   const tFilters = useTranslations("provider.offers.filters");
   const tApproval = useTranslations("provider.approval");
   const isApproved = useProviderApproval();
@@ -186,6 +200,30 @@ export default function ListingsPage() {
     return filtered;
   }, [allRequests, category, dateFilter, maxBudget, minBudget, search, sortBy]);
 
+  useEffect(() => {
+    if (
+      !requestId ||
+      !allRequests.some((request) => request.id === requestId)
+    ) {
+      return;
+    }
+
+    setCategory("all");
+    setDateFilter("all");
+    setMinBudget("");
+    setMaxBudget("");
+    setSearch("");
+    setSelectedRequest(requestId);
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(`request-${requestId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [allRequests, requestId]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -269,7 +307,8 @@ export default function ListingsPage() {
   return (
     <ProviderSubpageShell
       title={t("title")}
-      backLabel={tNav("overview")}
+      backLabel={t("back")}
+      backOnly
       headerSlot={
         <div className="mb-8 space-y-4">
           <div>
@@ -459,6 +498,7 @@ export default function ListingsPage() {
             filteredRequests.map((request) => (
               <div
                 key={request.id}
+                id={`request-${request.id}`}
                 onClick={() => handleSelectRequest(request)}
                 className={`cursor-pointer rounded-xl bg-white p-6 shadow-sm transition hover:shadow-md ${
                   selectedRequest === request.id ? "ring-2 ring-primary" : ""
@@ -507,6 +547,17 @@ export default function ListingsPage() {
                   {request.description}
                 </p>
 
+                {formatRequestBudget(request, locale) ? (
+                  <div className="mt-3 rounded-lg border border-secondary/20 bg-secondary/5 px-3 py-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                      {t("budgetLabel")}
+                    </p>
+                    <p className="mt-0.5 font-semibold text-secondary">
+                      {formatRequestBudget(request, locale)}
+                    </p>
+                  </div>
+                ) : null}
+
                 <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
                   <span className="flex items-center gap-1 text-muted">
                     📍 {request.location}
@@ -519,11 +570,6 @@ export default function ListingsPage() {
                         )
                       : t("flexible")}
                   </span>
-                  {request.budget ? (
-                    <span className="font-semibold text-secondary">
-                      💰 {request.budget}
-                    </span>
-                  ) : null}
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-4">

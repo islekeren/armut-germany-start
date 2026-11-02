@@ -34,9 +34,9 @@ export async function signIn(page: Page, user: LoginUser) {
   await page.addInitScript((s) => {
     if (window.sessionStorage.getItem("e2e-session-seeded")) return;
     window.sessionStorage.setItem("e2e-session-seeded", "1");
-    window.localStorage.setItem("armut_access_token", s.accessToken);
-    window.localStorage.setItem("armut_refresh_token", s.refreshToken);
-    window.localStorage.setItem("armut_user", JSON.stringify(s.user));
+    window.localStorage.setItem("machma_access_token", s.accessToken);
+    window.localStorage.setItem("machma_refresh_token", s.refreshToken);
+    window.localStorage.setItem("machma_user", JSON.stringify(s.user));
   }, session);
 
   return session;

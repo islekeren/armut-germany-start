@@ -4,7 +4,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const webUrl = "http://localhost:3000";
 const databaseUrl =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:postgres@127.0.0.1:5433/armut_e2e_web";
+  "postgresql://postgres:postgres@127.0.0.1:5433/machma_e2e_web";
 
 // Production builds by default (what CI runs); E2E_DEV_SERVERS=true switches
 // to watch-mode servers for local debugging.

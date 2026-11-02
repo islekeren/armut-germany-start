@@ -14,7 +14,7 @@ const env = {
   ...process.env,
   DATABASE_URL:
     process.env.DATABASE_URL ||
-    "postgresql://postgres:postgres@127.0.0.1:5433/armut_e2e_web",
+    "postgresql://postgres:postgres@127.0.0.1:5433/machma_e2e_web",
   NEXT_PUBLIC_API_URL:
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
 };
@@ -27,11 +27,11 @@ const run = (command, args, cwd, overrides = {}) =>
 // follow the e2e naming convention are wiped without an explicit opt-in.
 const databaseName = new URL(env.DATABASE_URL).pathname.slice(1);
 if (
-  !databaseName.startsWith("armut_e2e_") &&
+  !databaseName.startsWith("machma_e2e_") &&
   process.env.E2E_ALLOW_RESET !== "true"
 ) {
   throw new Error(
-    `Refusing to reset "${databaseName}". Use a database named armut_e2e_* or set E2E_ALLOW_RESET=true.`,
+    `Refusing to reset "${databaseName}". Use a database named machma_e2e_* or set E2E_ALLOW_RESET=true.`,
   );
 }
 run(npx, ["prisma", "migrate", "deploy"], apiDir);

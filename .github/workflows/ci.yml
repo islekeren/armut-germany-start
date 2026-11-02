@@ -72,7 +72,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: armut_test
+          POSTGRES_DB: machma_test
         ports:
           - 5432:5432
         options: >-
@@ -111,13 +111,13 @@ jobs:
         working-directory: apps/api
         run: npx prisma migrate deploy
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/machma_test
 
       - name: Run unit tests
         working-directory: apps/api
         run: npm run test -- --coverage
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/machma_test
           JWT_SECRET: test-jwt-secret
           JWT_REFRESH_SECRET: test-refresh-secret
           REDIS_URL: redis://localhost:6379
@@ -194,7 +194,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: armut_e2e_api
+          POSTGRES_DB: machma_e2e_api
         ports:
           - 5432:5432
         options: >-
@@ -205,16 +205,16 @@ jobs:
       s3:
         image: adobe/s3mock:latest
         env:
-          COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: armut-e2e-uploads
+          COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: machma-e2e-uploads
         ports:
           - 9190:9090
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_e2e_api
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/machma_e2e_api
       JWT_SECRET: test-jwt-secret
       JWT_REFRESH_SECRET: test-refresh-secret
       S3_ENDPOINT: http://127.0.0.1:9190
-      S3_PUBLIC_URL: http://127.0.0.1:9190/armut-e2e-uploads
+      S3_PUBLIC_URL: http://127.0.0.1:9190/machma-e2e-uploads
 
     steps:
       - uses: actions/checkout@v4
@@ -253,7 +253,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: armut_e2e_web
+          POSTGRES_DB: machma_e2e_web
         ports:
           - 5432:5432
         options: >-
@@ -263,7 +263,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/armut_e2e_web
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/machma_e2e_web
       NEXT_PUBLIC_API_URL: http://localhost:4000
       JWT_SECRET: test-jwt-secret
       JWT_REFRESH_SECRET: test-refresh-secret

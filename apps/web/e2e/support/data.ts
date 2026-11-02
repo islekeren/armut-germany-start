@@ -15,7 +15,7 @@ import bcrypt from "bcrypt";
  */
 export const E2E_DATABASE_URL =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:postgres@127.0.0.1:5433/armut_e2e_web";
+  "postgresql://postgres:postgres@127.0.0.1:5433/machma_e2e_web";
 
 export const PASSWORD = "Password123!";
 const DAY_MS = 24 * 60 * 60 * 1000;

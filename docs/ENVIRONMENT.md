@@ -9,6 +9,18 @@ Audited against the current checkout on September 11, 2026.
 - PostgreSQL 16 on `localhost:5432`
 - Redis 7 on `localhost:6379`
 
+The Machma defaults use PostgreSQL user `machma`, database `machma_db`, and
+container names prefixed with `machma-`. Update local env files to match the
+checked-in examples. PostgreSQL initialization variables do not rename users or
+databases in an existing `postgres_data` volume: back it up and migrate its
+user/database names, or use a fresh volume for disposable development data.
+
+Browser storage uses the `machma_` prefix for sessions, request drafts, and
+account preferences. After the rename, existing users must sign in again;
+previously saved drafts and preferences are not carried over. Keep an explicit
+`S3_BUCKET` configured when retaining an existing upload bucket; the fallback is
+now `machma-uploads`.
+
 Start them with:
 
 ```bash

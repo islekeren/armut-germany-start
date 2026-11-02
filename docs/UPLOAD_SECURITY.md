@@ -49,7 +49,7 @@ Verified on 2026-10-14:
 - API unit: 43 suites / 411 tests passed.
 - API full e2e: 15 suites / 321 tests passed; final upload-only rerun: 17 passed.
 - Web unit: 9 suites / 62 tests passed.
-- Chromium production-build smoke: 10 passed (native Chromium/ffmpeg, isolated `armut_e2e_web`, `E2E_SKIP_BUILD=true` after the successful root build).
+- Chromium production-build smoke: 10 passed (native Chromium/ffmpeg, isolated `machma_e2e_web`, `E2E_SKIP_BUILD=true` after the successful root build).
 - Root lint, build and check-types passed. Lint retains 12 pre-existing API warnings; no new warnings remain.
 - Independent code review found PDF decompression and finalize/delete races; regression tests now cover both fixes. Re-review reported no remaining actionable findings.
 

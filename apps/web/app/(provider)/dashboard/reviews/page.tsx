@@ -29,7 +29,7 @@ export default function ReviewsPage() {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const token = localStorage.getItem("armut_access_token");
+        const token = localStorage.getItem("machma_access_token");
         if (token) {
           const response = await providerApi.getReviews(token);
           setReviews(response.data);
@@ -47,7 +47,7 @@ export default function ReviewsPage() {
 
   const handleReply = async (reviewId: string) => {
     try {
-      const token = localStorage.getItem("armut_access_token");
+      const token = localStorage.getItem("machma_access_token");
       if (token && replyText.trim()) {
         let replyImages: string[] = [];
         if (replyFiles.length > 0) {

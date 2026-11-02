@@ -30,7 +30,7 @@ import { formatEuroAmount } from "@/lib/bookings";
 // A guest's answers are parked here while they log in or register, so the
 // request is not lost on the way back. Files cannot be serialized, so only
 // the number of photos is remembered.
-const REQUEST_DRAFT_KEY = "armut_request_draft";
+const REQUEST_DRAFT_KEY = "machma_request_draft";
 
 type RequestDraft = {
   category: string;
@@ -499,7 +499,7 @@ export default function CreateRequestPage() {
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-primary">Elf</span>
+                <span className="text-2xl font-bold text-primary">Machma</span>
               </Link>
               <LanguageToggle />
             </div>

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('./mirror-deployment.sh', import.meta.url));
 function fixture(run) {
-  const root = mkdtempSync(join(tmpdir(), 'armut-mirror-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'machma-mirror-test-'));
   const remote = join(root, 'remote.git');
   const work = join(root, 'work');
   const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: 'pipe' }).trim();

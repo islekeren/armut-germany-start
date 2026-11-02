@@ -24,7 +24,9 @@ export default function CustomerDashboardPage() {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
-  const [upcomingBookings, setUpcomingBookings] = useState<CustomerBooking[]>([]);
+  const [upcomingBookings, setUpcomingBookings] = useState<CustomerBooking[]>(
+    [],
+  );
   const [receivedQuotes, setReceivedQuotes] = useState<Quote[]>([]);
 
   useEffect(() => {
@@ -44,7 +46,9 @@ export default function CustomerDashboardPage() {
 
         setUnreadMessages(messagesData.unreadCount || 0);
         setUnreadNotifications(notificationsData.unreadCount || 0);
-        setRequests(myRequests.slice(0, 5));
+        setRequests(
+          myRequests.filter((request) => request.status === "open").slice(0, 5),
+        );
         setUpcomingBookings(upcoming.slice(0, 5));
         setReceivedQuotes(quotes.slice(0, 5));
       } catch (error) {
@@ -99,7 +103,9 @@ export default function CustomerDashboardPage() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <PanelCard className="text-center text-muted">{t("customer.bookings.loading")}</PanelCard>
+          <PanelCard className="text-center text-muted">
+            {t("customer.bookings.loading")}
+          </PanelCard>
         </div>
       </div>
     );
@@ -123,32 +129,50 @@ export default function CustomerDashboardPage() {
                   </Link>
                 </li>
                 <li className="min-w-max lg:min-w-0">
-                  <Link href="/my-requests" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3">
+                  <Link
+                    href="/my-requests"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
+                  >
                     <span>📄</span> {t("nav.myRequests")}
                   </Link>
                 </li>
                 <li className="min-w-max lg:min-w-0">
-                  <Link href="/bookings" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3">
+                  <Link
+                    href="/bookings"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
+                  >
                     <span>📅</span> {t("nav.bookings")}
                   </Link>
                 </li>
                 <li className="min-w-max lg:min-w-0">
-                  <Link href="/messages" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3">
+                  <Link
+                    href="/messages"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
+                  >
                     <span>💬</span> {t("nav.messages")}
                   </Link>
                 </li>
                 <li className="min-w-max lg:min-w-0">
-                  <Link href="/notifications" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3">
+                  <Link
+                    href="/notifications"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
+                  >
                     <span>🔔</span> {t("nav.notifications")}
                   </Link>
                 </li>
                 <li className="min-w-max lg:min-w-0">
-                  <Link href="/find-providers" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3">
+                  <Link
+                    href="/find-providers"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
+                  >
                     <span>🔎</span> {t("nav.findProvider")}
                   </Link>
                 </li>
                 <li className="min-w-max lg:min-w-0">
-                  <Link href="/create-request" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3">
+                  <Link
+                    href="/create-request"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-background sm:px-4 sm:py-3"
+                  >
                     <span>➕</span> {t("nav.createRequest")}
                   </Link>
                 </li>
@@ -158,15 +182,24 @@ export default function CustomerDashboardPage() {
 
           <main className="flex-1">
             <div className="mb-8">
-              <h1 className="text-xl font-bold sm:text-2xl">{t("nav.dashboard")}</h1>
-              <p className="text-sm text-muted sm:text-base">{t("customer.requests.subtitle")}</p>
+              <h1 className="text-xl font-bold sm:text-2xl">
+                {t("nav.dashboard")}
+              </h1>
+              <p className="text-sm text-muted sm:text-base">
+                {t("customer.requests.subtitle")}
+              </p>
             </div>
 
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat) => (
-                <div key={stat.id} className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+                <div
+                  key={stat.id}
+                  className="rounded-xl bg-white p-4 shadow-sm sm:p-6"
+                >
                   <div className="flex items-center gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg text-2xl text-white ${stat.color}`}>
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-lg text-2xl text-white ${stat.color}`}
+                    >
                       {stat.icon}
                     </div>
                     <div>
@@ -181,17 +214,27 @@ export default function CustomerDashboardPage() {
             <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
               <PanelCard className="p-5 sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">{t("nav.myRequests")}</h2>
-                  <Link href="/my-requests" className="text-sm text-primary hover:underline">
+                  <h2 className="text-lg font-semibold">
+                    {t("nav.myRequests")}
+                  </h2>
+                  <Link
+                    href="/my-requests"
+                    className="text-sm text-primary hover:underline"
+                  >
                     {t("provider.dashboard.viewAll")}
                   </Link>
                 </div>
                 <div className="space-y-3">
                   {requests.length === 0 ? (
-                    <p className="text-sm text-muted">{t("customer.requests.noRequests")}</p>
+                    <p className="text-sm text-muted">
+                      {t("customer.requests.noRequests")}
+                    </p>
                   ) : (
                     requests.map((request) => (
-                      <div key={request.id} className="rounded-lg border border-border p-3">
+                      <div
+                        key={request.id}
+                        className="rounded-lg border border-border p-3"
+                      >
                         <p className="font-medium">{request.title}</p>
                         <p className="text-sm text-muted">
                           {request.postalCode} {request.city}
@@ -204,50 +247,95 @@ export default function CustomerDashboardPage() {
 
               <PanelCard className="p-5 sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">{t("customer.bookings.nextBooking")}</h2>
-                  <Link href="/bookings" className="text-sm text-primary hover:underline">
+                  <h2 className="text-lg font-semibold">
+                    {t("customer.bookings.nextBooking")}
+                  </h2>
+                  <Link
+                    href="/bookings"
+                    className="text-sm text-primary hover:underline"
+                  >
                     {t("nav.bookings")}
                   </Link>
                 </div>
                 {nextBooking ? (
                   <div className="space-y-3">
                     <div className="rounded-lg border border-border p-3">
-                      <p className="font-medium">{nextBooking.quote?.request?.title || t("customer.bookings.nextBooking")}</p>
-                      <p className="text-sm text-muted">{nextBooking.provider?.companyName || nextBooking.provider?.user?.firstName || "-"}</p>
-                      <p className="mt-2 text-sm text-muted">{new Date(nextBooking.scheduledDate).toLocaleString(locale)}</p>
+                      <p className="font-medium">
+                        {nextBooking.quote?.request?.title ||
+                          t("customer.bookings.nextBooking")}
+                      </p>
+                      <p className="text-sm text-muted">
+                        {nextBooking.provider?.companyName ||
+                          nextBooking.provider?.user?.firstName ||
+                          "-"}
+                      </p>
+                      <p className="mt-2 text-sm text-muted">
+                        {new Date(nextBooking.scheduledDate).toLocaleString(
+                          locale,
+                        )}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       {upcomingBookings.slice(1, 4).map((booking) => (
-                        <div key={booking.id} className="rounded-lg border border-border p-3">
-                          <p className="font-medium">{booking.quote?.request?.title || t("customer.bookings.nextBooking")}</p>
-                          <p className="text-xs text-muted">{new Date(booking.scheduledDate).toLocaleString(locale)}</p>
+                        <div
+                          key={booking.id}
+                          className="rounded-lg border border-border p-3"
+                        >
+                          <p className="font-medium">
+                            {booking.quote?.request?.title ||
+                              t("customer.bookings.nextBooking")}
+                          </p>
+                          <p className="text-xs text-muted">
+                            {new Date(booking.scheduledDate).toLocaleString(
+                              locale,
+                            )}
+                          </p>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted">{t("customer.bookings.noUpcoming")}</p>
+                  <p className="text-sm text-muted">
+                    {t("customer.bookings.noUpcoming")}
+                  </p>
                 )}
               </PanelCard>
 
               <PanelCard className="p-5 sm:p-6 md:col-span-2 xl:col-span-1">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-semibold">
-                    {t("customer.requestDetail.quotesReceived", { count: receivedQuotes.length })}
+                    {t("customer.requestDetail.quotesReceived", {
+                      count: receivedQuotes.length,
+                    })}
                   </h2>
-                  <Link href="/my-requests" className="text-sm text-primary hover:underline">
+                  <Link
+                    href="/my-requests"
+                    className="text-sm text-primary hover:underline"
+                  >
                     {t("provider.dashboard.viewAll")}
                   </Link>
                 </div>
                 <div className="space-y-3">
                   {receivedQuotes.length === 0 ? (
-                    <p className="text-sm text-muted">{t("customer.requestDetail.noQuotes")}</p>
+                    <p className="text-sm text-muted">
+                      {t("customer.requestDetail.noQuotes")}
+                    </p>
                   ) : (
                     receivedQuotes.map((quote) => (
-                      <div key={quote.id} className="rounded-lg border border-border p-3">
-                        <p className="font-medium">{quote.request?.title || t("provider.offers.untitledRequest")}</p>
-                        <p className="mt-1 text-sm font-medium text-secondary">{formatEuroAmount(quote.price, locale)}</p>
-                        <p className="text-xs text-muted">{new Date(quote.createdAt).toLocaleDateString(locale)}</p>
+                      <div
+                        key={quote.id}
+                        className="rounded-lg border border-border p-3"
+                      >
+                        <p className="font-medium">
+                          {quote.request?.title ||
+                            t("provider.offers.untitledRequest")}
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-secondary">
+                          {formatEuroAmount(quote.price, locale)}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {new Date(quote.createdAt).toLocaleDateString(locale)}
+                        </p>
                       </div>
                     ))
                   )}
@@ -256,18 +344,32 @@ export default function CustomerDashboardPage() {
             </div>
 
             <div className="mt-8 rounded-xl bg-secondary/10 p-6">
-              <h2 className="mb-4 text-lg font-semibold">{t("provider.dashboard.sections.quickActions")}</h2>
+              <h2 className="mb-4 text-lg font-semibold">
+                {t("provider.dashboard.sections.quickActions")}
+              </h2>
               <div className="flex flex-wrap gap-3">
-                <Link href="/create-request" className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow">
+                <Link
+                  href="/create-request"
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow"
+                >
                   {t("nav.createRequest")}
                 </Link>
-                <Link href="/find-providers" className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow">
+                <Link
+                  href="/find-providers"
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow"
+                >
                   {t("nav.findProvider")}
                 </Link>
-                <Link href="/messages" className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow">
+                <Link
+                  href="/messages"
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow"
+                >
                   {t("nav.messages")}
                 </Link>
-                <Link href="/bookings" className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow">
+                <Link
+                  href="/bookings"
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium shadow-sm hover:shadow"
+                >
                   {t("nav.bookings")}
                 </Link>
               </div>

@@ -66,7 +66,7 @@ export function AccountSettingsContent({ role }: AccountSettingsContentProps) {
 
   const preferenceStorageKey = useMemo(() => {
     if (!user?.id) return null;
-    return `armut_settings_preferences_${user.id}`;
+    return `machma_settings_preferences_${user.id}`;
   }, [user?.id]);
 
   useEffect(() => {

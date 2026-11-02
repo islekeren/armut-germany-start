@@ -52,14 +52,14 @@ describe("apiRequest", () => {
       )
       .mockResolvedValueOnce(jsonResponse({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
-    localStorage.setItem("armut_refresh_token", "refresh-token");
+    localStorage.setItem("machma_refresh_token", "refresh-token");
 
     await expect(apiRequest<{ ok: boolean }>("/requests")).resolves.toEqual({
       ok: true,
     });
 
-    expect(localStorage.getItem("armut_access_token")).toBe("fresh-access");
-    expect(localStorage.getItem("armut_refresh_token")).toBe("fresh-refresh");
+    expect(localStorage.getItem("machma_access_token")).toBe("fresh-access");
+    expect(localStorage.getItem("machma_refresh_token")).toBe("fresh-refresh");
 
     const retryHeaders = fetchMock.mock.calls[2]?.[1]?.headers as Headers;
     expect(retryHeaders.get("Authorization")).toBe("Bearer fresh-access");
@@ -169,7 +169,7 @@ describe("apiRequest", () => {
         });
       return jsonResponse({ ok: true });
     });
-    localStorage.setItem("armut_refresh_token", "refresh-token");
+    localStorage.setItem("machma_refresh_token", "refresh-token");
 
     await expect(apiRequest("/messages/conversations")).resolves.toEqual({
       ok: true,
@@ -226,13 +226,13 @@ describe("apiRequest", () => {
         });
       throw new Error("private retry network error");
     });
-    localStorage.setItem("armut_refresh_token", "refresh-token");
+    localStorage.setItem("machma_refresh_token", "refresh-token");
     await expect(apiRequest("/notifications")).rejects.toMatchObject({
       name: "ApiError",
       code: "unavailable",
     });
-    expect(localStorage.getItem("armut_access_token")).toBe("fresh-access");
-    expect(localStorage.getItem("armut_refresh_token")).toBe("fresh-refresh");
+    expect(localStorage.getItem("machma_access_token")).toBe("fresh-access");
+    expect(localStorage.getItem("machma_refresh_token")).toBe("fresh-refresh");
     const requestId = new Headers(calls[0]!.options?.headers).get(
       "X-Request-ID",
     );
@@ -258,12 +258,12 @@ describe("apiRequest", () => {
         }
         return jsonResponse({ message: "Unauthorized" }, 401);
       });
-      localStorage.setItem("armut_refresh_token", "refresh-token");
+      localStorage.setItem("machma_refresh_token", "refresh-token");
       await expect(apiRequest("/requests")).rejects.toMatchObject({
         code: "unavailable",
         ...(failure === "server" ? { status: 503 } : {}),
       });
-      expect(localStorage.getItem("armut_refresh_token")).toBe("refresh-token");
+      expect(localStorage.getItem("machma_refresh_token")).toBe("refresh-token");
       expect(JSON.parse(calls[2]!.options?.body as string)).toEqual({
         operation: "auth",
         code: "unavailable",
@@ -301,9 +301,9 @@ describe("refresh/retry cancellation budget", () => {
     vi.useFakeTimers();
     vi.stubEnv("NEXT_PUBLIC_API_TIMEOUT_MS", "1000");
     localStorage.clear();
-    localStorage.setItem("armut_refresh_token", "refresh");
-    localStorage.setItem("armut_access_token", "access");
-    localStorage.setItem("armut_user", "user");
+    localStorage.setItem("machma_refresh_token", "refresh");
+    localStorage.setItem("machma_access_token", "access");
+    localStorage.setItem("machma_user", "user");
     calls = [];
     caller = new AbortController();
     report = vi
@@ -418,7 +418,7 @@ describe("refresh/retry cancellation budget", () => {
       });
       expect(calls[stage - 1]!.init.signal!.aborted).toBe(true);
       expect(calls).toHaveLength(stage);
-      expect(localStorage.getItem("armut_refresh_token")).toBe(
+      expect(localStorage.getItem("machma_refresh_token")).toBe(
         stage === 2 ? "refresh" : "fresh-refresh",
       );
       expect(report).toHaveBeenCalledTimes(1);
@@ -471,9 +471,9 @@ describe("refresh/retry cancellation budget", () => {
       expect(calls).toHaveLength(2);
       const rejected = [400, 401, 403].includes(status);
       for (const key of [
-        "armut_access_token",
-        "armut_refresh_token",
-        "armut_user",
+        "machma_access_token",
+        "machma_refresh_token",
+        "machma_user",
       ]) {
         expect(localStorage.getItem(key) === null).toBe(rejected);
       }
@@ -508,7 +508,7 @@ describe("refresh/retry cancellation budget", () => {
     vi.spyOn(response, "text").mockRejectedValue(
       new TypeError("private stream failure"),
     );
-    localStorage.removeItem("armut_refresh_token");
+    localStorage.removeItem("machma_refresh_token");
     vi.stubGlobal("fetch", async () => response);
     const error = await apiRequest("/requests").catch((value) => value);
     expect(error).toMatchObject({ name: "ApiError", code: "unavailable" });
@@ -571,7 +571,7 @@ describe("refresh/retry cancellation budget", () => {
         stage === "refresh-json" ? 2 : stage === "error-text" ? 1 : 3,
       );
       if (stage === "refresh-json")
-        expect(localStorage.getItem("armut_access_token")).toBe("access");
+        expect(localStorage.getItem("machma_access_token")).toBe("access");
       expect(report).not.toHaveBeenCalled();
       expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
       await vi.advanceTimersByTimeAsync(0);

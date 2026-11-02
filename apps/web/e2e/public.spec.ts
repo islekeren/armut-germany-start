@@ -149,14 +149,14 @@ test.describe("public pages", () => {
   test("static pages render", async ({ page }) => {
     await page.goto("/how-it-works");
     await expect(
-      page.getByRole("heading", { level: 1, name: "How Elf Germany Works" }),
+      page.getByRole("heading", { level: 1, name: "How Machma Works" }),
     ).toBeVisible();
 
     await page.goto("/become-provider");
     await expect(
       page.getByRole("heading", {
         level: 1,
-        name: "Become a Service Provider on Elf",
+        name: "Become a Service Provider on Machma",
       }),
     ).toBeVisible();
   });

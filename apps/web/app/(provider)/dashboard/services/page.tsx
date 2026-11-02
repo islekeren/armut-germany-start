@@ -53,7 +53,7 @@ export default function ProviderServicesPage() {
     setLoading(true);
     setLoadFailed(false);
     try {
-      const token = localStorage.getItem("armut_access_token");
+      const token = localStorage.getItem("machma_access_token");
       if (!token) throw new Error("Session required");
       const [owned, available] = await Promise.all([
         serviceApi.list(token),
@@ -104,7 +104,7 @@ export default function ProviderServicesPage() {
     setError(null);
     setNotice(null);
     try {
-      const token = localStorage.getItem("armut_access_token");
+      const token = localStorage.getItem("machma_access_token");
       if (!token) throw new Error("Session required");
       const data: ServiceData = {
         categoryId: form.categoryId,
@@ -138,7 +138,7 @@ export default function ProviderServicesPage() {
     setError(null);
     setNotice(null);
     try {
-      const token = localStorage.getItem("armut_access_token");
+      const token = localStorage.getItem("machma_access_token");
       if (!token) throw new Error("Session required");
       if (remove) {
         await serviceApi.remove(token, service.id);

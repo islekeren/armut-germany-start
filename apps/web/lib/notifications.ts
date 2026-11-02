@@ -27,7 +27,9 @@ export function getNotificationTemplate(
         audience === "customer" ||
         (!audience && item.message.startsWith("Your request"));
       return {
-        key: forCustomer ? "request_cancelled_customer" : "request_cancelled_provider",
+        key: forCustomer
+          ? "request_cancelled_customer"
+          : "request_cancelled_provider",
         requestTitle,
       };
     }
@@ -36,7 +38,9 @@ export function getNotificationTemplate(
         audience === "customer" ||
         (!audience && item.message.includes("is marked as completed"));
       return {
-        key: forCustomer ? "booking_completed_customer" : "booking_completed_provider",
+        key: forCustomer
+          ? "booking_completed_customer"
+          : "booking_completed_provider",
         requestTitle,
       };
     }
@@ -45,11 +49,68 @@ export function getNotificationTemplate(
         metadata.cancelledBy === "provider" ||
         (!metadata.cancelledBy && item.message.includes("by the provider"));
       return {
-        key: byProvider ? "booking_cancelled_by_provider" : "booking_cancelled_by_customer",
+        key: byProvider
+          ? "booking_cancelled_by_provider"
+          : "booking_cancelled_by_customer",
         requestTitle,
       };
     }
     default:
       return null;
+  }
+}
+
+function getMetadataId(item: Pick<NotificationItem, "metadata">, key: string) {
+  const value = item.metadata?.[key];
+  return typeof value === "string" && value.length > 0
+    ? encodeURIComponent(value)
+    : null;
+}
+
+export function getNotificationHref(
+  item: Pick<NotificationItem, "type" | "metadata">,
+  userType?: string,
+) {
+  const bookingId = getMetadataId(item, "bookingId");
+  const requestId = getMetadataId(item, "requestId");
+  const quoteId = getMetadataId(item, "quoteId");
+  const isProvider = userType === "provider";
+
+  if (isProvider) {
+    switch (item.type) {
+      case "quote_accepted":
+        return quoteId
+          ? `/dashboard/offers?offer=${quoteId}`
+          : "/dashboard/offers";
+      case "request_cancelled":
+        return quoteId
+          ? `/dashboard/offers?offer=${quoteId}`
+          : "/dashboard/offers";
+      case "booking_completion_pending":
+      case "booking_completed":
+      case "booking_cancelled":
+        return bookingId
+          ? `/dashboard/orders?booking=${bookingId}`
+          : "/dashboard/orders";
+      case "quote_received":
+        return requestId
+          ? `/dashboard/listings?request=${requestId}`
+          : "/dashboard/listings";
+      default:
+        return "/dashboard";
+    }
+  }
+
+  switch (item.type) {
+    case "quote_received":
+    case "quote_accepted":
+    case "request_cancelled":
+      return requestId ? `/my-requests/${requestId}` : "/my-requests";
+    case "booking_completion_pending":
+    case "booking_completed":
+    case "booking_cancelled":
+      return bookingId ? `/bookings/${bookingId}` : "/bookings";
+    default:
+      return "/customer-dashboard";
   }
 }

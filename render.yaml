@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: armut-germany-api
+    name: machma-api
     runtime: node
     rootDir: .
     buildCommand: npm ci && npm run db:generate --workspace=api && npm run build --workspace=api

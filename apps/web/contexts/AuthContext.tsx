@@ -28,9 +28,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ACCESS_TOKEN_KEY = "armut_access_token";
-const REFRESH_TOKEN_KEY = "armut_refresh_token";
-const USER_KEY = "armut_user";
+const ACCESS_TOKEN_KEY = "machma_access_token";
+const REFRESH_TOKEN_KEY = "machma_refresh_token";
+const USER_KEY = "machma_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

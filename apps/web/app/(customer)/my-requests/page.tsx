@@ -355,7 +355,9 @@ export default function MyRequestsPage() {
                         statusLabels[request.status]?.color ?? ""
                       }`}
                     >
-                      {statusLabels[request.status]?.label ?? request.status}
+                      {request.status === "booked" && !request.bookingId
+                        ? t("status.bookingRequired")
+                        : (statusLabels[request.status]?.label ?? request.status)}
                     </span>
                     <span className="text-sm text-muted">
                       {request.category}
@@ -397,7 +399,11 @@ export default function MyRequestsPage() {
                   {request.status === "booked" && (
                     <>
                       <div className="text-right text-sm">
-                        <div className="text-muted">{t("bookedWith")}</div>
+                        <div className="text-muted">
+                          {request.bookingId
+                            ? t("bookedWith")
+                            : t("acceptedProvider")}
+                        </div>
                         <div className="font-medium">
                           {request.bookedProvider || t("bookingPending")}
                         </div>

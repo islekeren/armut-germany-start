@@ -3,9 +3,9 @@ import { getErrorOperation, reportClientError, validRequestId, type ErrorOperati
 const DEFAULT_API_ORIGIN = "http://localhost:4000";
 const API_UNAVAILABLE_MESSAGE =
   "The service is temporarily unavailable. Please try again shortly.";
-const ACCESS_TOKEN_KEY = "armut_access_token";
-const REFRESH_TOKEN_KEY = "armut_refresh_token";
-const USER_KEY = "armut_user";
+const ACCESS_TOKEN_KEY = "machma_access_token";
+const REFRESH_TOKEN_KEY = "machma_refresh_token";
+const USER_KEY = "machma_user";
 const DEFAULT_SERVER_API_TIMEOUT_MS =
   process.env.NODE_ENV === "development" ? 1500 : 5000;
 const DEFAULT_CLIENT_API_TIMEOUT_MS =
@@ -267,7 +267,7 @@ export async function apiRequest<T>(
 
 export function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("armut_access_token");
+  return localStorage.getItem("machma_access_token");
 }
 
 // Auth API calls

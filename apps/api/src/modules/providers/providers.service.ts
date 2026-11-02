@@ -213,7 +213,12 @@ export class ProvidersService {
       throw new ForbiddenException("User must be registered as a provider");
     }
 
-    await assertOwnedUploads(this.prisma, userId, createProviderDto.documents, UploadFolder.DOCUMENTS);
+    await assertOwnedUploads(
+      this.prisma,
+      userId,
+      createProviderDto.documents,
+      UploadFolder.DOCUMENTS,
+    );
 
     // An account can retry onboarding after a lost response, possibly having
     // edited the form first. Never create a second provider or duplicate its
@@ -437,7 +442,9 @@ export class ProvidersService {
           },
         },
         services: Object.keys(servicePriceData).length
-          ? { updateMany: { where: { isActive: true }, data: servicePriceData } }
+          ? {
+              updateMany: { where: { isActive: true }, data: servicePriceData },
+            }
           : undefined,
       },
     });
@@ -681,7 +688,12 @@ export class ProvidersService {
       throw new ForbiddenException("Not authorized to update this provider");
     }
 
-    await assertOwnedUploads(this.prisma, userId, updateProviderDto.documents, UploadFolder.DOCUMENTS);
+    await assertOwnedUploads(
+      this.prisma,
+      userId,
+      updateProviderDto.documents,
+      UploadFolder.DOCUMENTS,
+    );
 
     return this.prisma.provider.update({
       where: { id },
@@ -1491,7 +1503,7 @@ export class ProvidersService {
           address: req.address,
           preferredDate: req.preferredDate,
           budget:
-            req.budgetMin && req.budgetMax
+            req.budgetMin !== null && req.budgetMax !== null
               ? `${req.budgetMin}-${req.budgetMax}€`
               : null,
           budgetMin: req.budgetMin,

@@ -29,8 +29,8 @@ Both e2e suites run against throwaway services from `docker-compose.test.yml`. I
 
 | Service  | Host port | Purpose                                                         |
 | -------- | --------- | --------------------------------------------------------------- |
-| Postgres | 5433      | `armut_e2e_api` (API suite) and `armut_e2e_web` (Playwright)    |
-| S3 mock  | 9190      | `adobe/s3mock` with bucket `armut-e2e-uploads`, path-style only |
+| Postgres | 5433      | `machma_e2e_api` (API suite) and `machma_e2e_web` (Playwright)    |
+| S3 mock  | 9190      | `adobe/s3mock` with bucket `machma-e2e-uploads`, path-style only |
 
 Each suite has its own database: the API suite truncates tables between tests, and the Playwright prepare step resets and reseeds its database once per run. Postgres runs on tmpfs, so `down` discards everything.
 
@@ -39,7 +39,7 @@ npm run test:e2e:services:up         # start services and wait until healthy
 npm run test:e2e:setup               # prisma generate + migrate deploy on both e2e databases
 
 cd apps/api && npm run test:e2e      # API suite (Jest + Supertest + socket.io-client)
-cd apps/web && npm run test:e2e      # reset + seed armut_e2e_web, build api+web, run all Playwright specs
+cd apps/web && npm run test:e2e      # reset + seed machma_e2e_web, build api+web, run all Playwright specs
 cd apps/web && npm run test:e2e:smoke  # same, but only tests tagged @smoke
 
 npm run test:e2e:services:down       # stop and drop all data
@@ -49,7 +49,7 @@ Notes:
 
 - defaults live in `apps/api/test/setup-e2e.ts`, `apps/web/playwright.config.ts`, and `apps/web/scripts/prepare-e2e.mjs`; an explicit `DATABASE_URL` overrides them (CI does this)
 - `test:e2e:setup` accepts `E2E_API_DATABASE_URL` and `E2E_WEB_DATABASE_URL` overrides
-- the web prepare step truncates every table in the target database before seeding. It refuses databases whose name does not start with `armut_e2e_` unless `E2E_ALLOW_RESET=true`
+- the web prepare step truncates every table in the target database before seeding. It refuses databases whose name does not start with `machma_e2e_` unless `E2E_ALLOW_RESET=true`
 - Playwright serves production builds (`node dist/main`, `next start`) by default; the prepare step builds them through turbo, which caches repeat runs. `E2E_SKIP_BUILD=true` skips the build, and `E2E_DEV_SERVERS=true` uses watch-mode dev servers instead (no build)
 - Playwright starts the API with `NODE_ENV=test` and `THROTTLE_DISABLED=true` so the per-IP auth rate limits do not trip when many test users log in
 - if your Playwright version has no matching bundled browser, point it at a local Chromium with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`
@@ -90,7 +90,7 @@ Known gaps: payment work is not on `main`; logout and password changes do not ye
 
 ### E2E harness conventions (web)
 
-- `e2e/support/data.ts` creates each test's users, providers, requests, quotes, bookings, conversations, and notifications directly in `armut_e2e_web` with unique emails. Tests never rely on seed content or on each other, so they run in parallel
+- `e2e/support/data.ts` creates each test's users, providers, requests, quotes, bookings, conversations, and notifications directly in `machma_e2e_web` with unique emails. Tests never rely on seed content or on each other, so they run in parallel
 - `e2e/support/test.ts` extends Playwright's `test` with an English-locale `page` and a `loginAs(user)` fixture that logs in through the API and seeds AuthContext's `localStorage` once per tab. Use `signIn(page, user)` for extra browser contexts
 - pages that confirm with `window.confirm` need `page.on("dialog", (d) => d.accept())`; Playwright dismisses dialogs by default
 - providers are listed by rating, so pass `topRated: true` to `createProvider` when a test must find a new provider in a paginated list
